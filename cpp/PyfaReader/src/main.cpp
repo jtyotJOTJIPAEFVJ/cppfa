@@ -384,7 +384,9 @@ int bench(const GameData& gd, const Database& save, int64_t fitID, double second
     std::cerr << "fit #" << fit->id << " " << fit->name << " [" << gd.type(fit->shipID)->name << "]: "
               << spec.slots.size() << " open slots, " << combinations << " combinations, goal " << goalName << "\n"
               << "plan: built in " << buildMs << " ms, " << st.instructions << " instructions, " << st.dynamic
-              << " replayed per test\n";
+              << " replayed per test; " << st.itemsWritten << " of " << st.items << " items written per test; "
+              << st.variableCycle << " of " << st.modules << " modules with per-test cycle values, "
+              << st.variableFitting << " with per-test fitting values\n";
 
     // Odometer enumeration, like a brute-force search.
     std::vector<int> choice(spec.slots.size(), 0);

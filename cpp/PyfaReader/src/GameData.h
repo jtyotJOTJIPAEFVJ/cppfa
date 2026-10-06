@@ -227,6 +227,7 @@ public:
     const Category* category(int categoryID) const;
     const MarketGroup* marketGroup(int marketGroupID) const;
     const Attribute* attribute(int attributeID) const;
+    const std::unordered_map<int, Attribute>& allAttributes() const { return attributes_; }
 
     // Lookups by name; return 0 if not found.
     int attributeID(const std::string& name) const;
