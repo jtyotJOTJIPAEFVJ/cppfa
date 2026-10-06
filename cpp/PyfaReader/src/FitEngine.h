@@ -196,6 +196,11 @@ public:
         // pyfa's order: pyfa would read the earlier value there. 0 means the plan
         // reproduces pyfa's order exactly.
         size_t orderSensitive = 0;
+        size_t items = 0;              // in the plan (pinned + all options, incl. ship/charges/implants)
+        size_t itemsWritten = 0;       // of those, written by replayed instructions: copied per test
+        size_t modules = 0;
+        size_t variableCycle = 0;      // modules whose cycle/cap values are recomputed per test
+        size_t variableFitting = 0;    // modules whose cpu/power/calibration are re-read per test
     };
     Stats stats() const;
 

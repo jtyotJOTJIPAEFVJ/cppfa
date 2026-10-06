@@ -142,6 +142,42 @@ enum : int
     kEffWarfareLinkLast = 6736,
 };
 
+// Attributes hand-written code reads (cycle times, shots, fitting, repairers):
+// resolved per item at setup to a field index or a constant base value.
+enum Hot : int
+{
+    HotSpeed,
+    HotDuration,
+    HotDurationHigh,
+    HotBurst0,
+    HotBurst1,
+    HotBurst2,
+    HotBurst3,
+    HotReactivation,
+    HotReload,
+    HotChargeRate,
+    HotCapNeed,
+    HotCpu,
+    HotPower,
+    HotUpgradeCost,
+    HotShieldBonus,
+    HotArmorDamage,
+    HotStructureDamage,
+    HotChargedArmorMult,
+    HotCrystalsDamaged,
+    HotHp,
+    HotCrystalChance,
+    HotCrystalDamage,
+    kHot
+};
+
+// A module's cycle time, reload and cap use (pyfa rawCycleTime, getCycleParameters, capUse).
+struct CycleInfo
+{
+    float raw = 0, reactivation = 0, reload = 0, average = 0, capNeed = 0, capUse = 0;
+    int numShots = 0;
+};
+
 struct Item
 {
     const Type* type = nullptr;
@@ -159,14 +195,37 @@ struct Item
     std::array<int, 6> reqSkills{};
     int reqCount = 0;
 
-    float base[kMaxFields];
-    float preAssign[kMaxFields];
-    float intermediary[kMaxFields];  // pyfa itemModifiedAttributes[key] = v: replaces the base
-    float preInc[kMaxFields];
-    float mult[kMaxFields];
-    float postInc[kMaxFields];
-    float force[kMaxFields];
-    uint64_t hasPreAssign = 0, hasIntermediary = 0, hasForce = 0, touched = 0, penalized = 0;
+    // Field arrays, kArrays x layout->count floats in the scratch's arena:
+    //   base         unmodified value
+    //   preAssign / intermediary / force   pyfa's assignments (masks below)
+    //   preInc / mult / postInc            pyfa's accumulators (penalized multipliers live in Scratch::pens)
+    //   cache        computed values of touched fields; any write to the item clears
+    //                it (values depend only on the item's own fields, penalties and caps)
+    static constexpr int kArrays = 8;
+    float* data = nullptr;
+    int stride = 0;
+    float* base() const { return data; }
+    float* preAssign() const { return data + stride; }
+    float* intermediary() const { return data + 2 * stride; }  // pyfa itemModifiedAttributes[key] = v
+    float* preInc() const { return data + 3 * stride; }
+    float* mult() const { return data + 4 * stride; }
+    float* postInc() const { return data + 5 * stride; }
+    float* force() const { return data + 6 * stride; }
+    float* cache() const { return data + 7 * stride; }
+    uint64_t hasPreAssign = 0, hasIntermediary = 0, hasForce = 0, touched = 0, penalized = 0, cached = 0;
+
+    int numCharges = 0;  // module: charges per load, from the module and charge types (pyfa numCharges)
+    int penHead = -1;    // newest of this item's stacking-penalized multipliers (Scratch::pens list)
+
+    std::array<int8_t, kHot> hotField{};  // field index, -1 if not in the layout (then hotBase is final)
+    std::array<float, kHot> hotBase{};
+    uint32_t hotHas = 0;                  // the item itself has the attribute (pyfa 'x' in item.attributes)
+
+    // Search plans: values that can't change between tests, computed at plan build.
+    bool constCycle = false;
+    CycleInfo cycle;
+    bool constFitting = false;
+    float cpu = 0, power = 0, calibration = 0;
 
     uint32_t repEffects = 0;   // which repairer effects ran (bit per kRep*)
     bool ancillaryShield = false;  // module group (Remote) Ancillary Shield Booster
@@ -179,6 +238,7 @@ struct Penalty
     uint8_t field;
     uint8_t group;
     float value;
+    int next;  // older penalty of the same item, -1 = none
 };
 
 enum : uint32_t
@@ -198,9 +258,22 @@ struct CommandBonus
 };
 constexpr int kMaxCommandBonuses = 64;
 
+constexpr int kArenaFloats = kMaxItems * Item::kArrays * kMaxFields;
+
+// Item index -> item. Normally the scratch's own storage; a search test points
+// the items it doesn't write at the plan's shared ones.
+struct ItemTable
+{
+    std::array<Item*, kMaxItems> ptr{};
+    Item& operator[](size_t i) const { return *ptr[i]; }
+};
+
 struct Scratch
 {
-    std::array<Item, kMaxItems> items;
+    std::array<Item, kMaxItems> storage;
+    ItemTable items;
+    std::array<float, kArenaFloats> arena;  // items' field arrays
+    int arenaUsed = 0;
     std::array<CommandBonus, kMaxCommandBonuses> bonuses;
     int bonusCount = 0;
     int count = 0;
@@ -254,6 +327,7 @@ struct Engine::Impl
     std::unordered_map<int, std::vector<Mod>> buffMods;  // warfare buff ID -> modifiers
     std::unordered_map<std::string, Attr> attrByName;
     std::vector<int16_t> attrByEve;  // eve attributeID -> Attr index, -1 if not in the schema
+    std::vector<float> defaultByEve; // eve attributeID -> dgmattribs default
     std::array<int, fitschema::kAttrCount> capMin{}, capMax{};  // eve attributeIDs of cap attributes, 0 = none
     Layout shipLayout, emptyLayout;
     std::vector<Layout> layouts;
@@ -270,6 +344,7 @@ struct Engine::Impl
         eveResistanceShift;
     std::array<int, 4> eveBurstDurations{};
     std::array<int, 4> eveWarfareBuffID{}, eveWarfareBuffValue{};
+    std::array<int, kHot> hotEve{};
     std::array<int, 4> eveArmorRes{}, eveShipArmorRes{};
     Attr attrCpu, attrPower, attrCpuOutput, attrPowerOutput;
 
@@ -288,6 +363,12 @@ struct Engine::Impl
                 capMin[i] = info->minAttributeID.value_or(0);
                 capMax[i] = info->maxAttributeID.value_or(0);
             }
+        }
+        for (const auto& [id, a] : gd.allAttributes())
+        {
+            if (defaultByEve.size() <= static_cast<size_t>(id))
+                defaultByEve.resize(static_cast<size_t>(id) + 1, 0.0f);
+            defaultByEve[static_cast<size_t>(id)] = a.defaultValue;
         }
         auto makeLayout = [](const Attr* fields, int count) {
             if (count > kMaxFields)
@@ -344,6 +425,10 @@ struct Engine::Impl
         const char* res[4] = {"Em", "Thermal", "Kinetic", "Explosive"};
         for (int i = 0; i < 4; ++i)
             eveArmorRes[i] = eveShipArmorRes[i] = eve((std::string("armor") + res[i] + "DamageResonance").c_str());
+        hotEve = {eveSpeed, eveDuration, eveDurationHighIsGood, eveBurstDurations[0], eveBurstDurations[1],
+                  eveBurstDurations[2], eveBurstDurations[3], eveReactivation, eveReloadTime, eveChargeRate,
+                  eveCapNeed, eveCpu, evePower, eveUpgradeCost, eveShieldBonus, eveArmorDamage, eveStructureDamage,
+                  eveChargedArmorMult, eveCrystalsDamaged, eveHp, eveCrystalChance, eveCrystalDamage};
         attrCpu = attrByName.at("cpu");
         attrPower = attrByName.at("power");
         attrCpuOutput = attrByName.at("cpuOutput");
@@ -510,10 +595,13 @@ struct Engine::Impl
         if (s.count >= kMaxItems)
             throw std::runtime_error("too many items in fit");
         int idx = s.count++;
-        Item& it = s.items[idx];
+        Item& it = s.storage[static_cast<size_t>(idx)];
+        s.items.ptr[static_cast<size_t>(idx)] = &it;
         it = Item{};
         it.type = type;
         it.layout = layout;
+        it.stride = layout->count;
+        it.data = allocFields(s, it.stride);
         it.group = gd.groupOf(*type);
         it.kind = kind;
         auto req = gd.requiredSkills(*type);
@@ -525,16 +613,48 @@ struct Engine::Impl
         return idx;
     }
 
+    static float* allocFields(Scratch& s, int stride)
+    {
+        int n = Item::kArrays * stride;
+        if (s.arenaUsed + n > kArenaFloats)
+            throw std::runtime_error("fit scratch arena full");
+        float* p = s.arena.data() + s.arenaUsed;
+        s.arenaUsed += n;
+        return p;
+    }
+
     void initValues(Item& it) const
     {
         for (int f = 0; f < it.layout->count; ++f)
         {
             int eve = fitschema::kAttrEveID[static_cast<size_t>(it.layout->fields[f])];
-            it.base[f] = baseOf(it, eve);
-            it.preInc[f] = 0;
-            it.mult[f] = 1;
-            it.postInc[f] = 0;
+            it.base()[f] = baseOf(it, eve);
+            it.preInc()[f] = 0;
+            it.mult()[f] = 1;
+            it.postInc()[f] = 0;
         }
+        for (int h = 0; h < kHot; ++h)
+        {
+            int eve = hotEve[static_cast<size_t>(h)];
+            it.hotField[static_cast<size_t>(h)] = static_cast<int8_t>(fieldOf(it, eve));
+            it.hotBase[static_cast<size_t>(h)] = baseOf(it, eve);
+            if (hasBase(it, eve))
+                it.hotHas |= 1u << h;
+        }
+    }
+
+    // read() / hasAttrOrModified() for a hot attribute.
+    float readHot(Scratch& s, int item, Hot h) const
+    {
+        const Item& it = s.items[static_cast<size_t>(item)];
+        int f = it.hotField[static_cast<size_t>(h)];
+        return f >= 0 ? value(s, item, f, 0) : it.hotBase[static_cast<size_t>(h)];
+    }
+    bool hasHot(const Scratch& s, int item, Hot h) const
+    {
+        const Item& it = s.items[static_cast<size_t>(item)];
+        int f = it.hotField[static_cast<size_t>(h)];
+        return (it.hotHas >> h & 1u) || (f >= 0 && (it.touched >> f & 1));
     }
 
     // The item type's own attribute; for mutated modules merged over the base item
@@ -555,8 +675,8 @@ struct Engine::Impl
                     return v;
         if (auto v = typeAttr(it, eve))
             return *v;
-        const Attribute* a = gd.attribute(eve);
-        return a ? a->defaultValue : 0.0f;
+        return eve > 0 && static_cast<size_t>(eve) < defaultByEve.size() ? defaultByEve[static_cast<size_t>(eve)]
+                                                                          : 0.0f;
     }
 
     bool hasBase(const Item& it, int eve) const
@@ -596,25 +716,27 @@ struct Engine::Impl
     // pyfa ModifiedAttributeDict.__getitem__ / __calculateValue
     float value(Scratch& s, int item, int field, int depth) const
     {
-        const Item& it = s.items[item];
+        Item& it = s.items[item];
         // Attributes no modifier touched never reach __calculateValue: pyfa returns
         // the intermediary or original value as is - no caps, no cpu/power rounding.
         if (!(it.touched >> field & 1))
-            return (it.hasIntermediary >> field & 1) ? it.intermediary[field] : it.base[field];
+            return (it.hasIntermediary >> field & 1) ? it.intermediary()[field] : it.base()[field];
+        if (it.cached >> field & 1)
+            return it.cache()[field];
         float val;
         if (it.hasForce >> field & 1)
-            val = it.force[field];
+            val = it.force()[field];
         else
         {
             // priority: intermediary > preAssign > original
-            val = (it.hasIntermediary >> field & 1) ? it.intermediary[field]
-                  : (it.hasPreAssign >> field & 1) ? it.preAssign[field]
-                                                    : it.base[field];
-            val += it.preInc[field];
-            val *= it.mult[field];
+            val = (it.hasIntermediary >> field & 1) ? it.intermediary()[field]
+                  : (it.hasPreAssign >> field & 1) ? it.preAssign()[field]
+                                                    : it.base()[field];
+            val += it.preInc()[field];
+            val *= it.mult()[field];
             if (it.penalized >> field & 1)
                 val = applyPenalties(s, item, field, val);
-            val += it.postInc[field];
+            val += it.postInc()[field];
         }
         Attr a = it.layout->fields[field];
         size_t ai = static_cast<size_t>(a);
@@ -627,6 +749,9 @@ struct Engine::Impl
         }
         if (a == attrCpu || a == attrPower || a == attrCpuOutput || a == attrPowerOutput)
             val = pymath::round(val, 2);
+        Item& w = s.items[item];  // (caps may have read other fields of this item)
+        w.cache()[field] = val;
+        w.cached |= uint64_t{1} << field;
         return val;
     }
 
@@ -634,32 +759,67 @@ struct Engine::Impl
     // strongest first: 1 + (m - 1) * exp(-i^2 / 7.1289).
     float applyPenalties(const Scratch& s, int item, int field, float val) const
     {
-        uint64_t groupsSeen = 0;
-        for (int p = 0; p < s.penCount; ++p)
-        {
-            const Penalty& pen = s.pens[p];
-            if (pen.item != item || pen.field != field || (groupsSeen >> pen.group & 1u))
-                continue;
-            groupsSeen |= uint64_t{1} << pen.group;
-            float up[64], down[64];
-            int nUp = 0, nDown = 0;
-            for (int q = p; q < s.penCount; ++q)
+        // This field's multipliers in application order (the list is newest first).
+        constexpr int kMax = 64;
+        float vals[kMax];
+        uint8_t groups[kMax];
+        int n = 0;
+        for (int p = s.items[item].penHead; p >= 0 && n < kMax; p = s.pens[p].next)
+            if (s.pens[p].field == field)
             {
-                const Penalty& o = s.pens[q];
-                if (o.item != item || o.field != field || o.group != pen.group)
-                    continue;
-                if (o.value > 1 && nUp < 64)
-                    up[nUp++] = o.value;
-                else if (o.value < 1 && nDown < 64)
-                    down[nDown++] = o.value;
+                vals[n] = s.pens[p].value;
+                groups[n++] = s.pens[p].group;
             }
-            auto byStrength = [](float a, float b) { return std::abs(a - 1) > std::abs(b - 1); };
-            std::stable_sort(up, up + nUp, byStrength);
-            std::stable_sort(down, down + nDown, byStrength);
-            for (int i = 0; i < nUp; ++i)
-                val *= 1 + (up[i] - 1) * std::exp(-static_cast<float>(i * i) / 7.1289f);
-            for (int i = 0; i < nDown; ++i)
-                val *= 1 + (down[i] - 1) * std::exp(-static_cast<float>(i * i) / 7.1289f);
+        std::reverse(vals, vals + n);
+        std::reverse(groups, groups + n);
+
+        // Stable insertion sort, strongest first (lists are short).
+        auto sortByStrength = [](float* a, int count) {
+            for (int k = 1; k < count; ++k)
+            {
+                float x = a[k];
+                float strength = std::abs(x - 1);
+                int j = k - 1;
+                for (; j >= 0 && std::abs(a[j] - 1) < strength; --j)
+                    a[j + 1] = a[j];
+                a[j + 1] = x;
+            }
+        };
+        static const float falloff[] = {1.0f,
+                                        std::exp(-1.0f / 7.1289f),
+                                        std::exp(-4.0f / 7.1289f),
+                                        std::exp(-9.0f / 7.1289f),
+                                        std::exp(-16.0f / 7.1289f),
+                                        std::exp(-25.0f / 7.1289f),
+                                        std::exp(-36.0f / 7.1289f),
+                                        std::exp(-49.0f / 7.1289f)};
+        auto factor = [&](int i) {
+            return i < 8 ? falloff[i] : std::exp(-static_cast<float>(i * i) / 7.1289f);
+        };
+
+        uint64_t groupsSeen = 0;
+        for (int i = 0; i < n; ++i)
+        {
+            if (groupsSeen >> groups[i] & 1u)
+                continue;
+            groupsSeen |= uint64_t{1} << groups[i];
+            float up[kMax], down[kMax];
+            int nUp = 0, nDown = 0;
+            for (int j = i; j < n; ++j)
+            {
+                if (groups[j] != groups[i])
+                    continue;
+                if (vals[j] > 1)
+                    up[nUp++] = vals[j];
+                else if (vals[j] < 1)
+                    down[nDown++] = vals[j];
+            }
+            sortByStrength(up, nUp);
+            sortByStrength(down, nDown);
+            for (int k = 0; k < nUp; ++k)
+                val *= 1 + (up[k] - 1) * factor(k);
+            for (int k = 0; k < nDown; ++k)
+                val *= 1 + (down[k] - 1) * factor(k);
         }
         return val;
     }
@@ -674,20 +834,21 @@ struct Engine::Impl
             return;
         uint64_t bit = uint64_t{1} << f;
         it.touched |= bit;
+        it.cached = 0;
         switch (m.op)
         {
         case Op::PreAssign:
-            it.preAssign[f] = amount;
+            it.preAssign()[f] = amount;
             it.hasPreAssign |= bit;
             break;
         case Op::PreIncrease:
-            it.preInc[f] += amount;
+            it.preInc()[f] += amount;
             break;
         case Op::PostIncrease:
-            it.postInc[f] += amount;
+            it.postInc()[f] += amount;
             break;
         case Op::Force:
-            it.force[f] = amount;
+            it.force()[f] = amount;
             it.hasForce |= bit;
             break;
         case Op::Multiply:
@@ -697,11 +858,13 @@ struct Engine::Impl
             {
                 if (s.penCount >= kMaxPenalties)
                     throw std::runtime_error("too many stacking-penalized modifiers");
-                s.pens[s.penCount++] = {static_cast<uint16_t>(item), static_cast<uint8_t>(f), m.penaltyGroup, mult};
+                s.pens[s.penCount] = {static_cast<uint16_t>(item), static_cast<uint8_t>(f), m.penaltyGroup, mult,
+                                      it.penHead};
+                it.penHead = s.penCount++;
                 it.penalized |= bit;
             }
             else
-                it.mult[f] *= mult;
+                it.mult()[f] *= mult;
             break;
         }
         }
@@ -903,8 +1066,9 @@ struct Engine::Impl
                 int f = fieldOf(it, eveCapNeed);
                 if (f >= 0)
                 {
-                    it.intermediary[f] = -read(s, it.charge, eveCapacitorBonus, 0);
+                    it.intermediary()[f] = -read(s, it.charge, eveCapacitorBonus, 0);
                     it.hasIntermediary |= uint64_t{1} << f;
+                    it.cached = 0;
                 }
             }
             break;
@@ -1172,7 +1336,7 @@ struct Engine::Impl
 
     void resetScratch(Scratch& s) const
     {
-        s.count = s.penCount = s.moduleCount = s.bonusCount = s.implantCount = s.boosterCount = 0;
+        s.count = s.penCount = s.moduleCount = s.bonusCount = s.implantCount = s.boosterCount = s.arenaUsed = 0;
         s.ship = s.mode = -1;
     }
 
@@ -1258,6 +1422,12 @@ struct Engine::Impl
                 initValues(s.items[charge]);
                 s.items[charge].owner = mod;
                 s.items[mod].charge = charge;
+                // pyfa getNumCharges: int(floatUnerr(capacity / volume)), from the types' own attributes
+                auto volume = c->attr(eveVolume);
+                auto capacity = typeAttr(s.items[mod], eveCapacity);
+                s.items[mod].numCharges = volume && capacity && *volume != 0
+                                              ? static_cast<int>(pymath::floatUnerr(static_cast<double>(*capacity) / *volume))
+                                              : 0;
             }
             else if (warnings)
                 warnings->push_back("charge type " + std::to_string(mi.chargeID) + " unknown, skipped");
@@ -1267,11 +1437,7 @@ struct Engine::Impl
 
     // ------------------------------------------------------------ results
 
-    struct Cycle
-    {
-        float raw = 0, reactivation = 0, reload = 0, average = 0, capNeed = 0, capUse = 0;
-        int numShots = 0;
-    };
+    using Cycle = CycleInfo;
 
     struct Totals
     {
@@ -1297,23 +1463,18 @@ struct Engine::Impl
         const Item& it = s.items[module];
         if (it.charge < 0)
             return 0;
-        const Item& charge = s.items[it.charge];
-        auto volume = charge.type->attr(eveVolume);
-        auto capacity = typeAttr(it, eveCapacity);
-        if (!volume || !capacity || *volume == 0)
-            return 0;
-        int numCharges = static_cast<int>(pymath::floatUnerr(*capacity / *volume));
+        int numCharges = it.numCharges;
         if (numCharges <= 0)
             return 0;
-        if (hasAttrOrModified(s, module, eveChargeRate))
-            return floorTolerant(numCharges / static_cast<double>(read(s, module, eveChargeRate, 0)));
-        if (hasAttrOrModified(s, it.charge, eveCrystalsDamaged))
+        if (hasHot(s, module, HotChargeRate))
+            return floorTolerant(numCharges / static_cast<double>(readHot(s, module, HotChargeRate)));
+        if (hasHot(s, it.charge, HotCrystalsDamaged))
         {
-            if (read(s, it.charge, eveCrystalsDamaged, 0) != 1)
+            if (readHot(s, it.charge, HotCrystalsDamaged) != 1)
                 return 0;
-            float hp = read(s, it.charge, eveHp, 0);
-            float chance = read(s, it.charge, eveCrystalChance, 0);
-            float damage = read(s, it.charge, eveCrystalDamage, 0);
+            float hp = readHot(s, it.charge, HotHp);
+            float chance = readHot(s, it.charge, HotCrystalChance);
+            float damage = readHot(s, it.charge, HotCrystalDamage);
             return floorTolerant(numCharges * static_cast<double>(hp) / (static_cast<double>(damage) * chance));
         }
         return 0;
@@ -1324,12 +1485,12 @@ struct Engine::Impl
     {
         const Item& it = s.items[module];
         Cycle c;
-        c.raw = std::max({read(s, module, eveSpeed, 0), read(s, module, eveDuration, 0),
-                          read(s, module, eveDurationHighIsGood, 0)});
-        for (int eve : eveBurstDurations)
-            c.raw = std::max(c.raw, read(s, module, eve, 0));
-        c.reactivation = read(s, module, eveReactivation, 0);
-        c.reload = read(s, module, eveReloadTime, 0);
+        c.raw = std::max({readHot(s, module, HotSpeed), readHot(s, module, HotDuration),
+                          readHot(s, module, HotDurationHigh), readHot(s, module, HotBurst0),
+                          readHot(s, module, HotBurst1), readHot(s, module, HotBurst2),
+                          readHot(s, module, HotBurst3)});
+        c.reactivation = readHot(s, module, HotReactivation);
+        c.reload = readHot(s, module, HotReload);
         c.numShots = numShots(s, module);
         if (c.raw > 0)
         {
@@ -1344,7 +1505,7 @@ struct Engine::Impl
                 c.average = (early * (c.raw + c.reactivation) + (c.raw + c.reload)) / (early + 1);
             }
         }
-        c.capNeed = read(s, module, eveCapNeed, 0);
+        c.capNeed = readHot(s, module, HotCapNeed);
         c.capUse = (c.capNeed != 0 && it.state >= State::Active && c.average > 0) ? c.capNeed / (c.average / 1000.0f)
                                                                                    : 0.0f;
         return c;
@@ -1357,13 +1518,23 @@ struct Engine::Impl
         for (int i = 0; i < s.moduleCount; ++i)
         {
             int mod = s.modules[i];
-            cycles[i] = cycleOf(s, mod);
-            if (s.items[mod].state < State::Online)
+            const Item& it = s.items[mod];
+            cycles[i] = it.constCycle ? it.cycle : cycleOf(s, mod);
+            if (it.state < State::Online)
                 continue;
             // pyfa getItemAttrOnlineSum
-            t.cpu += read(s, mod, eveCpu, 0);
-            t.power += read(s, mod, evePower, 0);
-            t.calibration += read(s, mod, eveUpgradeCost, 0);
+            if (it.constFitting)
+            {
+                t.cpu += it.cpu;
+                t.power += it.power;
+                t.calibration += it.calibration;
+            }
+            else
+            {
+                t.cpu += readHot(s, mod, HotCpu);
+                t.power += readHot(s, mod, HotPower);
+                t.calibration += readHot(s, mod, HotUpgradeCost);
+            }
         }
         t.cpu = pymath::round(t.cpu, 2);
         t.power = pymath::round(t.power, 2);
@@ -1433,10 +1604,10 @@ struct Engine::Impl
             const Item& it = s.items[mod];
             if (!it.repEffects)
                 continue;
-            double speed = read(s, mod, eveDuration, 0) / 1000.0;
+            double speed = readHot(s, mod, HotDuration) / 1000.0;
             if (it.repEffects & kRepShield)
             {
-                double amount = read(s, mod, eveShieldBonus, 0);
+                double amount = readHot(s, mod, HotShieldBonus);
                 extra[Shield] += amount / speed;
                 if (amount / speed != 0)
                     contributors[Shield][contributorCount[Shield]++] = {i, Shield, amount};
@@ -1444,7 +1615,7 @@ struct Engine::Impl
             if (it.repEffects & (kRepArmor | kRepArmorFueled))
             {
                 bool paste = (it.repEffects & kRepArmorFueled) && it.charge >= 0 && s.items[it.charge].isPaste;
-                double amount = read(s, mod, eveArmorDamage, 0);
+                double amount = readHot(s, mod, HotArmorDamage);
                 double rps = amount * (paste ? 3 : 1) / speed;
                 extra[Armor] += rps;
                 if (rps != 0)
@@ -1452,7 +1623,7 @@ struct Engine::Impl
             }
             if (it.repEffects & kRepHull)
             {
-                double amount = read(s, mod, eveStructureDamage, 0);
+                double amount = readHot(s, mod, HotStructureDamage);
                 extra[Hull] += amount / speed;
                 if (amount / speed != 0)
                     contributors[Hull][contributorCount[Hull]++] = {i, Hull, amount};
@@ -1464,7 +1635,7 @@ struct Engine::Impl
             int charge = s.items[mod].charge;
             if (charge < 0 || !s.items[charge].isPaste)
                 return 1.0;
-            double m = read(s, mod, eveChargedArmorMult, 0);
+            double m = readHot(s, mod, HotChargedArmorMult);
             return m ? m : 1.0;
         };
 
@@ -1502,8 +1673,8 @@ struct Engine::Impl
         for (int r = 0; r < repairerCount; ++r)
         {
             int mod = s.modules[repairers[r].module];
-            double mult = read(s, mod, eveChargedArmorMult, 0);
-            efficiency[r] = repairers[r].amount * (mult ? mult : 1.0) / read(s, mod, eveCapNeed, 0);
+            double mult = readHot(s, mod, HotChargedArmorMult);
+            efficiency[r] = repairers[r].amount * (mult ? mult : 1.0) / readHot(s, mod, HotCapNeed);
             order[r] = r;
         }
         std::stable_sort(order, order + repairerCount, [&](int a, int b) { return efficiency[a] > efficiency[b]; });
@@ -1668,6 +1839,7 @@ struct SearchPlan::Data
     std::vector<int> itemOption;    // superset item -> option (-1: static)
     std::vector<int> slotFirstOption;
     std::vector<int> optionModule;  // option -> superset module item
+    std::vector<bool> dynItem;      // superset item -> some replayed instruction writes to it
     int staticModuleCount = 0;      // s.modules[0..n) are the pinned modules
     std::vector<Instr> instrs;      // dynamic ones only, after construction
     Stats stats;
@@ -2000,6 +2172,66 @@ SearchPlan::SearchPlan(const Engine& engine, const SearchSpec& spec)
             d.instrs.push_back(std::move(in));
         }
     d.stats.dynamic = d.instrs.size();
+
+    // Cycle / cap / fitting values of modules whose inputs no replayed instruction
+    // writes are the same in every test.
+    auto anyDyn = [&](const std::vector<std::pair<int, int>>& fields) {
+        for (const auto& [item, f] : fields)
+            if (dyn[static_cast<size_t>(item)] >> f & 1)
+                return true;
+        return false;
+    };
+    for (int i = 0; i < s.moduleCount; ++i)
+    {
+        int mod = s.modules[i];
+        Item& it = s.items[mod];
+        std::vector<std::pair<int, int>> cycleDeps, fittingDeps;
+        for (int eve : {e.eveSpeed, e.eveDuration, e.eveDurationHighIsGood, e.eveReactivation, e.eveReloadTime,
+                        e.eveChargeRate, e.eveCapNeed})
+            addReadDeps(e, s, mod, eve, cycleDeps);
+        for (int eve : e.eveBurstDurations)
+            addReadDeps(e, s, mod, eve, cycleDeps);
+        if (it.charge >= 0)
+            for (int eve : {e.eveCrystalsDamaged, e.eveHp, e.eveCrystalChance, e.eveCrystalDamage})
+                addReadDeps(e, s, it.charge, eve, cycleDeps);
+        for (int eve : {e.eveCpu, e.evePower, e.eveUpgradeCost})
+            addReadDeps(e, s, mod, eve, fittingDeps);
+        ++d.stats.modules;
+        if (!anyDyn(cycleDeps))
+        {
+            it.cycle = e.cycleOf(s, mod);
+            it.constCycle = true;
+        }
+        else
+            ++d.stats.variableCycle;
+        if (anyDyn(fittingDeps))
+            ++d.stats.variableFitting;
+        if (!anyDyn(fittingDeps))
+        {
+            it.cpu = e.read(s, mod, e.eveCpu, 0);
+            it.power = e.read(s, mod, e.evePower, 0);
+            it.calibration = e.read(s, mod, e.eveUpgradeCost, 0);
+            it.constFitting = true;
+        }
+    }
+
+    // Items no replayed instruction writes to are shared read-only by all tests:
+    // compute every touched field now so reading them never writes the cache.
+    d.dynItem.assign(static_cast<size_t>(s.count), false);
+    for (int item = 0; item < s.count; ++item)
+    {
+        d.dynItem[static_cast<size_t>(item)] = dyn[static_cast<size_t>(item)] != 0;
+        ++d.stats.items;
+        if (dyn[static_cast<size_t>(item)])
+        {
+            ++d.stats.itemsWritten;
+            continue;
+        }
+        const Item& it = s.items[item];
+        for (int f = 0; f < it.stride; ++f)
+            if (it.touched >> f & 1)
+                e.value(s, item, f, 0);
+    }
 }
 
 SearchPlan::~SearchPlan() = default;
@@ -2026,46 +2258,66 @@ TestResult SearchPlan::evaluate(const int* choice, Goal goal) const
     Scratch& s = Impl::threadScratch();
     e.resetScratch(s);
 
-    // Live items: ship, mode, pinned modules and their charges, chosen options.
-    int map[kMaxItems];
-    std::fill(map, map + b.count, -1);
-    auto copyItem = [&](int item) {
-        int live = s.count++;
-        s.items[live] = b.items[item];
-        map[item] = live;
-        return live;
-    };
-    auto copyModule = [&](int mod) {
-        int live = copyItem(mod);
-        s.modules[s.moduleCount++] = live;
-        if (b.items[mod].charge >= 0)
+    // Same item numbering as the plan. Items no replayed instruction writes are
+    // read in place from the plan (all their values are already cached); written
+    // ones get a private copy, with their stacking penalties.
+    s.count = b.count;
+    s.ship = b.ship;
+    s.mode = b.mode;
+    for (int i = 0; i < b.count; ++i)
+        s.items.ptr[static_cast<size_t>(i)] = b.items.ptr[static_cast<size_t>(i)];
+    bool live[kMaxItems];
+    std::fill(live, live + b.count, false);
+    auto useItem = [&](int item) {
+        live[item] = true;
+        if (!d.dynItem[static_cast<size_t>(item)])
+            return;
+        const Item& src = b.items[static_cast<size_t>(item)];
+        Item& it = s.storage[static_cast<size_t>(item)];
+        it = src;
+        it.data = Impl::allocFields(s, it.stride);
+        std::copy_n(src.data, Item::kArrays * it.stride, it.data);
+        // Penalties: same order as in the plan (oldest first), relinked.
+        int chain[kMaxPenalties];
+        int n = 0;
+        for (int p = src.penHead; p >= 0; p = b.pens[p].next)
+            chain[n++] = p;
+        it.penHead = -1;
+        for (int k = n - 1; k >= 0; --k)
         {
-            int charge = copyItem(b.items[mod].charge);
-            s.items[live].charge = charge;
-            s.items[charge].owner = live;
+            s.pens[s.penCount] = b.pens[chain[k]];
+            s.pens[s.penCount].next = it.penHead;
+            it.penHead = s.penCount++;
         }
+        s.items.ptr[static_cast<size_t>(item)] = &it;
     };
-    s.ship = copyItem(b.ship);
+    auto useModule = [&](int mod) {
+        useItem(mod);
+        s.modules[s.moduleCount++] = mod;
+        if (b.items[static_cast<size_t>(mod)].charge >= 0)
+            useItem(b.items[static_cast<size_t>(mod)].charge);
+    };
+    useItem(b.ship);
     if (b.mode >= 0)
-        s.mode = copyItem(b.mode);
+        useItem(b.mode);
     for (int i = 0; i < b.implantCount; ++i)
-        s.implants[s.implantCount++] = copyItem(b.implants[i]);
+    {
+        useItem(b.implants[i]);
+        s.implants[s.implantCount++] = b.implants[i];
+    }
     for (int i = 0; i < b.boosterCount; ++i)
-        s.boosters[s.boosterCount++] = copyItem(b.boosters[i]);
+    {
+        useItem(b.boosters[i]);
+        s.boosters[s.boosterCount++] = b.boosters[i];
+    }
     for (int i = 0; i < d.staticModuleCount; ++i)
-        copyModule(b.modules[i]);
+        useModule(b.modules[i]);
     for (size_t slot = 0; slot < d.spec.slots.size(); ++slot)
         if (choice[slot] >= 0)
         {
             int mod = d.optionModule[static_cast<size_t>(d.slotFirstOption[slot] + choice[slot])];
             if (mod >= 0)
-                copyModule(mod);
-        }
-    for (int p = 0; p < b.penCount; ++p)
-        if (int live = map[b.pens[p].item]; live >= 0)
-        {
-            s.pens[s.penCount] = b.pens[p];
-            s.pens[s.penCount++].item = static_cast<uint16_t>(live);
+                useModule(mod);
         }
     s.bonusCount = b.bonusCount;
     std::copy(b.bonuses.begin(), b.bonuses.begin() + b.bonusCount, s.bonuses.begin());
@@ -2073,19 +2325,18 @@ TestResult SearchPlan::evaluate(const int* choice, Goal goal) const
     // Replay the dynamic instructions.
     for (const Instr& in : d.instrs)
     {
-        int owner = in.owner >= 0 ? map[in.owner] : -1;
-        if (in.option >= 0 && owner < 0)
+        if (in.option >= 0 && !live[in.owner])
             continue;  // source not chosen
         switch (in.kind)
         {
         case Instr::Apply:
-            if (auto amount = e.amountOf(s, *in.mod, owner, in.ownerSkill, 0))
+            if (auto amount = e.amountOf(s, *in.mod, in.owner, in.ownerSkill, 0))
                 for (int t : in.targets)
-                    if (int live = map[t]; live >= 0)
-                        e.applyTo(s, live, *in.mod, *amount);
+                    if (live[t])
+                        e.applyTo(s, t, *in.mod, *amount);
             break;
         case Instr::Special:
-            e.runSpecial(s, in.eid, owner);
+            e.runSpecial(s, in.eid, in.owner);
             break;
         case Instr::Boosts:
             e.applyBoosts(s, in.pass);

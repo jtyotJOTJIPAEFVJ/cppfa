@@ -16,6 +16,14 @@ T round(T value, int ndigits)
     static_assert(std::is_floating_point_v<T>);
     if (!std::isfinite(value))
         return value;
+    if constexpr (std::is_same_v<T, float>)
+    {
+        // Float inputs are approximations anyway; skip the exact decimal round trip
+        // (it differs only on exact binary ties).
+        static constexpr double scale[] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000};
+        if (ndigits >= 0 && ndigits < 8)
+            return static_cast<float>(std::nearbyint(static_cast<double>(value) * scale[ndigits]) / scale[ndigits]);
+    }
     char buf[512];
     auto res = std::to_chars(buf, buf + sizeof(buf), value, std::chars_format::fixed, ndigits);
     T out = value;
