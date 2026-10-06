@@ -14,8 +14,8 @@
 //
 // Evaluation keeps pyfa's order (early/normal/late passes; skills, ship,
 // modules, mode) and lazy attribute reads, so effects that read attributes
-// other effects modify see the same values pyfa does. Values are computed in
-// float to match pyfa; the float layouts are the storage format for search tables.
+// other effects modify see the same values pyfa does. Values are float (pyfa
+// uses double): results match pyfa to ~1e-4 relative, see cpp/FIT_ENGINE.md.
 
 #include "GameData.h"
 #include "generated/FitSchema.generated.h"
@@ -171,8 +171,9 @@ TestResult toTestResult(const FitResult& r, Goal goal);
 // pyfa's evaluation order is recorded as a list of instructions (one modifier
 // from one source onto its targets, or an effect handled in code). Instructions
 // that can't depend on the choice - skills, ship bonuses, pinned modules, also
-// their effects on the options - are executed once ("baked"). A test copies the
-// baked state of the live items and replays only the remaining instructions.
+// their effects on the options - are executed once ("baked"). A test reads the
+// items it doesn't write in place from the plan, copies the few it does, and
+// replays only the remaining instructions.
 class SearchPlan
 {
 public:
