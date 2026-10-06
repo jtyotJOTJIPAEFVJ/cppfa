@@ -51,8 +51,10 @@ std::vector<FitSummary> recentFits(const Database& saveDb, int limit)
 std::optional<Fit> loadFit(const Database& saveDb, int64_t fitID)
 {
     Fit fit;
+    std::optional<int64_t> characterID;
     {
-        auto st = saveDb.prepare("SELECT ID, name, shipID, IFNULL(notes, ''), modeID FROM fits WHERE ID = ?1");
+        auto st = saveDb.prepare(
+            "SELECT ID, name, shipID, IFNULL(notes, ''), modeID, implantLocation, characterID FROM fits WHERE ID = ?1");
         st.bind(1, fitID);
         if (!st.step())
             return std::nullopt;
@@ -61,6 +63,8 @@ std::optional<Fit> loadFit(const Database& saveDb, int64_t fitID)
         fit.shipID = static_cast<int>(st.getInt(2));
         fit.notes = st.getText(3);
         fit.modeID = optInt(st, 4);
+        fit.implantsFromCharacter = st.getInt(5) == 1;  // pyfa ImplantLocation.CHARACTER
+        characterID = st.getOptInt(6);
     }
     {
         auto mutators = saveDb.prepare("SELECT attrID, value FROM mutators WHERE moduleID = ?1");
@@ -125,17 +129,35 @@ std::optional<Fit> loadFit(const Database& saveDb, int64_t fitID)
     }
     {
         auto st = saveDb.prepare(R"(
-            SELECT i.itemID FROM fitImplants fi JOIN implants i ON i.ID = fi.implantID
+            SELECT i.itemID, IFNULL(i.active, 1) FROM fitImplants fi JOIN implants i ON i.ID = fi.implantID
             WHERE fi.fitID = ?1 AND i.itemID IS NOT NULL ORDER BY i.ID)");
         st.bind(1, fitID);
         while (st.step())
-            fit.implants.push_back({static_cast<int>(st.getInt(0)), 1});
+            fit.implants.push_back({static_cast<int>(st.getInt(0)), 1, st.getInt(1) != 0, {}});
+    }
+    if (characterID)
+    {
+        auto st = saveDb.prepare(R"(
+            SELECT i.itemID, IFNULL(i.active, 1) FROM charImplants ci JOIN implants i ON i.ID = ci.implantID
+            WHERE ci.charID = ?1 AND i.itemID IS NOT NULL ORDER BY i.ID)");
+        st.bind(1, *characterID);
+        while (st.step())
+            fit.characterImplants.push_back({static_cast<int>(st.getInt(0)), 1, st.getInt(1) != 0, {}});
     }
     {
-        auto st = saveDb.prepare("SELECT itemID FROM boosters WHERE fitID = ?1 AND itemID IS NOT NULL ORDER BY ID");
+        auto st = saveDb.prepare(
+            "SELECT ID, itemID, IFNULL(active, 1) FROM boosters WHERE fitID = ?1 AND itemID IS NOT NULL ORDER BY ID");
+        auto sides = saveDb.prepare("SELECT effectID FROM boosterSideEffects WHERE boosterID = ?1 AND active = 1");
         st.bind(1, fitID);
         while (st.step())
-            fit.boosters.push_back({static_cast<int>(st.getInt(0)), 1});
+        {
+            FitItem b{static_cast<int>(st.getInt(1)), 1, st.getInt(2) != 0, {}};
+            sides.reset();
+            sides.bind(1, st.getInt(0));
+            while (sides.step())
+                b.sideEffects.push_back(static_cast<int>(sides.getInt(0)));
+            fit.boosters.push_back(std::move(b));
+        }
     }
     {
         auto st = saveDb.prepare("SELECT itemID, amount FROM cargo WHERE fitID = ?1 ORDER BY ID");

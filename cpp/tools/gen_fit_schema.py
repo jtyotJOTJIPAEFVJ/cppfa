@@ -35,6 +35,7 @@ DEFAULT_TSV = os.path.normpath(os.path.join(HERE, '..', 'PyfaReader', 'data', 'e
 DEFAULT_OUT = os.path.normpath(os.path.join(HERE, '..', 'PyfaReader', 'src', 'generated', 'FitSchema.generated.h'))
 
 MODULE_CATEGORIES = ('Module', 'Subsystem')
+IMPLANT_CATEGORIES = ('Implant',)  # implants and boosters
 CHARGE_CATEGORIES = ('Charge',)
 # Ship-mode items (T3 destroyers) live in category Ship Modifiers; they act like modules.
 MODE_CATEGORIES = ('Ship Modifiers',)
@@ -51,7 +52,8 @@ def load_rows(path):
 
 
 def module_owned(owner):
-    return owner in ('module', 'charge')
+    # Sources that differ between fits of the same ship.
+    return owner in ('module', 'charge', 'implant', 'booster')
 
 
 def filter_can_match(r, item, skills_of, group_name_of, attrs_of, owner_skill_ids):
@@ -111,14 +113,16 @@ def main():
             ship_dynamic.add(r['sourceAttr'])
     module_attrs = {a for k, a in needed if k == 'module'}
     charge_attrs = {a for k, a in needed if k == 'charge'}
+    implant_attrs = {a for k, a in needed if k in ('implant', 'booster')}
 
     # --- eve.db lookups --------------------------------------------------------
     attr_ids = dict(db.execute('SELECT attributeName, attributeID FROM dgmattribs'))
     type_rows = db.execute("""
         SELECT t.typeID, t.typeName, g.groupID, g.name, c.name, IFNULL(t.reqskills, '')
         FROM invtypes t JOIN invgroups g USING(groupID) JOIN invcategories c USING(categoryID)
-        WHERE c.name IN ({})""".format(','.join('?' * len(MODULE_CATEGORIES + CHARGE_CATEGORIES + MODE_CATEGORIES))),
-                           MODULE_CATEGORIES + CHARGE_CATEGORIES + MODE_CATEGORIES).fetchall()
+        WHERE c.name IN ({})""".format(','.join('?' * len(MODULE_CATEGORIES + CHARGE_CATEGORIES + MODE_CATEGORIES +
+                                                         IMPLANT_CATEGORIES))),
+                           MODULE_CATEGORIES + CHARGE_CATEGORIES + MODE_CATEGORIES + IMPLANT_CATEGORIES).fetchall()
     type_attrs = collections.defaultdict(set)
     for tid, name in db.execute('SELECT v.typeID, a.attributeName FROM dgmtypeattribs v JOIN dgmattribs a USING(attributeID)'):
         type_attrs[tid].add(name)
@@ -140,16 +144,16 @@ def main():
     # Module-owned modifiers targeting module attributes, with the owner's skill ids
     # (for ownerSkill filters the owner is a skill: any skill could match, keep it).
     module_targeting = [(r, owner) for r, owner in used
-                        if goal_closure.target_kind(r, owner) in ('module', 'charge')]
+                        if goal_closure.target_kind(r, owner) in ('module', 'charge', 'implant', 'booster')]
 
     groups = collections.OrderedDict()  # (kind, groupID) -> (group name, set of types)
     for tid, tname, gid, gname, cname, _ in type_rows:
-        kind = 'charge' if cname in CHARGE_CATEGORIES else 'module'
+        kind = 'charge' if cname in CHARGE_CATEGORIES else 'implant' if cname in IMPLANT_CATEGORIES else 'module'
         groups.setdefault((kind, gid), (gname, []))[1].append(tid)
 
     layouts = collections.OrderedDict()  # (kind, groupID) -> tuple of attrs
     for (kind, gid), (gname, tids) in groups.items():
-        relevant = module_attrs if kind == 'module' else charge_attrs
+        relevant = {'module': module_attrs, 'charge': charge_attrs, 'implant': implant_attrs}[kind]
         fields = set()
         for tid in tids:
             fields |= type_attrs[tid] & relevant
@@ -157,12 +161,13 @@ def main():
             a = r['targetAttr']
             if a not in relevant or a in fields:
                 continue
-            if goal_closure.target_kind(r, owner) != kind:
+            tk = goal_closure.target_kind(r, owner)
+            if (tk in ('implant', 'booster') and kind != 'implant') or (tk not in ('implant', 'booster') and tk != kind):
                 continue
             eid = int(r['effectID'])
             if r['domain'] == 'self':
                 # Only the item owning the effect (or, for charge effects, the module holding the charge).
-                if owner == 'module':
+                if owner in ('module', 'implant', 'booster'):
                     candidates = [t for t in tids if eid in type_effects[t]]
                 else:
                     candidates = [t for t in tids if 'chargeGroup1' in type_attrs[t]]

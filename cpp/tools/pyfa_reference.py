@@ -4,7 +4,8 @@ Runs pyfa's own code (needs pyfa's Python environment, including wxPython) on a
 *temporary copy* of saveddata.db, so your fits and settings are never touched.
 In the copy, every fit is normalized to what the C++ engine v1 supports:
 
-  - character "All 5", implants/boosters removed (fit and character implants)
+  - character "All 5", implants/boosters removed (fit and character implants),
+    unless --with-implants
   - projected fits/modules/drones/fighters and command fits removed
   - damage profile: builtin Uniform
   - reload factored into cycle times (pyfa's "useGlobalForceReload")
@@ -16,7 +17,11 @@ Output: one JSON object per line per fit, see dump_fit().
 
 Usage (from anywhere, with pyfa's python):
     python cpp/tools/pyfa_reference.py out.jsonl [--fits ID ID ...] [--limit N]
-                                       [--save path/to/saveddata.db]
+                                       [--save path/to/saveddata.db] [--with-implants]
+                                       [--keep-db normalized.db]
+
+--keep-db saves the normalized copy, so the C++ engine can evaluate exactly the
+same fits:  PyfaReader --save normalized.db --engine-dump engine.tsv
 """
 import argparse
 import json
@@ -51,20 +56,24 @@ MODULE_ATTRS = (
 CHARGE_ATTRS = ('volume', 'capacitorBonus')
 
 
-def normalize_save_db(path):
-    """Strip everything the C++ engine v1 doesn't model from the copied database."""
+def normalize_save_db(path, keep_implants=False):
+    """Strip everything the C++ engine doesn't model from the copied database."""
     db = sqlite3.connect(path)
     all5 = db.execute("SELECT ID FROM characters WHERE name = 'All 5'").fetchone()
+    if not keep_implants:
+        db.executescript("""
+            DELETE FROM fitImplants;
+            DELETE FROM boosters;
+            DELETE FROM boosterSideEffects;
+            UPDATE fits SET implantLocation = 0;
+        """)
     db.executescript("""
-        DELETE FROM fitImplants;
-        DELETE FROM boosters;
-        DELETE FROM boosterSideEffects;
         DELETE FROM projectedFits;
         DELETE FROM commandFits;
         DELETE FROM modules WHERE projected = 1;
         DELETE FROM drones WHERE projected = 1;
         DELETE FROM fighters WHERE projected = 1;
-        UPDATE fits SET implantLocation = 0, damagePatternID = NULL, builtinDamagePatternID = -1;
+        UPDATE fits SET damagePatternID = NULL, builtinDamagePatternID = -1;
     """)
     # All 5 is created by pyfa on demand; fits pointing elsewhere get it after load.
     if all5:
@@ -102,6 +111,9 @@ def dump_fit(fit, svc_fit):
             'stable': bool(fit.capStable),
         },
         'sustainable': {k: num(v) for k, v in fit.sustainableTank.items()},
+        'implants': [{'typeID': i.item.ID, 'active': bool(i.active)} for i in fit.appliedImplants],
+        'boosters': [{'typeID': b.item.ID, 'active': bool(b.active),
+                      'sideEffects': [se.effectID for se in b.sideEffects if se.active]} for b in fit.boosters],
         'effectiveSustainable': {k: num(v) for k, v in fit.effectiveSustainableTank.items()},
         'modules': [],
     }
@@ -138,6 +150,8 @@ def main():
     ap.add_argument('output')
     ap.add_argument('--fits', type=int, nargs='*', help='only these fit IDs')
     ap.add_argument('--limit', type=int, help='stop after this many fits')
+    ap.add_argument('--with-implants', action='store_true', help='keep implants, boosters and side effects')
+    ap.add_argument('--keep-db', help='also save the normalized database here')
     ap.add_argument('--save', default=os.path.expanduser(os.path.join('~', '.pyfa', 'saveddata.db')),
                     help='saveddata.db to copy (default: %(default)s)')
     args = ap.parse_args()
@@ -145,7 +159,9 @@ def main():
     tmp = tempfile.mkdtemp(prefix='pyfa_reference_')
     try:
         shutil.copy2(args.save, os.path.join(tmp, 'saveddata.db'))
-        normalize_save_db(os.path.join(tmp, 'saveddata.db'))
+        normalize_save_db(os.path.join(tmp, 'saveddata.db'), keep_implants=args.with_implants)
+        if args.keep_db:
+            shutil.copy2(os.path.join(tmp, 'saveddata.db'), args.keep_db)
 
         sys.path.insert(0, PYFA_ROOT)
         os.chdir(PYFA_ROOT)

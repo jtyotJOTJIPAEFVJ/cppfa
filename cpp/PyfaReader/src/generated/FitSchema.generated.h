@@ -11,6 +11,8 @@ namespace fitschema
 // Attributes the fit engine stores, dense IDs.
 enum class Attr : uint16_t
 {
+    ImplantSetNirvana,
+    ImplantSetRapture,
     armorDamageAmount,
     armorDamageAmountBonus,
     armorEmDamageResonance,
@@ -19,12 +21,21 @@ enum class Attr : uint16_t
     armorHPBonusAdd,
     armorHPMultiplier,
     armorHpBonus,
+    armorHpBonus2,
     armorKineticDamageResonance,
+    armorRepairBonus,
     armorThermalDamageResonance,
     bastionMissileROFBonus,
     bastionModeArmorRepairCapDurationBonus,
     bastionModeShieldBoosterCapDurationBonus,
     bastionTurretROFBonus,
+    boosterArmorHPPenalty,
+    boosterArmorRepairAmountPenalty,
+    boosterAttributeModifier,
+    boosterCapacitorCapacityPenalty,
+    boosterMiningLaserIceGasHarvesterDurationReductionAndCapacitor,
+    boosterShieldBoostAmountPenalty,
+    boosterShieldCapacityPenalty,
     capNeedBonus,
     capRechargeBonus,
     capacitorBonus,
@@ -70,6 +81,13 @@ enum class Attr : uint16_t
     hullKineticDamageResonance,
     hullThermalDamageResonance,
     iceHarvestCycleBonus,
+    implantSetAmulet,
+    implantSetBloodraider,
+    implantSetChristmas,
+    implantSetGuristas,
+    implantSetSavior,
+    implantSetSerpentis2,
+    implantSetSyndicate,
     industrialCoreBonusMiningBurstStrength,
     industrialCoreLocalLogisticsAmountBonus,
     industrialCoreLocalLogisticsDurationBonus,
@@ -84,6 +102,8 @@ enum class Attr : uint16_t
     medSlotModifier,
     medSlots,
     mediumRemoteRepFittingMultiplier,
+    mindlinkBonus,
+    miningUpgradeCPUReductionBonus,
     modeAnhingaCruiseLauncherTorpedoLauncherRapidHeavyLauncherROFPostDiv,
     modeArmorRepDurationPostDiv,
     modeEmResistancePostDiv,
@@ -99,6 +119,10 @@ enum class Attr : uint16_t
     overloadRofBonus,
     overloadSelfDurationBonus,
     overloadShieldBonus,
+    passiveEmDamageResistanceBonus,
+    passiveExplosiveDamageResistanceBonus,
+    passiveKineticDamageResistanceBonus,
+    passiveThermicDamageResistanceBonus,
     power,
     powerEngineeringOutputBonus,
     powerIncrease,
@@ -108,6 +132,7 @@ enum class Attr : uint16_t
     powerTransferAmount,
     rechargeRate,
     reloadTime,
+    remoteRepDurationCapBonus,
     repairBonus,
     resistanceKiller,
     resistanceKillerHull,
@@ -126,6 +151,7 @@ enum class Attr : uint16_t
     shieldCapacityMultiplier,
     shieldEmDamageResonance,
     shieldExplosiveDamageResonance,
+    shieldHpBonus,
     shieldKineticDamageResonance,
     shieldThermalDamageResonance,
     shipBonusRole1,
@@ -192,6 +218,7 @@ enum class Attr : uint16_t
     thermalDamageResonance,
     turretHardPointModifier,
     turretSlotsLeft,
+    turretSpeeBonus,
     upgradeCapacity,
     upgradeCost,
     volume,
@@ -205,30 +232,34 @@ enum class Attr : uint16_t
     warfareLinkCPUAdd,
     warfareLinkCPUPenalty,
 };
-inline constexpr size_t kAttrCount = 193;
+inline constexpr size_t kAttrCount = 220;
 
 // eve.db attributeID per Attr.
 inline constexpr uint16_t kAttrEveID[kAttrCount] = {
-    84, 895, 267, 268, 265, 1159, 148, 335, 269, 270, 3108, 5964,
-    6187, 3109, 317, 314, 67, 482, 1079, 147, 6, 144, 38, 72,
-    56, 1886, 649, 1870, 1871, 1034, 50, 202, 310, 48, 424, 1082,
-    1138, 73, 66, 3115, 312, 984, 2402, 113, 2041, 1190, 985, 2403,
-    111, 1374, 14, 2751, 9, 974, 975, 327, 976, 977, 780, 2587,
-    2607, 2606, 2605, 986, 2404, 109, 1369, 101, 1376, 12, 1375, 13,
-    2691, 6082, 2030, 1997, 1998, 2000, 2032, 5962, 5961, 1999, 669, 1230,
-    1208, 1205, 1206, 1231, 30, 313, 549, 323, 11, 145, 90, 55,
-    1795, 806, 1978, 1979, 2746, 1849, 1137, 293, 1923, 1906, 308, 68,
-    851, 548, 263, 337, 146, 271, 272, 273, 274, 2298, 2299, 2300,
-    2301, 2821, 2305, 2347, 5988, 2346, 2345, 2344, 3161, 51, 204, 83,
-    2743, 2688, 150, 2442, 2437, 1431, 1509, 2681, 1433, 1507, 2680, 1434,
-    1511, 1531, 1441, 1443, 1516, 2682, 1444, 1510, 1533, 1436, 1438, 1517,
-    2684, 1439, 1521, 1532, 1440, 1446, 1448, 1526, 2686, 1449, 1522, 1534,
-    2692, 2665, 2668, 2666, 2669, 2667, 2671, 2670, 987, 2405, 110, 1368,
-    102, 1132, 1153, 161, 2596, 2469, 2597, 2471, 2598, 2473, 2537, 1882,
-    1883,
+    3017, 3107, 84, 895, 267, 268, 265, 1159, 148, 335, 1083, 269,
+    2457, 270, 3108, 5964, 6187, 3109, 1141, 1142, 1126, 1150, 6099, 616,
+    1143, 317, 314, 67, 482, 1079, 147, 6, 144, 38, 72, 56,
+    1886, 649, 1870, 1871, 1034, 50, 202, 310, 48, 424, 1082, 1138,
+    73, 66, 3115, 312, 984, 2402, 113, 2041, 1190, 985, 2403, 111,
+    1374, 14, 2751, 9, 974, 975, 327, 976, 977, 780, 864, 799,
+    1799, 838, 3023, 803, 1291, 2587, 2607, 2606, 2605, 986, 2404, 109,
+    1369, 101, 1376, 12, 1375, 13, 2691, 884, 927, 6082, 2030, 1997,
+    1998, 2000, 2032, 5962, 5961, 1999, 669, 1230, 1208, 1205, 1206, 1231,
+    994, 995, 996, 997, 30, 313, 549, 323, 11, 145, 90, 55,
+    1795, 3024, 806, 1978, 1979, 2746, 1849, 1137, 293, 1923, 1906, 308,
+    68, 851, 548, 263, 337, 146, 271, 272, 3015, 273, 274, 2298,
+    2299, 2300, 2301, 2821, 2305, 2347, 5988, 2346, 2345, 2344, 3161, 51,
+    204, 83, 2743, 2688, 150, 2442, 2437, 1431, 1509, 2681, 1433, 1507,
+    2680, 1434, 1511, 1531, 1441, 1443, 1516, 2682, 1444, 1510, 1533, 1436,
+    1438, 1517, 2684, 1439, 1521, 1532, 1440, 1446, 1448, 1526, 2686, 1449,
+    1522, 1534, 2692, 2665, 2668, 2666, 2669, 2667, 2671, 2670, 987, 2405,
+    110, 1368, 102, 441, 1132, 1153, 161, 2596, 2469, 2597, 2471, 2598,
+    2473, 2537, 1882, 1883,
 };
 
 inline constexpr const char* kAttrName[kAttrCount] = {
+    "ImplantSetNirvana",
+    "ImplantSetRapture",
     "armorDamageAmount",
     "armorDamageAmountBonus",
     "armorEmDamageResonance",
@@ -237,12 +268,21 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "armorHPBonusAdd",
     "armorHPMultiplier",
     "armorHpBonus",
+    "armorHpBonus2",
     "armorKineticDamageResonance",
+    "armorRepairBonus",
     "armorThermalDamageResonance",
     "bastionMissileROFBonus",
     "bastionModeArmorRepairCapDurationBonus",
     "bastionModeShieldBoosterCapDurationBonus",
     "bastionTurretROFBonus",
+    "boosterArmorHPPenalty",
+    "boosterArmorRepairAmountPenalty",
+    "boosterAttributeModifier",
+    "boosterCapacitorCapacityPenalty",
+    "boosterMiningLaserIceGasHarvesterDurationReductionAndCapacitor",
+    "boosterShieldBoostAmountPenalty",
+    "boosterShieldCapacityPenalty",
     "capNeedBonus",
     "capRechargeBonus",
     "capacitorBonus",
@@ -288,6 +328,13 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "hullKineticDamageResonance",
     "hullThermalDamageResonance",
     "iceHarvestCycleBonus",
+    "implantSetAmulet",
+    "implantSetBloodraider",
+    "implantSetChristmas",
+    "implantSetGuristas",
+    "implantSetSavior",
+    "implantSetSerpentis2",
+    "implantSetSyndicate",
     "industrialCoreBonusMiningBurstStrength",
     "industrialCoreLocalLogisticsAmountBonus",
     "industrialCoreLocalLogisticsDurationBonus",
@@ -302,6 +349,8 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "medSlotModifier",
     "medSlots",
     "mediumRemoteRepFittingMultiplier",
+    "mindlinkBonus",
+    "miningUpgradeCPUReductionBonus",
     "modeAnhingaCruiseLauncherTorpedoLauncherRapidHeavyLauncherROFPostDiv",
     "modeArmorRepDurationPostDiv",
     "modeEmResistancePostDiv",
@@ -317,6 +366,10 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "overloadRofBonus",
     "overloadSelfDurationBonus",
     "overloadShieldBonus",
+    "passiveEmDamageResistanceBonus",
+    "passiveExplosiveDamageResistanceBonus",
+    "passiveKineticDamageResistanceBonus",
+    "passiveThermicDamageResistanceBonus",
     "power",
     "powerEngineeringOutputBonus",
     "powerIncrease",
@@ -326,6 +379,7 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "powerTransferAmount",
     "rechargeRate",
     "reloadTime",
+    "remoteRepDurationCapBonus",
     "repairBonus",
     "resistanceKiller",
     "resistanceKillerHull",
@@ -344,6 +398,7 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "shieldCapacityMultiplier",
     "shieldEmDamageResonance",
     "shieldExplosiveDamageResonance",
+    "shieldHpBonus",
     "shieldKineticDamageResonance",
     "shieldThermalDamageResonance",
     "shipBonusRole1",
@@ -410,6 +465,7 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "thermalDamageResonance",
     "turretHardPointModifier",
     "turretSlotsLeft",
+    "turretSpeeBonus",
     "upgradeCapacity",
     "upgradeCost",
     "volume",
@@ -1187,6 +1243,292 @@ struct SensorBoosterAttrs
 };
 static_assert(sizeof(SensorBoosterAttrs) == 30 * sizeof(float));
 
+// Groups: Special Edition Implant
+struct SpecialEditionImplantAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorHpBonus2 = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float capacitorCapacityBonus = 0.0f;
+    float cpuOutputBonus2 = 0.0f;
+    float implantSetChristmas = 0.0f;
+    float powerEngineeringOutputBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldCapacityBonus = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[17] = {
+        Attr::armorHpBonus, Attr::armorHpBonus2, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty,
+        Attr::capRechargeBonus, Attr::capacitorCapacityBonus, Attr::cpuOutputBonus2, Attr::implantSetChristmas,
+        Attr::powerEngineeringOutputBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldCapacityBonus,
+        Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(SpecialEditionImplantAttrs) == 17 * sizeof(float));
+
+// Groups: Booster
+struct BoosterAttrs
+{
+    float armorDamageAmountBonus = 0.0f;
+    float armorHpBonus = 0.0f;
+    float armorHpBonus2 = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMiningLaserIceGasHarvesterDurationReductionAndCapacitor = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float capacitorCapacityBonus = 0.0f;
+    float cpuOutputBonus2 = 0.0f;
+    float durationBonus = 0.0f;
+    float durationSkillBonus = 0.0f;
+    float hullHpBonus = 0.0f;
+    float iceHarvestCycleBonus = 0.0f;
+    float passiveEmDamageResistanceBonus = 0.0f;
+    float passiveExplosiveDamageResistanceBonus = 0.0f;
+    float passiveKineticDamageResistanceBonus = 0.0f;
+    float passiveThermicDamageResistanceBonus = 0.0f;
+    float powerEngineeringOutputBonus = 0.0f;
+    float rofBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldCapacityBonus = 0.0f;
+    float turretSpeeBonus = 0.0f;
+
+    static constexpr Attr kFields[26] = {
+        Attr::armorDamageAmountBonus, Attr::armorHpBonus, Attr::armorHpBonus2, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMiningLaserIceGasHarvesterDurationReductionAndCapacitor, Attr::boosterShieldBoostAmountPenalty,
+        Attr::boosterShieldCapacityPenalty, Attr::capNeedBonus, Attr::capRechargeBonus, Attr::capacitorCapacityBonus,
+        Attr::cpuOutputBonus2, Attr::durationBonus, Attr::durationSkillBonus, Attr::hullHpBonus,
+        Attr::iceHarvestCycleBonus, Attr::passiveEmDamageResistanceBonus, Attr::passiveExplosiveDamageResistanceBonus, Attr::passiveKineticDamageResistanceBonus,
+        Attr::passiveThermicDamageResistanceBonus, Attr::powerEngineeringOutputBonus, Attr::rofBonus, Attr::shieldBoostMultiplier,
+        Attr::shieldCapacityBonus, Attr::turretSpeeBonus,
+    };
+};
+static_assert(sizeof(BoosterAttrs) == 26 * sizeof(float));
+
+// Groups: Cyber Shields
+struct CyberShieldsAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float powerNeedBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldCapacityBonus = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[14] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
+        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capNeedBonus,
+        Attr::capRechargeBonus, Attr::powerNeedBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier,
+        Attr::shieldCapacityBonus, Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberShieldsAttrs) == 14 * sizeof(float));
+
+// Groups: Cyber Navigation
+struct CyberNavigationAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float durationBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[13] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
+        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capNeedBonus,
+        Attr::capRechargeBonus, Attr::durationBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier,
+        Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberNavigationAttrs) == 13 * sizeof(float));
+
+// Groups: Cyber Missile
+struct CyberMissileAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float cpuNeedBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float rofBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[13] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
+        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus,
+        Attr::cpuNeedBonus, Attr::remoteRepDurationCapBonus, Attr::rofBonus, Attr::shieldBoostMultiplier,
+        Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberMissileAttrs) == 13 * sizeof(float));
+
+// Groups: Cyber Gunnery
+struct CyberGunneryAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float cpuNeedBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+    float turretSpeeBonus = 0.0f;
+
+    static constexpr Attr kFields[14] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
+        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capNeedBonus,
+        Attr::capRechargeBonus, Attr::cpuNeedBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier,
+        Attr::shieldHpBonus, Attr::turretSpeeBonus,
+    };
+};
+static_assert(sizeof(CyberGunneryAttrs) == 14 * sizeof(float));
+
+// Groups: Cyber Engineering
+struct CyberEngineeringAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float capacitorCapacityBonus = 0.0f;
+    float cpuNeedBonus = 0.0f;
+    float cpuOutputBonus2 = 0.0f;
+    float durationBonus = 0.0f;
+    float powerEngineeringOutputBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[17] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
+        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capNeedBonus,
+        Attr::capRechargeBonus, Attr::capacitorCapacityBonus, Attr::cpuNeedBonus, Attr::cpuOutputBonus2,
+        Attr::durationBonus, Attr::powerEngineeringOutputBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier,
+        Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberEngineeringAttrs) == 17 * sizeof(float));
+
+// Groups: Cyber Learning, Cyber Production, Cyber Science, Cyber Targeting
+struct CyberTargetingAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[11] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
+        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus,
+        Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberTargetingAttrs) == 11 * sizeof(float));
+
+// Groups: Cyber Electronic Systems
+struct CyberElectronicSystemsAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[12] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
+        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capNeedBonus,
+        Attr::capRechargeBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberElectronicSystemsAttrs) == 12 * sizeof(float));
+
+// Groups: Cyber Armor
+struct CyberArmorAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorHpBonus2 = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float durationSkillBonus = 0.0f;
+    float hullHpBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float repairBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[16] = {
+        Attr::armorHpBonus, Attr::armorHpBonus2, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty,
+        Attr::capNeedBonus, Attr::capRechargeBonus, Attr::durationSkillBonus, Attr::hullHpBonus,
+        Attr::remoteRepDurationCapBonus, Attr::repairBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberArmorAttrs) == 16 * sizeof(float));
+
 // Groups: CPU Enhancer
 struct CpuEnhancerAttrs
 {
@@ -1614,6 +1956,30 @@ struct ShieldBoostAmplifierAttrs
 };
 static_assert(sizeof(ShieldBoostAmplifierAttrs) == 4 * sizeof(float));
 
+// Groups: Cyber Leadership
+struct CyberLeadershipAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float mindlinkBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[12] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
+        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus,
+        Attr::mindlinkBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberLeadershipAttrs) == 12 * sizeof(float));
+
 // Groups: Mercoxit Mining Crystal, Mining Crystal
 struct MercoxitMiningCrystalChargeAttrs
 {
@@ -1627,6 +1993,42 @@ struct MercoxitMiningCrystalChargeAttrs
     };
 };
 static_assert(sizeof(MercoxitMiningCrystalChargeAttrs) == 4 * sizeof(float));
+
+// Groups: Cyberimplant
+struct CyberimplantAttrs
+{
+    float ImplantSetNirvana = 0.0f;
+    float ImplantSetRapture = 0.0f;
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterAttributeModifier = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float durationBonus = 0.0f;
+    float implantSetAmulet = 0.0f;
+    float implantSetBloodraider = 0.0f;
+    float implantSetGuristas = 0.0f;
+    float implantSetSavior = 0.0f;
+    float implantSetSerpentis2 = 0.0f;
+    float implantSetSyndicate = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[21] = {
+        Attr::ImplantSetNirvana, Attr::ImplantSetRapture, Attr::armorHpBonus, Attr::armorRepairBonus,
+        Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty, Attr::boosterAttributeModifier, Attr::boosterCapacitorCapacityPenalty,
+        Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus, Attr::durationBonus,
+        Attr::implantSetAmulet, Attr::implantSetBloodraider, Attr::implantSetGuristas, Attr::implantSetSavior,
+        Attr::implantSetSerpentis2, Attr::implantSetSyndicate, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier,
+        Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberimplantAttrs) == 21 * sizeof(float));
 
 // Groups: Breacher Pod Launchers, Festival Launcher, Precursor Weapon
 struct FestivalLauncherAttrs
@@ -1676,6 +2078,33 @@ struct FestivalLauncherAttrs
 };
 static_assert(sizeof(FestivalLauncherAttrs) == 31 * sizeof(float));
 
+// Groups: Cyber Resource Processing
+struct CyberResourceProcessingAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float durationBonus = 0.0f;
+    float iceHarvestCycleBonus = 0.0f;
+    float miningUpgradeCPUReductionBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[14] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
+        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus,
+        Attr::durationBonus, Attr::iceHarvestCycleBonus, Attr::miningUpgradeCPUReductionBonus, Attr::remoteRepDurationCapBonus,
+        Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberResourceProcessingAttrs) == 14 * sizeof(float));
+
 // Groups: Cynosural Field Generator
 struct CynosuralFieldGeneratorAttrs
 {
@@ -1711,6 +2140,30 @@ struct MiningUpgradeAttrs
 };
 static_assert(sizeof(MiningUpgradeAttrs) == 7 * sizeof(float));
 
+// Groups: Cyber X Specials
+struct CyberXSpecialsAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorHpBonus2 = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[12] = {
+        Attr::armorHpBonus, Attr::armorHpBonus2, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty,
+        Attr::capRechargeBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberXSpecialsAttrs) == 12 * sizeof(float));
+
 // Groups: Festival Charges, Interdiction Burst Probes, Interdiction Probe, Structure Festival Charges
 struct InterdictionProbeChargeAttrs
 {
@@ -1723,6 +2176,32 @@ struct InterdictionProbeChargeAttrs
     };
 };
 static_assert(sizeof(InterdictionProbeChargeAttrs) == 3 * sizeof(float));
+
+// Groups: Cyber Biology
+struct CyberBiologyAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterAttributeModifier = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float durationBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[13] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
+        Attr::boosterAttributeModifier, Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty,
+        Attr::capRechargeBonus, Attr::durationBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier,
+        Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberBiologyAttrs) == 13 * sizeof(float));
 
 // Groups: Rig Armor
 struct RigArmorAttrs
@@ -1893,6 +2372,30 @@ struct RigTargetingAttrs
     };
 };
 static_assert(sizeof(RigTargetingAttrs) == 3 * sizeof(float));
+
+// Groups: Cyber Scanning
+struct CyberScanningAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float durationBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[12] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
+        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus,
+        Attr::durationBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberScanningAttrs) == 12 * sizeof(float));
 
 // Groups: Warp Disruption Script
 struct WarpDisruptionScriptChargeAttrs
@@ -2473,6 +2976,32 @@ struct CoreSubsystemAttrs
 };
 static_assert(sizeof(CoreSubsystemAttrs) == 14 * sizeof(float));
 
+// Groups: Cyber Drones
+struct CyberDronesAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float hullHpBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldCapacityBonus = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[13] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
+        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus,
+        Attr::hullHpBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldCapacityBonus,
+        Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberDronesAttrs) == 13 * sizeof(float));
+
 // Groups: Mutadaptive Remote Armor Repairer
 struct MutadaptiveRemoteArmorRepairerAttrs
 {
@@ -2554,7 +3083,9 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {290, false, SensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterAttrs::kFields))},  // Remote Sensor Booster
     {291, false, SensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterAttrs::kFields))},  // Weapon Disruptor
     {295, false, ShieldResistanceAmplifierAttrs::kFields, static_cast<uint8_t>(std::size(ShieldResistanceAmplifierAttrs::kFields))},  // Shield Resistance Amplifier
+    {300, false, CyberimplantAttrs::kFields, static_cast<uint8_t>(std::size(CyberimplantAttrs::kFields))},  // Cyberimplant
     {302, false, GyrostabilizerAttrs::kFields, static_cast<uint8_t>(std::size(GyrostabilizerAttrs::kFields))},  // Magnetic Field Stabilizer
+    {303, false, BoosterAttrs::kFields, static_cast<uint8_t>(std::size(BoosterAttrs::kFields))},  // Booster
     {315, false, MicroJumpDriveAttrs::kFields, static_cast<uint8_t>(std::size(MicroJumpDriveAttrs::kFields))},  // Warp Core Stabilizer
     {316, false, GangCoordinatorAttrs::kFields, static_cast<uint8_t>(std::size(GangCoordinatorAttrs::kFields))},  // Gang Coordinator
     {325, false, RemoteArmorRepairerAttrs::kFields, static_cast<uint8_t>(std::size(RemoteArmorRepairerAttrs::kFields))},  // Remote Armor Repairer
@@ -2620,6 +3151,18 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {658, false, CynosuralFieldGeneratorAttrs::kFields, static_cast<uint8_t>(std::size(CynosuralFieldGeneratorAttrs::kFields))},  // Cynosural Field Generator
     {663, true, MercoxitMiningCrystalChargeAttrs::kFields, static_cast<uint8_t>(std::size(MercoxitMiningCrystalChargeAttrs::kFields))},  // Mercoxit Mining Crystal
     {737, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Gas Cloud Scoops
+    {738, false, CyberArmorAttrs::kFields, static_cast<uint8_t>(std::size(CyberArmorAttrs::kFields))},  // Cyber Armor
+    {739, false, CyberDronesAttrs::kFields, static_cast<uint8_t>(std::size(CyberDronesAttrs::kFields))},  // Cyber Drones
+    {740, false, CyberElectronicSystemsAttrs::kFields, static_cast<uint8_t>(std::size(CyberElectronicSystemsAttrs::kFields))},  // Cyber Electronic Systems
+    {741, false, CyberEngineeringAttrs::kFields, static_cast<uint8_t>(std::size(CyberEngineeringAttrs::kFields))},  // Cyber Engineering
+    {742, false, CyberGunneryAttrs::kFields, static_cast<uint8_t>(std::size(CyberGunneryAttrs::kFields))},  // Cyber Gunnery
+    {743, false, CyberTargetingAttrs::kFields, static_cast<uint8_t>(std::size(CyberTargetingAttrs::kFields))},  // Cyber Production
+    {744, false, CyberLeadershipAttrs::kFields, static_cast<uint8_t>(std::size(CyberLeadershipAttrs::kFields))},  // Cyber Leadership
+    {745, false, CyberTargetingAttrs::kFields, static_cast<uint8_t>(std::size(CyberTargetingAttrs::kFields))},  // Cyber Learning
+    {746, false, CyberMissileAttrs::kFields, static_cast<uint8_t>(std::size(CyberMissileAttrs::kFields))},  // Cyber Missile
+    {747, false, CyberNavigationAttrs::kFields, static_cast<uint8_t>(std::size(CyberNavigationAttrs::kFields))},  // Cyber Navigation
+    {748, false, CyberTargetingAttrs::kFields, static_cast<uint8_t>(std::size(CyberTargetingAttrs::kFields))},  // Cyber Science
+    {749, false, CyberShieldsAttrs::kFields, static_cast<uint8_t>(std::size(CyberShieldsAttrs::kFields))},  // Cyber Shields
     {762, false, OverdriveInjectorSystemAttrs::kFields, static_cast<uint8_t>(std::size(OverdriveInjectorSystemAttrs::kFields))},  // Inertial Stabilizer
     {763, false, NanofiberInternalStructureAttrs::kFields, static_cast<uint8_t>(std::size(NanofiberInternalStructureAttrs::kFields))},  // Nanofiber Internal Structure
     {764, false, OverdriveInjectorSystemAttrs::kFields, static_cast<uint8_t>(std::size(OverdriveInjectorSystemAttrs::kFields))},  // Overdrive Injector System
@@ -2640,6 +3183,7 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {779, false, RigLauncherAttrs::kFields, static_cast<uint8_t>(std::size(RigLauncherAttrs::kFields))},  // Rig Launcher
     {781, false, RigCoreAttrs::kFields, static_cast<uint8_t>(std::size(RigCoreAttrs::kFields))},  // Rig Core
     {782, false, RigElectronicSystemsAttrs::kFields, static_cast<uint8_t>(std::size(RigElectronicSystemsAttrs::kFields))},  // Rig Navigation
+    {783, false, CyberXSpecialsAttrs::kFields, static_cast<uint8_t>(std::size(CyberXSpecialsAttrs::kFields))},  // Cyber X Specials
     {786, false, RigElectronicSystemsAttrs::kFields, static_cast<uint8_t>(std::size(RigElectronicSystemsAttrs::kFields))},  // Rig Electronic Systems
     {815, false, MiningSurveyChipsetAttrs::kFields, static_cast<uint8_t>(std::size(MiningSurveyChipsetAttrs::kFields))},  // Clone Vat Bay
     {842, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Burst Projectors
@@ -2666,6 +3210,10 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {1199, false, AncillaryArmorRepairerAttrs::kFields, static_cast<uint8_t>(std::size(AncillaryArmorRepairerAttrs::kFields))},  // Ancillary Armor Repairer
     {1223, false, DroneDamageModulesAttrs::kFields, static_cast<uint8_t>(std::size(DroneDamageModulesAttrs::kFields))},  // Scanning Upgrade
     {1226, false, SurveyProbeLauncherAttrs::kFields, static_cast<uint8_t>(std::size(SurveyProbeLauncherAttrs::kFields))},  // Survey Probe Launcher
+    {1228, false, CyberTargetingAttrs::kFields, static_cast<uint8_t>(std::size(CyberTargetingAttrs::kFields))},  // Cyber Targeting
+    {1229, false, CyberResourceProcessingAttrs::kFields, static_cast<uint8_t>(std::size(CyberResourceProcessingAttrs::kFields))},  // Cyber Resource Processing
+    {1230, false, CyberScanningAttrs::kFields, static_cast<uint8_t>(std::size(CyberScanningAttrs::kFields))},  // Cyber Scanning
+    {1231, false, CyberBiologyAttrs::kFields, static_cast<uint8_t>(std::size(CyberBiologyAttrs::kFields))},  // Cyber Biology
     {1232, false, RigResourceProcessingAttrs::kFields, static_cast<uint8_t>(std::size(RigResourceProcessingAttrs::kFields))},  // Rig Resource Processing
     {1233, false, RigScanningAttrs::kFields, static_cast<uint8_t>(std::size(RigScanningAttrs::kFields))},  // Rig Scanning
     {1234, false, RigTargetingAttrs::kFields, static_cast<uint8_t>(std::size(RigTargetingAttrs::kFields))},  // Rig Targeting
@@ -2699,6 +3247,7 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {1701, true, FlexArmorHardenerScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(FlexArmorHardenerScriptChargeAttrs::kFields))},  // Flex Armor Hardener Script
     {1702, true, FlexArmorHardenerScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(FlexArmorHardenerScriptChargeAttrs::kFields))},  // Flex Shield Hardener Script
     {1706, false, CapitalSensorArrayAttrs::kFields, static_cast<uint8_t>(std::size(CapitalSensorArrayAttrs::kFields))},  // Capital Sensor Array
+    {1730, false, SpecialEditionImplantAttrs::kFields, static_cast<uint8_t>(std::size(SpecialEditionImplantAttrs::kFields))},  // Special Edition Implant
     {1769, true, ShieldCommandBurstChargesChargeAttrs::kFields, static_cast<uint8_t>(std::size(ShieldCommandBurstChargesChargeAttrs::kFields))},  // Shield Command Burst Charges
     {1770, false, CommandBurstAttrs::kFields, static_cast<uint8_t>(std::size(CommandBurstAttrs::kFields))},  // Command Burst
     {1771, true, ShieldCommandBurstChargesChargeAttrs::kFields, static_cast<uint8_t>(std::size(ShieldCommandBurstChargesChargeAttrs::kFields))},  // Mining Foreman Burst Charges

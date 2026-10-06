@@ -3,7 +3,9 @@
 Usage:
     python compare_engine.py reference.jsonl engine.tsv [--eve path/to/eve.db] [--show N] [--key PREFIX]
 
-Values match when |a - b| <= 1e-6 * max(1, |b|). Fits with active command
+The engine computes in float: values match when |a - b| <= 1e-4 * |b| + 1e-6,
+or within 0.01 for cpu/power, which pyfa rounds to 2 decimals (a float can land on
+the other side of the rounding boundary), 0.1 for the fit's cpu/power totals. Fits with active command
 bursts are counted separately too; structures (citadels) are out of scope.
 """
 import argparse
@@ -13,7 +15,11 @@ import os
 import sqlite3
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REL_TOL = 1e-6
+REL_TOL = 1e-4
+ABS_TOL = 1e-6
+ROUNDED_KEYS = {'module.cpu', 'module.power', 'ship.cpuOutput', 'ship.powerOutput'}
+# Sums of per-module rounded values: each module can be 0.01 off.
+ROUNDED_SUM_KEYS = {'used.cpu', 'used.power'}
 
 # Reference keys compared: (section, key in reference, key in engine dump)
 TOP = [
@@ -32,8 +38,12 @@ TOP = [
 MODULE_SCALARS = ('rawCycleTime', 'reactivationDelay', 'moduleReloadTime', 'averageCycleTime', 'capUse', 'numShots')
 
 
-def close(a, b):
-    return abs(a - b) <= REL_TOL * max(1.0, abs(b))
+def close(a, b, key=''):
+    if key in ROUNDED_KEYS and abs(a - b) <= 0.0101:
+        return True
+    if key in ROUNDED_SUM_KEYS and abs(a - b) <= 0.1:
+        return True
+    return abs(a - b) <= REL_TOL * abs(b) + ABS_TOL
 
 
 def main():
@@ -99,7 +109,7 @@ def main():
             if isinstance(want, str):  # 'inf'
                 want = float(want)
             compared[key] += 1
-            if not close(have, want):
+            if not close(have, want, key):
                 fit_bad = True
                 stats[key] += 1
                 if key.startswith(args.key) and len(examples) < args.show:

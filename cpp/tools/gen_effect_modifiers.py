@@ -91,6 +91,7 @@ class Env(dict):
         self.exprs = dict(parent.exprs) if parent is not None else {}
         self.context = parent.context if parent is not None else context
         self.conditions = list(parent.conditions) if parent is not None else []
+        self.class_consts = parent.class_consts if parent is not None else {}
 
     def substitute(self, node):
         """Inline local variables assigned from expressions, e.g. bonus = attr * x."""
@@ -133,6 +134,10 @@ class Env(dict):
         # skill.level / container.level / src.level
         if isinstance(node, ast.Attribute) and node.attr == 'level':
             return LEVEL
+        # cls.attr: a class-level constant
+        if (isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == 'cls'
+                and node.attr in self.class_consts):
+            return self.class_consts[node.attr]
         if isinstance(node, ast.Name):
             return self.get(node.id, UNRESOLVED)
         if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
@@ -604,10 +609,20 @@ def handler_rows(cls, handler):
     contexts = CONTEXTS if uses_context else ((),)
 
     groups = []  # [(row list, [context labels])]
-    owner = handler.args.args[1].arg if len(handler.args.args) > 1 else ''
+    # handler(fit, owner, context, ...) or, as a classmethod, handler(cls, fit, owner, ...)
+    params = [a.arg for a in handler.args.args]
+    if params and params[0] in ('cls', 'self'):
+        params = params[1:]
+    owner = params[1] if len(params) > 1 else ''
+    # Class-level constants the handler may read as cls.<name> (booster side effects: cls.attr)
+    class_consts = {st.targets[0].id: st.value.value for st in cls.body
+                    if isinstance(st, ast.Assign) and len(st.targets) == 1 and isinstance(st.targets[0], ast.Name)
+                    and isinstance(st.value, ast.Constant)}
     for ctx in contexts:
         walker = HandlerWalker(eid, name, etype, owner, run_time)
-        walker.walk(handler.body, Env(context=ctx))
+        env = Env(context=ctx)
+        env.class_consts = class_consts
+        walker.walk(handler.body, env)
         label = '+'.join(ctx) if ctx else '*'
         for rows, labels in groups:
             if rows == walker.rows:

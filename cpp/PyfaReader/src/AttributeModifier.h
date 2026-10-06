@@ -64,7 +64,7 @@ struct AppliedModifier
     SourceKind source = SourceKind::Ship;
     const Type* sourceType = nullptr;  // the ship / skill / ... owning the effect
     TargetKind target = TargetKind::Ship;
-    double levelMultiplier = 1.0;      // owner level (perLevel) * level of modifier->skill
+    float levelMultiplier = 1.0;      // owner level (perLevel) * level of modifier->skill
 };
 
 class NotImplementedError : public std::logic_error
@@ -89,19 +89,19 @@ public:
     void addCommandBurst(const Type& burstCharge);
 
     // Ship attribute: takes the attribute name and its unmodified value.
-    double modify(const std::string& attr, double value) const;
-    double modify(const ModifierTarget& target, const std::string& attr, double value) const;
+    float modify(const std::string& attr, float value) const;
+    float modify(const ModifierTarget& target, const std::string& attr, float value) const;
 
     // Convenience wrappers around modify(ModifierTarget, ...).
-    double modifyModule(const Type& module, const std::string& attr, double value, const Type* charge = nullptr) const;
-    double modifyCharge(const Type& charge, const Type& module, const std::string& attr, double value) const;
-    double modifyDrone(const Type& drone, const std::string& attr, double value) const;
-    double modifyFighter(const Type& fighter, const std::string& attr, double value) const;
+    float modifyModule(const Type& module, const std::string& attr, float value, const Type* charge = nullptr) const;
+    float modifyCharge(const Type& charge, const Type& module, const std::string& attr, float value) const;
+    float modifyDrone(const Type& drone, const std::string& attr, float value) const;
+    float modifyFighter(const Type& fighter, const std::string& attr, float value) const;
 
     // The modifiers that change `attr` on `target` (for "affected by" displays).
     std::vector<const AppliedModifier*> modifiersFor(const ModifierTarget& target, const std::string& attr) const;
     // Amount a modifier applies (percent for boost, factor for multiply, ...).
-    double amount(const AppliedModifier& m) const;
+    float amount(const AppliedModifier& m) const;
 
     // Modifiers left out because they target something unsupported or depend
     // on runtime state the generator couldn't resolve.
@@ -111,10 +111,10 @@ private:
     void addSource(SourceKind kind, const Type& source, int ownerLevel);
     bool conditionsHold(const EffectModifier& m, const Type& source) const;
     bool matches(const AppliedModifier& m, const ModifierTarget& target) const;
-    double modifyImpl(const ModifierTarget& target, const std::string& attr, double value, int depth) const;
-    double calculate(const ModifierTarget& target, const std::string& attr, double value, int depth) const;
-    double finish(const ModifierTarget& target, const std::string& attr, double value, int depth) const;
-    double amountImpl(const AppliedModifier& m, int depth) const;
+    float modifyImpl(const ModifierTarget& target, const std::string& attr, float value, int depth) const;
+    float calculate(const ModifierTarget& target, const std::string& attr, float value, int depth) const;
+    float finish(const ModifierTarget& target, const std::string& attr, float value, int depth) const;
+    float amountImpl(const AppliedModifier& m, int depth) const;
 
     const GameData& gd_;
     const Type* ship_;
