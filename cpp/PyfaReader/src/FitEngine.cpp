@@ -13,11 +13,19 @@ namespace fitengine
 {
 namespace
 {
-constexpr int kMaxFields = 64;     // widest layout (checked at startup); field masks are 64-bit
+constexpr int widestLayout()
+{
+    size_t w = std::size(fitschema::ShipAttrs::kFields);
+    for (const auto& gl : fitschema::kGroupLayouts)
+        w = std::max<size_t>(w, gl.fieldCount);
+    return static_cast<int>(w);
+}
+constexpr int kMaxFields = widestLayout();  // from the generated layouts
+static_assert(kMaxFields <= 64, "field bit masks are 64-bit");
 constexpr int kMaxItems = 160;     // ship + mode + modules + their charges
 constexpr int kMaxPenalties = 4096;
 constexpr int kMaxDepth = 12;      // guards recursive reads (caps, chained amounts)
-constexpr double kUniformShare = 0.25;  // uniform damage profile: 25% of each type
+constexpr float kUniformShare = 0.25f;  // uniform damage profile: 25% of each type
 
 enum Context
 {
@@ -25,9 +33,11 @@ enum Context
     CtxSkill,
     CtxModule,
     CtxModuleCharge,
+    CtxImplant,
+    CtxBooster,
     CtxCount
 };
-constexpr const char* kContextNames[CtxCount] = {"ship", "skill", "module", "moduleCharge"};
+constexpr const char* kContextNames[CtxCount] = {"ship", "skill", "module", "moduleCharge", "implant", "booster"};
 
 enum class Op : uint8_t
 {
@@ -45,6 +55,8 @@ enum class TargetSel : uint8_t
     ModuleCharges,  // the charge of every fitted module passing the filter
     Self,           // the effect's owner (for charge effects: the module)
     SelfCharge,     // the owner's loaded charge
+    Implants,       // every applied implant passing the filter (pyfa fit.appliedImplants)
+    Boosters,       // every booster passing the filter
 };
 
 enum class SourceSel : uint8_t
@@ -62,6 +74,8 @@ enum class ItemKind : uint8_t
     Mode,
     Module,
     Charge,
+    Implant,
+    Booster,
 };
 
 struct Term
@@ -90,7 +104,7 @@ struct Mod
     SourceSel source = SourceSel::Owner;
     int sourceEveAttr = 0;
     int sourceSkillID = 0;
-    double factor = 1.0;
+    float factor = 1.0f;
     bool invert = false;
     bool perLevel = false;
     int levelSkillID = 0;
@@ -102,6 +116,7 @@ struct EffectInfo
 {
     uint8_t runTime = 1;  // 0 early, 1 normal, 2 late
     bool passive = false, active = false, overheat = false, offline = false;
+    bool sideEffect = false;  // booster side effect: runs only when switched on
     std::array<std::vector<Mod>, CtxCount> mods;
 };
 
@@ -138,20 +153,24 @@ struct Item
     int owner = -1;   // charge: its module item
     int input = -1;   // module: index into FitInput::modules
     State state = State::Online;
-    const std::vector<std::pair<int, double>>* mutators = nullptr;
+    bool active = true;  // implants / boosters
+    const std::vector<int>* sideEffects = nullptr;  // boosters: effectIDs switched on
+    const std::vector<std::pair<int, float>>* mutators = nullptr;
     std::array<int, 6> reqSkills{};
     int reqCount = 0;
 
-    double base[kMaxFields];
-    double preAssign[kMaxFields];
-    double intermediary[kMaxFields];  // pyfa itemModifiedAttributes[key] = v: replaces the base
-    double preInc[kMaxFields];
-    double mult[kMaxFields];
-    double postInc[kMaxFields];
-    double force[kMaxFields];
+    float base[kMaxFields];
+    float preAssign[kMaxFields];
+    float intermediary[kMaxFields];  // pyfa itemModifiedAttributes[key] = v: replaces the base
+    float preInc[kMaxFields];
+    float mult[kMaxFields];
+    float postInc[kMaxFields];
+    float force[kMaxFields];
     uint64_t hasPreAssign = 0, hasIntermediary = 0, hasForce = 0, touched = 0, penalized = 0;
 
     uint32_t repEffects = 0;   // which repairer effects ran (bit per kRep*)
+    bool ancillaryShield = false;  // module group (Remote) Ancillary Shield Booster
+    bool isPaste = false;          // charge is Nanite Repair Paste
 };
 
 struct Penalty
@@ -159,7 +178,7 @@ struct Penalty
     uint16_t item;
     uint8_t field;
     uint8_t group;
-    double value;
+    float value;
 };
 
 enum : uint32_t
@@ -174,7 +193,7 @@ enum : uint32_t
 struct CommandBonus
 {
     int buffID;
-    double value;
+    float value;
     uint8_t runTime;
 };
 constexpr int kMaxCommandBonuses = 64;
@@ -191,6 +210,10 @@ struct Scratch
     int mode = -1;
     std::array<int, kMaxItems> modules;
     int moduleCount = 0;
+    std::array<int, 32> implants;
+    int implantCount = 0;
+    std::array<int, 16> boosters;
+    int boosterCount = 0;
 };
 
 uint8_t runTimeIndex(const std::string& rt)
@@ -214,12 +237,12 @@ bool hasWord(const std::string& list, const char* word)
 }
 }  // namespace
 
-double FitResult::shipAttr(Attr a) const
+float FitResult::shipAttr(Attr a) const
 {
     for (size_t i = 0; i < std::size(fitschema::ShipAttrs::kFields); ++i)
         if (fitschema::ShipAttrs::kFields[i] == a)
             return ship[i];
-    return 0.0;
+    return 0.0f;
 }
 
 struct Engine::Impl
@@ -230,7 +253,7 @@ struct Engine::Impl
     std::unordered_map<int, EffectInfo> effects;
     std::unordered_map<int, std::vector<Mod>> buffMods;  // warfare buff ID -> modifiers
     std::unordered_map<std::string, Attr> attrByName;
-    std::unordered_map<int, Attr> attrByEve;
+    std::vector<int16_t> attrByEve;  // eve attributeID -> Attr index, -1 if not in the schema
     std::array<int, fitschema::kAttrCount> capMin{}, capMax{};  // eve attributeIDs of cap attributes, 0 = none
     Layout shipLayout, emptyLayout;
     std::vector<Layout> layouts;
@@ -256,7 +279,10 @@ struct Engine::Impl
         {
             Attr a = static_cast<Attr>(i);
             attrByName[fitschema::kAttrName[i]] = a;
-            attrByEve[fitschema::kAttrEveID[i]] = a;
+            size_t eveID = fitschema::kAttrEveID[i];
+            if (attrByEve.size() <= eveID)
+                attrByEve.resize(eveID + 1, -1);
+            attrByEve[eveID] = static_cast<int16_t>(i);
             if (const Attribute* info = gd.attribute(fitschema::kAttrEveID[i]))
             {
                 capMin[i] = info->minAttributeID.value_or(0);
@@ -356,8 +382,12 @@ struct Engine::Impl
             out.target = m.target == "charge" ? TargetSel::ModuleCharges : TargetSel::Modules;
         else if (m.domain == "self")
             out.target = m.target == "charge" ? TargetSel::SelfCharge : TargetSel::Self;
+        else if (m.domain == "appliedImplants")
+            out.target = TargetSel::Implants;
+        else if (m.domain == "boosters")
+            out.target = TargetSel::Boosters;
         else
-            return std::nullopt;  // drones, fighters, implants, boosters, ...
+            return std::nullopt;  // drones, fighters, projected targets, ...
 
         if (m.operation == "boost")
             out.op = Op::Multiply, out.boost = true;
@@ -436,6 +466,7 @@ struct Engine::Impl
                 info.active = hasWord(m.effectType, "active");
                 info.overheat = hasWord(m.effectType, "overheat");
                 info.offline = hasWord(m.effectType, "offline");
+                info.sideEffect = hasWord(m.effectType, "boosterSideEffect");
                 for (int ctx = 0; ctx < CtxCount; ++ctx)
                 {
                     if (!m.appliesInContext(kContextNames[ctx]))
@@ -487,6 +518,9 @@ struct Engine::Impl
         it.kind = kind;
         auto req = gd.requiredSkills(*type);
         it.reqCount = static_cast<int>(std::min(req.size(), it.reqSkills.size()));
+        it.ancillaryShield = it.group && (it.group->name == "Ancillary Shield Booster" ||
+                                          it.group->name == "Ancillary Remote Shield Booster");
+        it.isPaste = type->name == "Nanite Repair Paste";
         std::copy_n(req.begin(), it.reqCount, it.reqSkills.begin());
         return idx;
     }
@@ -505,7 +539,7 @@ struct Engine::Impl
 
     // The item type's own attribute; for mutated modules merged over the base item
     // (pyfa getItemWithBaseItemAttribute: {**base.attributes, **item.attributes}).
-    static std::optional<double> typeAttr(const Item& it, int eve)
+    static std::optional<float> typeAttr(const Item& it, int eve)
     {
         if (auto v = it.type->attr(eve))
             return v;
@@ -513,7 +547,7 @@ struct Engine::Impl
     }
 
     // Unmodified value: abyssal mutator, else the type's value, else the attribute default.
-    double baseOf(const Item& it, int eve) const
+    float baseOf(const Item& it, int eve) const
     {
         if (it.mutators)
             for (const auto& [id, v] : *it.mutators)
@@ -522,7 +556,7 @@ struct Engine::Impl
         if (auto v = typeAttr(it, eve))
             return *v;
         const Attribute* a = gd.attribute(eve);
-        return a ? a->defaultValue : 0.0;
+        return a ? a->defaultValue : 0.0f;
     }
 
     bool hasBase(const Item& it, int eve) const
@@ -538,13 +572,14 @@ struct Engine::Impl
 
     int fieldOf(const Item& it, int eve) const
     {
-        auto a = attrByEve.find(eve);
-        return a == attrByEve.end() ? -1 : it.layout->fieldOf[static_cast<size_t>(a->second)];
+        if (eve <= 0 || static_cast<size_t>(eve) >= attrByEve.size() || attrByEve[static_cast<size_t>(eve)] < 0)
+            return -1;
+        return it.layout->fieldOf[static_cast<size_t>(attrByEve[static_cast<size_t>(eve)])];
     }
 
     // pyfa getModifiedItemAttr(attr): modified value, or the attribute's dgmattribs
     // default when the item lacks it (eve.db has no NULL defaults, so never None).
-    double read(Scratch& s, int item, int eve, int depth) const
+    float read(Scratch& s, int item, int eve, int depth) const
     {
         const Item& it = s.items[item];
         int f = fieldOf(it, eve);
@@ -559,14 +594,14 @@ struct Engine::Impl
     }
 
     // pyfa ModifiedAttributeDict.__getitem__ / __calculateValue
-    double value(Scratch& s, int item, int field, int depth) const
+    float value(Scratch& s, int item, int field, int depth) const
     {
         const Item& it = s.items[item];
         // Attributes no modifier touched never reach __calculateValue: pyfa returns
         // the intermediary or original value as is - no caps, no cpu/power rounding.
         if (!(it.touched >> field & 1))
             return (it.hasIntermediary >> field & 1) ? it.intermediary[field] : it.base[field];
-        double val;
+        float val;
         if (it.hasForce >> field & 1)
             val = it.force[field];
         else
@@ -597,7 +632,7 @@ struct Engine::Impl
 
     // Stacking penalties: each group separately, bonuses and maluses separately,
     // strongest first: 1 + (m - 1) * exp(-i^2 / 7.1289).
-    double applyPenalties(const Scratch& s, int item, int field, double val) const
+    float applyPenalties(const Scratch& s, int item, int field, float val) const
     {
         uint64_t groupsSeen = 0;
         for (int p = 0; p < s.penCount; ++p)
@@ -606,7 +641,7 @@ struct Engine::Impl
             if (pen.item != item || pen.field != field || (groupsSeen >> pen.group & 1u))
                 continue;
             groupsSeen |= uint64_t{1} << pen.group;
-            double up[64], down[64];
+            float up[64], down[64];
             int nUp = 0, nDown = 0;
             for (int q = p; q < s.penCount; ++q)
             {
@@ -618,20 +653,20 @@ struct Engine::Impl
                 else if (o.value < 1 && nDown < 64)
                     down[nDown++] = o.value;
             }
-            auto byStrength = [](double a, double b) { return std::abs(a - 1) > std::abs(b - 1); };
+            auto byStrength = [](float a, float b) { return std::abs(a - 1) > std::abs(b - 1); };
             std::stable_sort(up, up + nUp, byStrength);
             std::stable_sort(down, down + nDown, byStrength);
             for (int i = 0; i < nUp; ++i)
-                val *= 1 + (up[i] - 1) * std::exp(-static_cast<double>(i * i) / 7.1289);
+                val *= 1 + (up[i] - 1) * std::exp(-static_cast<float>(i * i) / 7.1289f);
             for (int i = 0; i < nDown; ++i)
-                val *= 1 + (down[i] - 1) * std::exp(-static_cast<double>(i * i) / 7.1289);
+                val *= 1 + (down[i] - 1) * std::exp(-static_cast<float>(i * i) / 7.1289f);
         }
         return val;
     }
 
     // ------------------------------------------------------------ applying modifiers
 
-    void applyTo(Scratch& s, int item, const Mod& m, double amount) const
+    void applyTo(Scratch& s, int item, const Mod& m, float amount) const
     {
         Item& it = s.items[item];
         int f = it.layout->fieldOf[static_cast<size_t>(m.targetAttr)];
@@ -657,7 +692,7 @@ struct Engine::Impl
             break;
         case Op::Multiply:
         {
-            double mult = m.boost ? 1.0 + amount / 100.0 : amount;
+            float mult = m.boost ? 1.0f + amount / 100.0f : amount;
             if (m.penalized)
             {
                 if (s.penCount >= kMaxPenalties)
@@ -741,10 +776,10 @@ struct Engine::Impl
         return true;
     }
 
-    std::optional<double> amountOf(Scratch& s, const Mod& m, int owner, const Type* ownerSkill,
-                                   double buffValue) const
+    std::optional<float> amountOf(Scratch& s, const Mod& m, int owner, const Type* ownerSkill,
+                                   float buffValue) const
     {
-        double v = 0;
+        float v = 0;
         switch (m.source)
         {
         case SourceSel::Buff:
@@ -756,7 +791,7 @@ struct Engine::Impl
             else if (ownerSkill)
             {
                 const Attribute* a = gd.attribute(m.sourceEveAttr);
-                v = ownerSkill->attr(m.sourceEveAttr).value_or(a ? a->defaultValue : 0.0);
+                v = ownerSkill->attr(m.sourceEveAttr).value_or(a ? a->defaultValue : 0.0f);
             }
             break;
         case SourceSel::Ship:
@@ -771,20 +806,20 @@ struct Engine::Impl
         {
             const Type* skill = gd.type(m.sourceSkillID);
             const Attribute* a = gd.attribute(m.sourceEveAttr);
-            v = skill ? skill->attr(m.sourceEveAttr).value_or(a ? a->defaultValue : 0.0) : 0.0;
+            v = skill ? skill->attr(m.sourceEveAttr).value_or(a ? a->defaultValue : 0.0f) : 0.0f;
             break;
         }
         }
-        double level = 1.0;
+        float level = 1.0f;
         if (m.perLevel && ownerSkill)
             level *= ch.skillLevel(ownerSkill->id);
         if (m.levelSkillID)
             level *= ch.skillLevel(m.levelSkillID);
-        double value = v * level;
-        return m.invert ? (value != 0 ? m.factor / value : 0.0) : m.factor * value;
+        float value = v * level;
+        return m.invert ? (value != 0 ? m.factor / value : 0.0f) : m.factor * value;
     }
 
-    void applyMod(Scratch& s, const Mod& m, int owner, const Type* ownerSkill, double buffValue = 0) const
+    void applyMod(Scratch& s, const Mod& m, int owner, const Type* ownerSkill, float buffValue = 0) const
     {
         if (!conditionsHold(s, m, owner))
             return;
@@ -816,6 +851,16 @@ struct Engine::Impl
                 if (s.items[mod].charge >= 0 && filterMatches(s, m, mod, ownerSkill))
                     applyTo(s, s.items[mod].charge, m, *amount);
             }
+            break;
+        case TargetSel::Implants:
+            for (int i = 0; i < s.implantCount; ++i)
+                if (filterMatches(s, m, s.implants[i], ownerSkill))
+                    applyTo(s, s.implants[i], m, *amount);
+            break;
+        case TargetSel::Boosters:
+            for (int i = 0; i < s.boosterCount; ++i)
+                if (filterMatches(s, m, s.boosters[i], ownerSkill))
+                    applyTo(s, s.boosters[i], m, *amount);
             break;
         }
     }
@@ -887,15 +932,21 @@ struct Engine::Impl
     // Port of pyfa effect 4928 (adaptiveArmorHardener) for the uniform damage profile.
     void reactiveArmorHardener(Scratch& s, int module) const
     {
+        // Internals in double like pyfa: the loop sorts, compares and rounds, where
+        // float noise could flip a decision.
+        // Inputs are snapped to 6 decimals: float noise would otherwise split values
+        // pyfa sees as exactly equal and flip the loop's tie-breaking order.
+        auto snap = [](float v) { return std::round(static_cast<double>(v) * 1e6) / 1e6; };
         double baseDamageTaken[4], rah[4];
         for (int i = 0; i < 4; ++i)
         {
-            baseDamageTaken[i] = 25.0 * read(s, s.ship, eveShipArmorRes[i], 0);
-            rah[i] = read(s, module, eveArmorRes[i], 0);
+            baseDamageTaken[i] = 25.0 * snap(read(s, s.ship, eveShipArmorRes[i], 0));
+            rah[i] = snap(read(s, module, eveArmorRes[i], 0));
         }
-        double shift = read(s, module, eveResistanceShift, 0) / 100.0;
+        double shift = snap(read(s, module, eveResistanceShift, 0)) / 100.0;
 
-        std::vector<std::array<double, 4>> cycles;
+        std::array<std::array<double, 4>, 50> cycles;
+        size_t cycleCount = 0;
         int loopStart = -20;
         for (int num = 0; num < 50; ++num)
         {
@@ -937,7 +988,7 @@ struct Engine::Impl
             rah[t[2].idx] = t[2].res + c2;
             rah[t[3].idx] = t[3].res + c3;
 
-            for (size_t i = 0; i < cycles.size(); ++i)
+            for (size_t i = 0; i < cycleCount; ++i)
             {
                 const auto& v = cycles[i];
                 if (std::abs(rah[0] - v[0]) <= 1e-6 && std::abs(rah[1] - v[1]) <= 1e-6 &&
@@ -949,34 +1000,35 @@ struct Engine::Impl
             }
             if (loopStart >= 0)
                 break;
-            cycles.push_back({rah[0], rah[1], rah[2], rah[3]});
+            cycles[cycleCount++] = {rah[0], rah[1], rah[2], rah[3]};
         }
         // Python slicing: cycleList[loopStart:], negative = last 20.
         size_t from = loopStart >= 0 ? static_cast<size_t>(loopStart)
-                                     : (cycles.size() > 20 ? cycles.size() - 20 : 0);
+                                     : (cycleCount > 20 ? cycleCount - 20 : 0);
         double avg[4] = {0, 0, 0, 0};
-        for (size_t c = from; c < cycles.size(); ++c)
+        for (size_t c = from; c < cycleCount; ++c)
             for (int i = 0; i < 4; ++i)
                 avg[i] += cycles[c][i];
-        double n = static_cast<double>(cycles.size() - from);
+        double n = static_cast<double>(cycleCount - from);
         for (int i = 0; i < 4; ++i)
         {
             avg[i] = pymath::round(avg[i] / n, 3);
             // module.increaseItemAttr(attr, avg - current); ship.multiplyItemAttr(attr, avg, penalized 'preMul')
             Mod inc;
             inc.op = Op::PreIncrease;
-            inc.targetAttr = attrByEve.at(eveArmorRes[i]);
-            applyTo(s, module, inc, avg[i] - read(s, module, eveArmorRes[i], 0));
+            inc.targetAttr = static_cast<Attr>(attrByEve.at(static_cast<size_t>(eveArmorRes[i])));
+            applyTo(s, module, inc, static_cast<float>(avg[i] - read(s, module, eveArmorRes[i], 0)));
             Mod mul;
             mul.op = Op::Multiply;
             mul.penalized = true;
             mul.penaltyGroup = preMulGroup;
             mul.targetAttr = inc.targetAttr;
-            applyTo(s, s.ship, mul, avg[i]);
+            applyTo(s, s.ship, mul, static_cast<float>(avg[i]));
         }
     }
 
-    // ------------------------------------------------------------ evaluation
+
+    // ------------------------------------------------------------ traversal
 
     const EffectInfo* effect(int eid) const
     {
@@ -989,18 +1041,49 @@ struct Engine::Impl
         return e.offline || (e.passive && st >= State::Online) || (e.active && st >= State::Active);
     }
 
-    void run(Scratch& s) const
+    // pyfa's evaluation order (Fit.calculateModifiedAttributes), handing each step to a sink:
+    //   sink.apply(s, mod, owner, ownerSkill)  one modifier from one source
+    //   sink.special(s, eid, module)           an effect handled in code
+    //   sink.boosts(s, pass)                   end of pass: command burst buffs
+    template <typename Sink>
+    void traverse(Scratch& s, Sink& sink) const
     {
         for (uint8_t pass = 0; pass < 3; ++pass)
         {
             for (const Type* skill : skills)
                 for (int eid : skill->effects)
                     if (const EffectInfo* e = effect(eid); e && e->passive && e->runTime == pass)
-                        runMods(s, *e, CtxSkill, -1, skill);
+                        for (const Mod& m : e->mods[CtxSkill])
+                            sink.apply(s, m, -1, skill);
 
             for (int eid : s.items[s.ship].type->effects)
                 if (const EffectInfo* e = effect(eid); e && e->passive && e->runTime == pass)
-                    runMods(s, *e, CtxShip, s.ship, nullptr);
+                    for (const Mod& m : e->mods[CtxShip])
+                        sink.apply(s, m, s.ship, nullptr);
+
+            // (pyfa runs drones and fighters here; not modeled.)
+            for (int i = 0; i < s.boosterCount; ++i)
+            {
+                int b = s.boosters[i];
+                const Item& it = s.items[b];
+                if (!it.active)
+                    continue;
+                for (int eid : it.type->effects)
+                    if (const EffectInfo* e = effect(eid); e && e->runTime == pass &&
+                                                           (e->passive || (e->sideEffect && sideEffectOn(it, eid))))
+                        for (const Mod& m : e->mods[CtxBooster])
+                            sink.apply(s, m, b, nullptr);
+            }
+            for (int i = 0; i < s.implantCount; ++i)
+            {
+                int imp = s.implants[i];
+                if (!s.items[imp].active)
+                    continue;
+                for (int eid : s.items[imp].type->effects)
+                    if (const EffectInfo* e = effect(eid); e && e->passive && e->runTime == pass)
+                        for (const Mod& m : e->mods[CtxImplant])
+                            sink.apply(s, m, imp, nullptr);
+            }
 
             for (int i = 0; i < s.moduleCount; ++i)
             {
@@ -1009,40 +1092,69 @@ struct Engine::Impl
                 if (it.charge >= 0)
                     for (int eid : s.items[it.charge].type->effects)
                         if (const EffectInfo* e = effect(eid); e && e->runTime == pass && runsInState(*e, it.state))
-                            runMods(s, *e, CtxModuleCharge, mod, nullptr);
+                            for (const Mod& m : e->mods[CtxModuleCharge])
+                                sink.apply(s, m, mod, nullptr);
                 if (it.state >= State::Overheated)
                     for (int eid : it.type->effects)
                         if (const EffectInfo* e = effect(eid); e && e->overheat && e->runTime == pass)
-                            runMods(s, *e, CtxModule, mod, nullptr);
+                            for (const Mod& m : e->mods[CtxModule])
+                                sink.apply(s, m, mod, nullptr);
                 for (int eid : it.type->effects)
                     if (const EffectInfo* e = effect(eid); e && e->runTime == pass && runsInState(*e, it.state))
                     {
-                        runMods(s, *e, CtxModule, mod, nullptr);
-                        runSpecial(s, eid, mod);
+                        for (const Mod& m : e->mods[CtxModule])
+                            sink.apply(s, m, mod, nullptr);
+                        sink.special(s, eid, mod);
                     }
             }
 
             if (s.mode >= 0)
                 for (int eid : s.items[s.mode].type->effects)
                     if (const EffectInfo* e = effect(eid); e && e->runTime == pass)
-                        runMods(s, *e, CtxModule, s.mode, nullptr);
+                        for (const Mod& m : e->mods[CtxModule])
+                            sink.apply(s, m, s.mode, nullptr);
 
-            // pyfa Fit.__runCommandBoosts(runTime), in commandBonuses insertion order
-            for (int b = 0; b < s.bonusCount; ++b)
-            {
-                const CommandBonus& cb = s.bonuses[b];
-                if (cb.runTime != pass)
-                    continue;
-                auto mods = buffMods.find(cb.buffID);
-                if (mods != buffMods.end())
-                    for (const Mod& m : mods->second)
-                        applyMod(s, m, -1, nullptr, cb.value);
-            }
+            sink.boosts(s, pass);
+        }
+    }
+
+    static bool sideEffectOn(const Item& booster, int eid)
+    {
+        return booster.sideEffects &&
+               std::find(booster.sideEffects->begin(), booster.sideEffects->end(), eid) != booster.sideEffects->end();
+    }
+
+    struct Executor
+    {
+        const Impl& e;
+        void apply(Scratch& s, const Mod& m, int owner, const Type* skill) const { e.applyMod(s, m, owner, skill); }
+        void special(Scratch& s, int eid, int module) const { e.runSpecial(s, eid, module); }
+        void boosts(Scratch& s, uint8_t pass) const { e.applyBoosts(s, pass); }
+    };
+
+    void run(Scratch& s) const
+    {
+        Executor ex{*this};
+        traverse(s, ex);
+    }
+
+    // pyfa Fit.__runCommandBoosts(runTime), in commandBonuses insertion order
+    void applyBoosts(Scratch& s, uint8_t pass) const
+    {
+        for (int b = 0; b < s.bonusCount; ++b)
+        {
+            const CommandBonus& cb = s.bonuses[b];
+            if (cb.runTime != pass)
+                continue;
+            auto mods = buffMods.find(cb.buffID);
+            if (mods != buffMods.end())
+                for (const Mod& m : mods->second)
+                    applyMod(s, m, -1, nullptr, cb.value);
         }
     }
 
     // pyfa Fit.addCommandBonus: per buff, the value with the largest magnitude wins.
-    static void addCommandBonus(Scratch& s, int buffID, double value, uint8_t runTime)
+    static void addCommandBonus(Scratch& s, int buffID, float value, uint8_t runTime)
     {
         for (int b = 0; b < s.bonusCount; ++b)
             if (s.bonuses[b].buffID == buffID)
@@ -1055,6 +1167,129 @@ struct Engine::Impl
             throw std::runtime_error("too many command bonuses");
         s.bonuses[s.bonusCount++] = {buffID, value, runTime};
     }
+
+    // ------------------------------------------------------------ fit setup
+
+    void resetScratch(Scratch& s) const
+    {
+        s.count = s.penCount = s.moduleCount = s.bonusCount = s.implantCount = s.boosterCount = 0;
+        s.ship = s.mode = -1;
+    }
+
+    void addShipAndMode(Scratch& s, const FitInput& in) const
+    {
+        const Type* shipType = gd.type(in.shipTypeID);
+        if (!shipType)
+            throw std::invalid_argument("unknown ship type " + std::to_string(in.shipTypeID));
+        s.ship = addItem(s, shipType, &shipLayout, ItemKind::Ship);
+        initValues(s.items[s.ship]);
+        if (in.modeTypeID)
+            if (const Type* mode = gd.type(in.modeTypeID))
+            {
+                auto l = layoutByGroup.find(mode->groupID);
+                s.mode = addItem(s, mode, l == layoutByGroup.end() ? &emptyLayout : l->second, ItemKind::Mode);
+                initValues(s.items[s.mode]);
+            }
+    }
+
+    // Adds the fit's implants and boosters.
+    void addImplantsAndBoosters(Scratch& s, const FitInput& in, std::vector<std::string>* warnings) const
+    {
+        auto layoutOf = [&](const Type* t) {
+            auto l = layoutByGroup.find(t->groupID);
+            return l == layoutByGroup.end() ? &emptyLayout : l->second;
+        };
+        for (const ImplantInput& ii : in.implants)
+        {
+            const Type* t = gd.type(ii.typeID);
+            if (!t || s.implantCount >= static_cast<int>(s.implants.size()))
+            {
+                if (warnings)
+                    warnings->push_back("implant " + std::to_string(ii.typeID) + " skipped");
+                continue;
+            }
+            int item = addItem(s, t, layoutOf(t), ItemKind::Implant);
+            s.items[item].active = ii.active;
+            initValues(s.items[item]);
+            s.implants[s.implantCount++] = item;
+        }
+        for (const BoosterInput& bi : in.boosters)
+        {
+            const Type* t = gd.type(bi.typeID);
+            if (!t || s.boosterCount >= static_cast<int>(s.boosters.size()))
+            {
+                if (warnings)
+                    warnings->push_back("booster " + std::to_string(bi.typeID) + " skipped");
+                continue;
+            }
+            int item = addItem(s, t, layoutOf(t), ItemKind::Booster);
+            s.items[item].active = bi.active;
+            s.items[item].sideEffects = bi.sideEffects.empty() ? nullptr : &bi.sideEffects;
+            initValues(s.items[item]);
+            s.boosters[s.boosterCount++] = item;
+        }
+    }
+
+    // Adds a module (and its charge) to s.modules; returns the module item, -1 if unknown.
+    int addModule(Scratch& s, const ModuleInput& mi, int input, std::vector<std::string>* warnings) const
+    {
+        const Type* t = gd.type(mi.typeID);
+        if (!t)
+        {
+            if (warnings)
+                warnings->push_back("module type " + std::to_string(mi.typeID) + " unknown, skipped");
+            return -1;
+        }
+        auto l = layoutByGroup.find(t->groupID);
+        int mod = addItem(s, t, l == layoutByGroup.end() ? &emptyLayout : l->second, ItemKind::Module);
+        Item& it = s.items[mod];
+        it.state = mi.state;
+        it.baseType = mi.baseTypeID ? gd.type(mi.baseTypeID) : nullptr;
+        it.input = input;
+        it.mutators = mi.mutators.empty() ? nullptr : &mi.mutators;
+        initValues(it);
+        s.modules[s.moduleCount++] = mod;
+        if (mi.chargeID)
+        {
+            if (const Type* c = gd.type(mi.chargeID))
+            {
+                auto cl = layoutByGroup.find(c->groupID);
+                int charge = addItem(s, c, cl == layoutByGroup.end() ? &emptyLayout : cl->second, ItemKind::Charge);
+                initValues(s.items[charge]);
+                s.items[charge].owner = mod;
+                s.items[mod].charge = charge;
+            }
+            else if (warnings)
+                warnings->push_back("charge type " + std::to_string(mi.chargeID) + " unknown, skipped");
+        }
+        return mod;
+    }
+
+    // ------------------------------------------------------------ results
+
+    struct Cycle
+    {
+        float raw = 0, reactivation = 0, reload = 0, average = 0, capNeed = 0, capUse = 0;
+        int numShots = 0;
+    };
+
+    struct Totals
+    {
+        float cpu = 0, power = 0, calibration = 0;
+        float cpuOutput = 0, powerOutput = 0, calibrationOutput = 0;
+        float capPeak = 0, capRecharge = 0, capUsed = 0;
+        std::array<float, LayerCount> hp{}, ehp{}, repair{}, effRepair{};
+    };
+
+    float shipValue(Scratch& s, Attr a) const
+    {
+        int f = shipLayout.fieldOf[static_cast<size_t>(a)];
+        return value(s, s.ship, f, 0);
+    }
+
+    // floor() of a ratio pyfa computes in double from exact inputs; our float inputs
+    // can put an exact integer (1000) just below it (999.9999), so allow 1e-5 relative.
+    static int floorTolerant(double x) { return static_cast<int>(std::floor(x * (1 + 1e-5))); }
 
     // pyfa Module.numShots
     int numShots(Scratch& s, int module) const
@@ -1071,162 +1306,88 @@ struct Engine::Impl
         if (numCharges <= 0)
             return 0;
         if (hasAttrOrModified(s, module, eveChargeRate))
-            return static_cast<int>(std::floor(numCharges / read(s, module, eveChargeRate, 0)));
+            return floorTolerant(numCharges / static_cast<double>(read(s, module, eveChargeRate, 0)));
         if (hasAttrOrModified(s, it.charge, eveCrystalsDamaged))
         {
             if (read(s, it.charge, eveCrystalsDamaged, 0) != 1)
                 return 0;
-            double hp = read(s, it.charge, eveHp, 0);
-            double chance = read(s, it.charge, eveCrystalChance, 0);
-            double damage = read(s, it.charge, eveCrystalDamage, 0);
-            return static_cast<int>(std::floor(numCharges * hp / (damage * chance)));
+            float hp = read(s, it.charge, eveHp, 0);
+            float chance = read(s, it.charge, eveCrystalChance, 0);
+            float damage = read(s, it.charge, eveCrystalDamage, 0);
+            return floorTolerant(numCharges * static_cast<double>(hp) / (static_cast<double>(damage) * chance));
         }
         return 0;
     }
 
-    void moduleResult(Scratch& s, int module, ModuleResult& r) const
+    // Cycle time, reload and cap use of a module (pyfa rawCycleTime, getCycleParameters, capUse).
+    Cycle cycleOf(Scratch& s, int module) const
     {
         const Item& it = s.items[module];
-        r.typeID = it.type->id;
-        r.chargeID = it.charge >= 0 ? s.items[it.charge].type->id : 0;
-        r.state = it.state;
-        for (int f = 0; f < it.layout->count; ++f)
-            r.attrs.emplace_back(it.layout->fields[f], value(s, module, f, 0));
-
-        double raw = std::max({read(s, module, eveSpeed, 0), read(s, module, eveDuration, 0),
-                               read(s, module, eveDurationHighIsGood, 0)});
+        Cycle c;
+        c.raw = std::max({read(s, module, eveSpeed, 0), read(s, module, eveDuration, 0),
+                          read(s, module, eveDurationHighIsGood, 0)});
         for (int eve : eveBurstDurations)
-            raw = std::max(raw, read(s, module, eve, 0));
-        r.rawCycleTime = raw;
-        r.reactivationDelay = read(s, module, eveReactivation, 0);
-        r.reloadTime = read(s, module, eveReloadTime, 0);
-        r.numShots = numShots(s, module);
-
-        // pyfa Module.getCycleParameters(), reload factored in (or forced by the effect).
-        r.averageCycleTime = 0;
-        if (raw > 0)
+            c.raw = std::max(c.raw, read(s, module, eve, 0));
+        c.reactivation = read(s, module, eveReactivation, 0);
+        c.reload = read(s, module, eveReloadTime, 0);
+        c.numShots = numShots(s, module);
+        if (c.raw > 0)
         {
-            double inactive = r.reactivationDelay;
-            double reload = r.reloadTime;
-            bool infinite = r.numShots == 0;
-            if (infinite || inactive >= reload)
-                r.averageCycleTime = raw + inactive;
-            else if (r.numShots == 1)
-                r.averageCycleTime = raw + reload;
+            // Reload always factored in.
+            if (c.numShots == 0 || c.reactivation >= c.reload)
+                c.average = c.raw + c.reactivation;
+            else if (c.numShots == 1)
+                c.average = c.raw + c.reload;
             else
             {
-                double early = r.numShots - 1;
-                r.averageCycleTime = (early * (raw + inactive) + (raw + reload)) / (early + 1);
+                float early = static_cast<float>(c.numShots - 1);
+                c.average = (early * (c.raw + c.reactivation) + (c.raw + c.reload)) / (early + 1);
             }
         }
-        double capNeed = read(s, module, eveCapNeed, 0);
-        r.capUse = (capNeed != 0 && it.state >= State::Active && r.averageCycleTime > 0)
-                       ? capNeed / (r.averageCycleTime / 1000.0)
-                       : 0.0;
+        c.capNeed = read(s, module, eveCapNeed, 0);
+        c.capUse = (c.capNeed != 0 && it.state >= State::Active && c.average > 0) ? c.capNeed / (c.average / 1000.0f)
+                                                                                   : 0.0f;
+        return c;
     }
 
-    FitResult evaluate(const FitInput& in) const
+    // Everything derived from the final attributes. cycles[i] belongs to s.modules[i].
+    void totals(Scratch& s, Cycle* cycles, Totals& t, bool withRepair) const
     {
-        thread_local std::unique_ptr<Scratch> scratch;
-        if (!scratch)
-            scratch = std::make_unique<Scratch>();
-        Scratch& s = *scratch;
-        s.count = s.penCount = s.moduleCount = s.bonusCount = 0;
-        s.mode = -1;
-        FitResult out;
-
-        const Type* shipType = gd.type(in.shipTypeID);
-        if (!shipType)
-            throw std::invalid_argument("unknown ship type " + std::to_string(in.shipTypeID));
-        s.ship = addItem(s, shipType, &shipLayout, ItemKind::Ship);
-        initValues(s.items[s.ship]);
-
-        if (in.modeTypeID)
-            if (const Type* mode = gd.type(in.modeTypeID))
-            {
-                auto l = layoutByGroup.find(mode->groupID);
-                s.mode = addItem(s, mode, l == layoutByGroup.end() ? &emptyLayout : l->second, ItemKind::Mode);
-                initValues(s.items[s.mode]);
-            }
-
-        for (size_t i = 0; i < in.modules.size(); ++i)
-        {
-            const ModuleInput& mi = in.modules[i];
-            const Type* t = gd.type(mi.typeID);
-            if (!t)
-            {
-                out.warnings.push_back("module type " + std::to_string(mi.typeID) + " unknown, skipped");
-                continue;
-            }
-            auto l = layoutByGroup.find(t->groupID);
-            int mod = addItem(s, t, l == layoutByGroup.end() ? &emptyLayout : l->second, ItemKind::Module);
-            Item& it = s.items[mod];
-            it.state = mi.state;
-            it.baseType = mi.baseTypeID ? gd.type(mi.baseTypeID) : nullptr;
-            it.input = static_cast<int>(i);
-            it.mutators = mi.mutators.empty() ? nullptr : &mi.mutators;
-            initValues(it);
-            s.modules[s.moduleCount++] = mod;
-            if (mi.chargeID)
-            {
-                if (const Type* c = gd.type(mi.chargeID))
-                {
-                    auto cl = layoutByGroup.find(c->groupID);
-                    int charge = addItem(s, c, cl == layoutByGroup.end() ? &emptyLayout : cl->second,
-                                         ItemKind::Charge);
-                    initValues(s.items[charge]);
-                    s.items[charge].owner = mod;
-                    s.items[mod].charge = charge;
-                }
-                else
-                    out.warnings.push_back("charge type " + std::to_string(mi.chargeID) + " unknown, skipped");
-            }
-        }
-
-        run(s);
-
-        // --- ship
-        for (int f = 0; f < shipLayout.count; ++f)
-            out.ship[static_cast<size_t>(f)] = value(s, s.ship, f, 0);
-
-        // --- modules
-        out.modules.resize(static_cast<size_t>(s.moduleCount));
-        for (int i = 0; i < s.moduleCount; ++i)
-            moduleResult(s, s.modules[i], out.modules[static_cast<size_t>(i)]);
-
-        // --- fitting (pyfa getItemAttrOnlineSum)
+        t = Totals{};
         for (int i = 0; i < s.moduleCount; ++i)
         {
             int mod = s.modules[i];
+            cycles[i] = cycleOf(s, mod);
             if (s.items[mod].state < State::Online)
                 continue;
-            out.cpuUsed += read(s, mod, eveCpu, 0);
-            out.powerUsed += read(s, mod, evePower, 0);
-            out.calibrationUsed += read(s, mod, eveUpgradeCost, 0);
+            // pyfa getItemAttrOnlineSum
+            t.cpu += read(s, mod, eveCpu, 0);
+            t.power += read(s, mod, evePower, 0);
+            t.calibration += read(s, mod, eveUpgradeCost, 0);
         }
-        out.cpuUsed = pymath::round(out.cpuUsed, 2);
-        out.powerUsed = pymath::round(out.powerUsed, 2);
+        t.cpu = pymath::round(t.cpu, 2);
+        t.power = pymath::round(t.power, 2);
+        t.cpuOutput = shipValue(s, Attr::cpuOutput);
+        t.powerOutput = shipValue(s, Attr::powerOutput);
+        t.calibrationOutput = shipValue(s, Attr::upgradeCapacity);
 
-        // --- capacitor (pyfa __generateDrain + calculateCapRecharge)
-        double capacity = out.shipAttr(Attr::capacitorCapacity);
-        double rechargeSeconds = out.shipAttr(Attr::rechargeRate) / 1000.0;
-        out.capPeakRecharge = 10.0 / rechargeSeconds * std::sqrt(0.25) * (1 - std::sqrt(0.25)) * capacity;
-        double capAdded = 0;
+        // pyfa __generateDrain + calculateCapRecharge
+        float capacity = shipValue(s, Attr::capacitorCapacity);
+        float rechargeSeconds = shipValue(s, Attr::rechargeRate) / 1000.0f;
+        t.capPeak = 10.0f / rechargeSeconds * std::sqrt(0.25f) * (1 - std::sqrt(0.25f)) * capacity;
+        float capAdded = 0;
         for (int i = 0; i < s.moduleCount; ++i)
         {
-            const ModuleResult& r = out.modules[static_cast<size_t>(i)];
-            if (r.state < State::Active || read(s, s.modules[i], eveCapNeed, 0) == 0)
+            const Cycle& c = cycles[i];
+            if (s.items[s.modules[i]].state < State::Active || c.capNeed == 0 || c.raw + c.reactivation <= 0)
                 continue;
-            if (r.rawCycleTime + r.reactivationDelay <= 0)
-                continue;
-            if (r.capUse > 0)
-                out.capUsed += r.capUse;
+            if (c.capUse > 0)
+                t.capUsed += c.capUse;
             else
-                capAdded -= r.capUse;
+                capAdded -= c.capUse;
         }
-        out.capRecharge = capAdded + out.capPeakRecharge;
+        t.capRecharge = capAdded + t.capPeak;
 
-        // --- tank
         static const Attr hpAttr[LayerCount] = {Attr::shieldCapacity, Attr::armorHP, Attr::hp};
         static const Attr resAttr[LayerCount][4] = {
             {Attr::shieldEmDamageResonance, Attr::shieldThermalDamageResonance, Attr::shieldKineticDamageResonance,
@@ -1235,33 +1396,37 @@ struct Engine::Impl
              Attr::armorExplosiveDamageResonance},
             {Attr::emDamageResonance, Attr::thermalDamageResonance, Attr::kineticDamageResonance,
              Attr::explosiveDamageResonance}};
-        std::array<double, LayerCount> divider{};
+        std::array<float, LayerCount> divider{};
         for (int l = 0; l < LayerCount; ++l)
         {
             for (Attr a : resAttr[l])
-                divider[l] += kUniformShare * out.shipAttr(a);
+                divider[l] += kUniformShare * shipValue(s, a);
             if (divider[l] == 0)
                 divider[l] = 1;
-            out.hp[l] = out.shipAttr(hpAttr[l]);
-            out.ehp[l] = out.hp[l] / divider[l];
+            t.hp[l] = shipValue(s, hpAttr[l]);
+            t.ehp[l] = t.hp[l] / divider[l];
         }
-        sustainableTank(s, out);
-        for (int l = 0; l < LayerCount; ++l)
-            out.effectiveRepair[l] = out.repair[l] / divider[l];
-        return out;
+        if (withRepair)
+        {
+            sustainableTank(s, cycles, t);
+            for (int l = 0; l < LayerCount; ++l)
+                t.effRepair[l] = t.repair[l] / divider[l];
+        }
     }
 
     // Port of pyfa Fit.calculateSustainableTank (local repairers only, reload factored).
-    void sustainableTank(Scratch& s, FitResult& out) const
+    void sustainableTank(Scratch& s, const Cycle* cycles, Totals& t) const
     {
         struct Rep
         {
-            int module;  // index into s.modules / out.modules
+            int module;  // index into s.modules / cycles
             int layer;
             double amount;
         };
+        // In double: the adjustment subtracts and re-adds large, nearly equal terms.
         std::array<double, LayerCount> extra{}, adjust{};
-        std::vector<Rep> contributors[LayerCount];
+        Rep contributors[LayerCount][kMaxItems];
+        int contributorCount[LayerCount] = {};
         for (int i = 0; i < s.moduleCount; ++i)
         {
             int mod = s.modules[i];
@@ -1271,107 +1436,161 @@ struct Engine::Impl
             double speed = read(s, mod, eveDuration, 0) / 1000.0;
             if (it.repEffects & kRepShield)
             {
-                double rps = read(s, mod, eveShieldBonus, 0) / speed;
-                extra[Shield] += rps;
-                if (rps != 0)
-                    contributors[Shield].push_back({i, Shield, read(s, mod, eveShieldBonus, 0)});
+                double amount = read(s, mod, eveShieldBonus, 0);
+                extra[Shield] += amount / speed;
+                if (amount / speed != 0)
+                    contributors[Shield][contributorCount[Shield]++] = {i, Shield, amount};
             }
             if (it.repEffects & (kRepArmor | kRepArmorFueled))
             {
-                bool paste = (it.repEffects & kRepArmorFueled) && it.charge >= 0 &&
-                             s.items[it.charge].type->name == "Nanite Repair Paste";
-                double rps = read(s, mod, eveArmorDamage, 0) * (paste ? 3 : 1) / speed;
+                bool paste = (it.repEffects & kRepArmorFueled) && it.charge >= 0 && s.items[it.charge].isPaste;
+                double amount = read(s, mod, eveArmorDamage, 0);
+                double rps = amount * (paste ? 3 : 1) / speed;
                 extra[Armor] += rps;
                 if (rps != 0)
-                    contributors[Armor].push_back({i, Armor, read(s, mod, eveArmorDamage, 0)});
+                    contributors[Armor][contributorCount[Armor]++] = {i, Armor, amount};
             }
             if (it.repEffects & kRepHull)
             {
-                double rps = read(s, mod, eveStructureDamage, 0) / speed;
-                extra[Hull] += rps;
-                if (rps != 0)
-                    contributors[Hull].push_back({i, Hull, read(s, mod, eveStructureDamage, 0)});
+                double amount = read(s, mod, eveStructureDamage, 0);
+                extra[Hull] += amount / speed;
+                if (amount / speed != 0)
+                    contributors[Hull][contributorCount[Hull]++] = {i, Hull, amount};
             }
         }
 
-        auto groupIs = [&](int i, const char* name) {
-            const Group* g = s.items[s.modules[i]].group;
-            return g && g->name == name;
-        };
         auto pasteMultiplier = [&](int i) {
             int mod = s.modules[i];
             int charge = s.items[mod].charge;
-            if (charge < 0 || s.items[charge].type->name != "Nanite Repair Paste")
+            if (charge < 0 || !s.items[charge].isPaste)
                 return 1.0;
             double m = read(s, mod, eveChargedArmorMult, 0);
             return m ? m : 1.0;
         };
 
-        double capUsed = out.capUsed;
-        std::vector<Rep> repairers;
+        double capUsed = t.capUsed;
+        Rep repairers[LayerCount * kMaxItems];
+        double efficiency[LayerCount * kMaxItems];
+        int repairerCount = 0;
         for (int layer = 0; layer < LayerCount; ++layer)
         {
-            for (const Rep& rep : contributors[layer])
+            for (int k = 0; k < contributorCount[layer]; ++k)
             {
-                const ModuleResult& r = out.modules[static_cast<size_t>(rep.module)];
+                const Rep& rep = contributors[layer][k];
+                const Cycle& c = cycles[rep.module];
                 bool hasCharge = s.items[s.modules[rep.module]].charge >= 0;
-                double cycle = r.rawCycleTime / 1000.0;
-                bool usesCap = r.capUse != 0;
+                double cycle = c.raw / 1000.0;
+                bool usesCap = c.capUse != 0;
                 if (usesCap)
-                    capUsed -= r.capUse;
-                if (usesCap && !hasCharge)
+                    capUsed -= c.capUse;
+                if (usesCap)
                 {
-                    adjust[layer] -= rep.amount / cycle;
-                    repairers.push_back(rep);
+                    adjust[layer] -= rep.amount * (hasCharge ? pasteMultiplier(rep.module) : 1.0) / cycle;
+                    repairers[repairerCount++] = rep;
                 }
-                else if (usesCap && hasCharge)
+                else if (s.items[s.modules[rep.module]].ancillaryShield)
                 {
-                    adjust[layer] -= rep.amount * pasteMultiplier(rep.module) / cycle;
-                    repairers.push_back(rep);
-                }
-                else if (!usesCap && (groupIs(rep.module, "Ancillary Shield Booster") ||
-                                      groupIs(rep.module, "Ancillary Remote Shield Booster")))
-                {
-                    double reload = hasCharge ? r.reloadTime : 0.0;
-                    double offDuty = reload / (std::max(r.numShots, 1) * r.rawCycleTime + reload);
+                    double reload = hasCharge ? c.reload : 0.0;
+                    double offDuty = reload / (std::max(c.numShots, 1) * static_cast<double>(c.raw) + reload);
                     adjust[layer] -= rep.amount * offDuty / cycle;
                 }
             }
         }
 
         // Most cap-efficient first (Python sort is stable, also with reverse=True).
-        auto efficiency = [&](const Rep& rep) {
-            int mod = s.modules[rep.module];
+        int order[LayerCount * kMaxItems];
+        for (int r = 0; r < repairerCount; ++r)
+        {
+            int mod = s.modules[repairers[r].module];
             double mult = read(s, mod, eveChargedArmorMult, 0);
-            return rep.amount * (mult ? mult : 1.0) / read(s, mod, eveCapNeed, 0);
-        };
-        std::stable_sort(repairers.begin(), repairers.end(),
-                         [&](const Rep& a, const Rep& b) { return efficiency(a) > efficiency(b); });
+            efficiency[r] = repairers[r].amount * (mult ? mult : 1.0) / read(s, mod, eveCapNeed, 0);
+            order[r] = r;
+        }
+        std::stable_sort(order, order + repairerCount, [&](int a, int b) { return efficiency[a] > efficiency[b]; });
 
-        double peak = out.capRecharge;
-        for (const Rep& rep : repairers)
+        double peak = t.capRecharge;
+        for (int k = 0; k < repairerCount; ++k)
         {
             if (capUsed > peak)
                 break;
-            const ModuleResult& r = out.modules[static_cast<size_t>(rep.module)];
+            const Rep& rep = repairers[order[k]];
+            const Cycle& c = cycles[rep.module];
             bool hasCharge = s.items[s.modules[rep.module]].charge >= 0;
-            double reload = hasCharge ? r.reloadTime : 0.0;
-            double cycle = r.rawCycleTime;
-            double capPerSec = r.capUse;
-            double sustainability = std::min(1.0, (peak - capUsed) / capPerSec);
+            double reload = hasCharge ? c.reload : 0.0;
+            double sustainability = std::min(1.0, (peak - capUsed) / c.capUse);
             if (!hasCharge)
-                adjust[rep.layer] += sustainability * rep.amount / (cycle / 1000.0);
+                adjust[rep.layer] += sustainability * rep.amount / (c.raw / 1000.0);
             else
             {
-                double shots = std::max(r.numShots, 1) * cycle;
+                double shots = std::max(c.numShots, 1) * static_cast<double>(c.raw);
                 double onDuty = shots / (shots + reload);
-                adjust[rep.layer] += sustainability * rep.amount * onDuty * pasteMultiplier(rep.module) /
-                                     (cycle / 1000.0);
+                adjust[rep.layer] +=
+                    sustainability * rep.amount * onDuty * pasteMultiplier(rep.module) / (c.raw / 1000.0);
             }
-            capUsed += capPerSec;
+            capUsed += c.capUse;
         }
         for (int l = 0; l < LayerCount; ++l)
-            out.repair[l] = extra[l] + adjust[l];
+            t.repair[l] = static_cast<float>(extra[l] + adjust[l]);
+    }
+
+    // ------------------------------------------------------------ full evaluation
+
+    static Scratch& threadScratch()
+    {
+        thread_local std::unique_ptr<Scratch> scratch;
+        if (!scratch)
+            scratch = std::make_unique<Scratch>();
+        return *scratch;
+    }
+
+    FitResult evaluate(const FitInput& in) const
+    {
+        Scratch& s = threadScratch();
+        resetScratch(s);
+        FitResult out;
+        addShipAndMode(s, in);
+        addImplantsAndBoosters(s, in, &out.warnings);
+        for (size_t i = 0; i < in.modules.size(); ++i)
+            addModule(s, in.modules[i], static_cast<int>(i), &out.warnings);
+
+        run(s);
+
+        for (int f = 0; f < shipLayout.count; ++f)
+            out.ship[static_cast<size_t>(f)] = value(s, s.ship, f, 0);
+
+        Cycle cycles[kMaxItems];
+        Totals t;
+        totals(s, cycles, t, true);
+
+        out.modules.resize(static_cast<size_t>(s.moduleCount));
+        for (int i = 0; i < s.moduleCount; ++i)
+        {
+            int mod = s.modules[i];
+            const Item& it = s.items[mod];
+            ModuleResult& r = out.modules[static_cast<size_t>(i)];
+            r.typeID = it.type->id;
+            r.chargeID = it.charge >= 0 ? s.items[it.charge].type->id : 0;
+            r.state = it.state;
+            for (int f = 0; f < it.layout->count; ++f)
+                r.attrs.emplace_back(it.layout->fields[f], value(s, mod, f, 0));
+            r.rawCycleTime = cycles[i].raw;
+            r.reactivationDelay = cycles[i].reactivation;
+            r.reloadTime = cycles[i].reload;
+            r.averageCycleTime = cycles[i].average;
+            r.capUse = cycles[i].capUse;
+            r.numShots = cycles[i].numShots;
+        }
+        out.cpuUsed = t.cpu;
+        out.powerUsed = t.power;
+        out.calibrationUsed = t.calibration;
+        out.capPeakRecharge = t.capPeak;
+        out.capRecharge = t.capRecharge;
+        out.capUsed = t.capUsed;
+        out.hp = t.hp;
+        out.ehp = t.ehp;
+        out.repair = t.repair;
+        out.effectiveRepair = t.effRepair;
+        return out;
     }
 };
 
@@ -1386,5 +1605,516 @@ FitResult Engine::evaluate(const FitInput& fit) const
 size_t Engine::compiledModifierCount() const
 {
     return impl_->compiled;
+}
+
+TestResult toTestResult(const FitResult& r, Goal goal)
+{
+    TestResult t;
+    switch (goal)
+    {
+    case Goal::ShieldPassive: t.goal = r.ehp[Shield]; break;
+    case Goal::ArmorPassive: t.goal = r.ehp[Armor]; break;
+    case Goal::HullPassive: t.goal = r.ehp[Hull]; break;
+    case Goal::ShieldActive: t.goal = r.effectiveRepair[Shield]; break;
+    case Goal::ArmorActive: t.goal = r.effectiveRepair[Armor]; break;
+    }
+    t.cpuUsed = r.cpuUsed;
+    t.powerUsed = r.powerUsed;
+    t.calibrationUsed = r.calibrationUsed;
+    t.cpuOutput = r.shipAttr(Attr::cpuOutput);
+    t.powerOutput = r.shipAttr(Attr::powerOutput);
+    t.calibrationOutput = r.shipAttr(Attr::upgradeCapacity);
+    t.capUsed = r.capUsed;
+    t.capRecharge = r.capRecharge;
+    return t;
+}
+
+// ==================================================================== SearchPlan
+
+namespace
+{
+using Impl = Engine::Impl;
+
+// One step of pyfa's evaluation order on the superset fit (every option present).
+struct Instr
+{
+    enum Kind : uint8_t
+    {
+        Apply,    // one modifier from one source onto its targets
+        Special,  // an effect handled in code (burst registration, cap booster, RAH)
+        Boosts,   // end-of-pass command burst buffs
+    };
+    Kind kind = Apply;
+    uint8_t pass = 0;
+    const Mod* mod = nullptr;
+    int owner = -1;  // item (Apply/Special), -1 for skills / boosts
+    const Type* ownerSkill = nullptr;
+    int eid = 0;
+    int option = -1;  // the source only exists when this option is chosen (-1: always)
+    bool burst = false;
+    bool assign = false;  // writes are last-write-wins (preAssign / force / intermediary)
+    bool dynamic = false;
+    std::vector<int> targets;                // superset items (Apply)
+    std::vector<std::pair<int, int>> reads;  // (item, field) the instruction's values depend on
+    std::vector<std::pair<int, int>> writes; // (item, field) it modifies
+};
+}
+
+struct SearchPlan::Data
+{
+    const Impl& e;
+    SearchSpec spec;  // owns the ModuleInputs the items point to (mutators)
+    std::unique_ptr<Scratch> base;  // superset with the static instructions baked in
+    std::vector<int> itemOption;    // superset item -> option (-1: static)
+    std::vector<int> slotFirstOption;
+    std::vector<int> optionModule;  // option -> superset module item
+    int staticModuleCount = 0;      // s.modules[0..n) are the pinned modules
+    std::vector<Instr> instrs;      // dynamic ones only, after construction
+    Stats stats;
+
+    Data(const Impl& impl, const SearchSpec& sp) : e(impl), spec(sp) {}
+};
+
+namespace
+{
+// Every (item, field) whose value an attribute read depends on: the field, plus
+// its min/max cap attributes (read from the same item), recursively.
+void addReadDeps(const Impl& e, const Scratch& s, int item, int eve, std::vector<std::pair<int, int>>& out, int depth = 0)
+{
+    const Item& it = s.items[item];
+    int f = e.fieldOf(it, eve);
+    if (f < 0)
+        return;  // not in the layout: nothing can modify it
+    out.emplace_back(item, f);
+    if (depth > 4)
+        return;
+    size_t ai = static_cast<size_t>(it.layout->fields[f]);
+    if (e.capMin[ai])
+        addReadDeps(e, s, item, e.capMin[ai], out, depth + 1);
+    if (e.capMax[ai])
+        addReadDeps(e, s, item, e.capMax[ai], out, depth + 1);
+}
+
+// Resolves an Apply's targets the way applyMod does.
+void resolveTargets(const Impl& e, const Scratch& s, const Mod& m, int owner, const Type* skill, std::vector<int>& out)
+{
+    switch (m.target)
+    {
+    case TargetSel::Ship:
+        out.push_back(s.ship);
+        break;
+    case TargetSel::Self:
+        if (owner >= 0)
+            out.push_back(owner);
+        break;
+    case TargetSel::SelfCharge:
+        if (owner >= 0 && s.items[owner].charge >= 0)
+            out.push_back(s.items[owner].charge);
+        break;
+    case TargetSel::Modules:
+        for (int i = 0; i < s.moduleCount; ++i)
+            if (e.filterMatches(s, m, s.modules[i], skill))
+                out.push_back(s.modules[i]);
+        break;
+    case TargetSel::ModuleCharges:
+        for (int i = 0; i < s.moduleCount; ++i)
+        {
+            int mod = s.modules[i];
+            if (s.items[mod].charge >= 0 && e.filterMatches(s, m, mod, skill))
+                out.push_back(s.items[mod].charge);
+        }
+        break;
+    case TargetSel::Implants:
+        for (int i = 0; i < s.implantCount; ++i)
+            if (e.filterMatches(s, m, s.implants[i], skill))
+                out.push_back(s.implants[i]);
+        break;
+    case TargetSel::Boosters:
+        for (int i = 0; i < s.boosterCount; ++i)
+            if (e.filterMatches(s, m, s.boosters[i], skill))
+                out.push_back(s.boosters[i]);
+        break;
+    }
+}
+
+void addWrites(const Impl&, const Scratch& s, const Mod& m, const std::vector<int>& targets, Instr& in)
+{
+    for (int t : targets)
+    {
+        int f = s.items[t].layout->fieldOf[static_cast<size_t>(m.targetAttr)];
+        if (f >= 0)
+            in.writes.emplace_back(t, f);
+    }
+}
+
+struct Recorder
+{
+    const Impl& e;
+    const std::vector<int>& itemOption;
+    std::vector<Instr>& out;
+    uint8_t pass = 0;
+
+    int optionOf(int item) const { return item >= 0 ? itemOption[static_cast<size_t>(item)] : -1; }
+
+    void apply(Scratch& s, const Mod& m, int owner, const Type* skill)
+    {
+        if (!e.conditionsHold(s, m, owner))
+            return;
+        Instr in;
+        in.kind = Instr::Apply;
+        in.pass = pass;
+        in.mod = &m;
+        in.owner = owner;
+        in.ownerSkill = skill;
+        in.option = optionOf(owner);
+        in.assign = m.op == Op::PreAssign || m.op == Op::Force;
+        switch (m.source)
+        {
+        case SourceSel::Owner:
+            if (owner >= 0)
+                addReadDeps(e, s, owner, m.sourceEveAttr, in.reads);
+            break;
+        case SourceSel::Ship:
+            addReadDeps(e, s, s.ship, m.sourceEveAttr, in.reads);
+            break;
+        case SourceSel::OwnerCharge:
+            if (owner < 0 || s.items[owner].charge < 0)
+                return;  // pyfa: no charge, no amount
+            addReadDeps(e, s, s.items[owner].charge, m.sourceEveAttr, in.reads);
+            break;
+        case SourceSel::Skill:
+        case SourceSel::Buff:
+            break;
+        }
+        resolveTargets(e, s, m, owner, skill, in.targets);
+        if (in.targets.empty())
+            return;
+        addWrites(e, s, m, in.targets, in);
+        out.push_back(std::move(in));
+    }
+
+    void special(Scratch& s, int eid, int module)
+    {
+        Item& it = s.items[module];
+        Instr in;
+        in.kind = Instr::Special;
+        in.pass = pass;
+        in.eid = eid;
+        in.owner = module;
+        in.option = optionOf(module);
+        if (eid >= kEffWarfareLinkFirst && eid <= kEffWarfareLinkLast)
+        {
+            if (it.charge < 0)
+                return;
+            in.burst = true;
+            for (int x = 0; x < 4; ++x)
+            {
+                addReadDeps(e, s, it.charge, e.eveWarfareBuffID[x], in.reads);
+                addReadDeps(e, s, module, e.eveWarfareBuffValue[x], in.reads);
+            }
+        }
+        else if (eid == kEffCapBooster)
+        {
+            if (it.charge < 0)
+                return;
+            addReadDeps(e, s, it.charge, e.eveCapacitorBonus, in.reads);
+            int f = e.fieldOf(it, e.eveCapNeed);
+            if (f >= 0)
+                in.writes.emplace_back(module, f);
+            in.assign = true;
+        }
+        else if (eid == kEffRAH)
+        {
+            for (int i = 0; i < 4; ++i)
+            {
+                addReadDeps(e, s, s.ship, e.eveShipArmorRes[i], in.reads);
+                addReadDeps(e, s, module, e.eveArmorRes[i], in.reads);
+                if (int f = e.fieldOf(s.items[s.ship], e.eveShipArmorRes[i]); f >= 0)
+                    in.writes.emplace_back(s.ship, f);
+                if (int f = e.fieldOf(it, e.eveArmorRes[i]); f >= 0)
+                    in.writes.emplace_back(module, f);
+            }
+            addReadDeps(e, s, module, e.eveResistanceShift, in.reads);
+        }
+        else
+        {
+            // Repairer flags don't depend on anything: set them on the superset now.
+            e.runSpecial(s, eid, module);
+            return;
+        }
+        out.push_back(std::move(in));
+    }
+
+    void boosts(Scratch& s, uint8_t p)
+    {
+        // Every buff any burst in the superset could register, onto all its possible targets.
+        Instr in;
+        in.kind = Instr::Boosts;
+        in.pass = p;
+        for (int i = 0; i < s.moduleCount; ++i)
+        {
+            const Item& it = s.items[s.modules[i]];
+            if (it.charge < 0)
+                continue;
+            for (int x = 0; x < 4; ++x)
+            {
+                int id = static_cast<int>(e.read(s, it.charge, e.eveWarfareBuffID[x], 0));
+                auto mods = id ? e.buffMods.find(id) : e.buffMods.end();
+                if (mods == e.buffMods.end())
+                    continue;
+                for (const Mod& m : mods->second)
+                {
+                    if (!e.conditionsHold(s, m, -1))
+                        continue;
+                    std::vector<int> targets;
+                    resolveTargets(e, s, m, -1, nullptr, targets);
+                    addWrites(e, s, m, targets, in);
+                    in.assign |= m.op == Op::PreAssign || m.op == Op::Force;
+                }
+            }
+        }
+        out.push_back(std::move(in));
+        pass = static_cast<uint8_t>(p + 1);
+    }
+};
+}
+
+SearchPlan::SearchPlan(const Engine& engine, const SearchSpec& spec)
+    : d_(std::make_unique<Data>(*engine.impl_, spec))
+{
+    const Impl& e = d_->e;
+    Data& d = *d_;
+    d.base = std::make_unique<Scratch>();
+    Scratch& s = *d.base;
+    e.resetScratch(s);
+
+    // Superset: ship, mode, pinned modules, then every option of every slot.
+    e.addShipAndMode(s, d.spec.base);
+    e.addImplantsAndBoosters(s, d.spec.base, nullptr);
+    for (size_t i = 0; i < d.spec.base.modules.size(); ++i)
+        e.addModule(s, d.spec.base.modules[i], static_cast<int>(i), nullptr);
+    d.staticModuleCount = s.moduleCount;
+    d.itemOption.assign(static_cast<size_t>(s.count), -1);
+    int option = 0;
+    for (const auto& slot : d.spec.slots)
+    {
+        d.slotFirstOption.push_back(option);
+        for (const ModuleInput& mi : slot)
+        {
+            int mod = e.addModule(s, mi, -1, nullptr);
+            d.optionModule.push_back(mod);
+            d.itemOption.resize(static_cast<size_t>(s.count), option);
+            ++option;
+        }
+    }
+
+    // Record pyfa's evaluation order.
+    std::vector<Instr> all;
+    Recorder rec{e, d.itemOption, all};
+    e.traverse(s, rec);
+    d.stats.instructions = all.size();
+
+    // Dynamic: the source depends on the choice, or a value it reads (or an
+    // assignment it makes) involves a field some dynamic instruction modifies.
+    std::vector<uint64_t> dyn(static_cast<size_t>(s.count), 0);
+    auto touchesDyn = [&](const std::vector<std::pair<int, int>>& fields) {
+        for (const auto& [item, f] : fields)
+            if (dyn[static_cast<size_t>(item)] >> f & 1)
+                return true;
+        return false;
+    };
+    for (Instr& in : all)
+        in.dynamic = in.option >= 0;
+    for (bool changed = true; changed;)
+    {
+        changed = false;
+        bool burstDynamic = false;
+        for (const Instr& in : all)
+            burstDynamic |= in.burst && in.dynamic;
+        for (Instr& in : all)
+        {
+            if (!in.dynamic && (touchesDyn(in.reads) || (in.assign && touchesDyn(in.writes)) ||
+                                (in.kind == Instr::Boosts && burstDynamic)))
+            {
+                in.dynamic = true;
+                changed = true;
+            }
+            if (in.dynamic)
+                for (const auto& [item, f] : in.writes)
+                    if (!(dyn[static_cast<size_t>(item)] >> f & 1))
+                    {
+                        dyn[static_cast<size_t>(item)] |= uint64_t{1} << f;
+                        changed = true;
+                    }
+        }
+    }
+
+    // Order check: a dynamic instruction reading a field that a baked instruction
+    // modifies later would see that later modification; pyfa wouldn't.
+    for (size_t k = 0; k < all.size(); ++k)
+    {
+        if (!all[k].dynamic)
+            continue;
+        for (size_t j = k + 1; j < all.size(); ++j)
+        {
+            if (all[j].dynamic)
+                continue;
+            bool hit = false;
+            for (const auto& w : all[j].writes)
+                for (const auto& r : all[k].reads)
+                    hit |= w == r;
+            if (hit)
+            {
+                ++d.stats.orderSensitive;
+                break;
+            }
+        }
+    }
+
+    // Bake the static instructions, in order.
+    for (const Instr& in : all)
+    {
+        if (in.dynamic)
+            continue;
+        switch (in.kind)
+        {
+        case Instr::Apply:
+            if (auto amount = e.amountOf(s, *in.mod, in.owner, in.ownerSkill, 0))
+                for (int t : in.targets)
+                    e.applyTo(s, t, *in.mod, *amount);
+            break;
+        case Instr::Special:
+            e.runSpecial(s, in.eid, in.owner);
+            break;
+        case Instr::Boosts:
+            e.applyBoosts(s, in.pass);
+            break;
+        }
+    }
+
+    for (Instr& in : all)
+        if (in.dynamic)
+        {
+            in.reads.clear();
+            in.writes.clear();
+            d.instrs.push_back(std::move(in));
+        }
+    d.stats.dynamic = d.instrs.size();
+}
+
+SearchPlan::~SearchPlan() = default;
+
+SearchPlan::Stats SearchPlan::stats() const
+{
+    return d_->stats;
+}
+
+FitInput SearchPlan::fitFor(const int* choice) const
+{
+    FitInput fit = d_->spec.base;
+    for (size_t slot = 0; slot < d_->spec.slots.size(); ++slot)
+        if (choice[slot] >= 0)
+            fit.modules.push_back(d_->spec.slots[slot][static_cast<size_t>(choice[slot])]);
+    return fit;
+}
+
+TestResult SearchPlan::evaluate(const int* choice, Goal goal) const
+{
+    const Impl& e = d_->e;
+    const Data& d = *d_;
+    const Scratch& b = *d.base;
+    Scratch& s = Impl::threadScratch();
+    e.resetScratch(s);
+
+    // Live items: ship, mode, pinned modules and their charges, chosen options.
+    int map[kMaxItems];
+    std::fill(map, map + b.count, -1);
+    auto copyItem = [&](int item) {
+        int live = s.count++;
+        s.items[live] = b.items[item];
+        map[item] = live;
+        return live;
+    };
+    auto copyModule = [&](int mod) {
+        int live = copyItem(mod);
+        s.modules[s.moduleCount++] = live;
+        if (b.items[mod].charge >= 0)
+        {
+            int charge = copyItem(b.items[mod].charge);
+            s.items[live].charge = charge;
+            s.items[charge].owner = live;
+        }
+    };
+    s.ship = copyItem(b.ship);
+    if (b.mode >= 0)
+        s.mode = copyItem(b.mode);
+    for (int i = 0; i < b.implantCount; ++i)
+        s.implants[s.implantCount++] = copyItem(b.implants[i]);
+    for (int i = 0; i < b.boosterCount; ++i)
+        s.boosters[s.boosterCount++] = copyItem(b.boosters[i]);
+    for (int i = 0; i < d.staticModuleCount; ++i)
+        copyModule(b.modules[i]);
+    for (size_t slot = 0; slot < d.spec.slots.size(); ++slot)
+        if (choice[slot] >= 0)
+        {
+            int mod = d.optionModule[static_cast<size_t>(d.slotFirstOption[slot] + choice[slot])];
+            if (mod >= 0)
+                copyModule(mod);
+        }
+    for (int p = 0; p < b.penCount; ++p)
+        if (int live = map[b.pens[p].item]; live >= 0)
+        {
+            s.pens[s.penCount] = b.pens[p];
+            s.pens[s.penCount++].item = static_cast<uint16_t>(live);
+        }
+    s.bonusCount = b.bonusCount;
+    std::copy(b.bonuses.begin(), b.bonuses.begin() + b.bonusCount, s.bonuses.begin());
+
+    // Replay the dynamic instructions.
+    for (const Instr& in : d.instrs)
+    {
+        int owner = in.owner >= 0 ? map[in.owner] : -1;
+        if (in.option >= 0 && owner < 0)
+            continue;  // source not chosen
+        switch (in.kind)
+        {
+        case Instr::Apply:
+            if (auto amount = e.amountOf(s, *in.mod, owner, in.ownerSkill, 0))
+                for (int t : in.targets)
+                    if (int live = map[t]; live >= 0)
+                        e.applyTo(s, live, *in.mod, *amount);
+            break;
+        case Instr::Special:
+            e.runSpecial(s, in.eid, owner);
+            break;
+        case Instr::Boosts:
+            e.applyBoosts(s, in.pass);
+            break;
+        }
+    }
+
+    Impl::Cycle cycles[kMaxItems];
+    Impl::Totals t;
+    bool active = goal == Goal::ShieldActive || goal == Goal::ArmorActive;
+    e.totals(s, cycles, t, active);
+
+    TestResult r;
+    switch (goal)
+    {
+    case Goal::ShieldPassive: r.goal = t.ehp[Shield]; break;
+    case Goal::ArmorPassive: r.goal = t.ehp[Armor]; break;
+    case Goal::HullPassive: r.goal = t.ehp[Hull]; break;
+    case Goal::ShieldActive: r.goal = t.effRepair[Shield]; break;
+    case Goal::ArmorActive: r.goal = t.effRepair[Armor]; break;
+    }
+    r.cpuUsed = t.cpu;
+    r.powerUsed = t.power;
+    r.calibrationUsed = t.calibration;
+    r.cpuOutput = t.cpuOutput;
+    r.powerOutput = t.powerOutput;
+    r.calibrationOutput = t.calibrationOutput;
+    r.capUsed = t.capUsed;
+    r.capRecharge = t.capRecharge;
+    return r;
 }
 }

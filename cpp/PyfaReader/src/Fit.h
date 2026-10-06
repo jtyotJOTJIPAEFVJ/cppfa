@@ -59,6 +59,8 @@ struct FitItem
 {
     int itemID = 0;
     int amount = 1;
+    bool active = true;               // implants / boosters
+    std::vector<int> sideEffects;     // boosters: effectIDs of side effects switched on
 };
 
 struct Fit
@@ -72,7 +74,10 @@ struct Fit
     std::vector<FitModule> modules;  // non-projected, ordered by position
     std::vector<FitDrone> drones;
     std::vector<FitFighter> fighters;
-    std::vector<FitItem> implants;
+    std::vector<FitItem> implants;           // the fit's own implants
+    std::vector<FitItem> characterImplants;  // the character's implants
+    bool implantsFromCharacter = false;      // pyfa implantLocation CHARACTER: the character's ones apply
+    const std::vector<FitItem>& appliedImplants() const { return implantsFromCharacter ? characterImplants : implants; }
     std::vector<FitItem> boosters;
     std::vector<FitItem> cargo;
 };

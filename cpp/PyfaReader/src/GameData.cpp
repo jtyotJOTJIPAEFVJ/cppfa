@@ -23,7 +23,7 @@ std::optional<int> optInt(const Statement& st, int col)
 }
 }
 
-std::optional<double> Type::attr(int attributeID) const
+std::optional<float> Type::attr(int attributeID) const
 {
     auto it = std::lower_bound(attributes.begin(), attributes.end(), attributeID,
                                [](const auto& a, int id) { return a.first < id; });
@@ -76,7 +76,7 @@ GameData GameData::load(const std::filesystem::path& eveDb, const std::filesyste
             "SELECT attributeID, attributeName, IFNULL(defaultValue, 0), minAttributeID, maxAttributeID FROM dgmattribs");
         while (st.step())
         {
-            Attribute a{static_cast<int>(st.getInt(0)), st.getText(1), st.getDouble(2), optInt(st, 3), optInt(st, 4)};
+            Attribute a{static_cast<int>(st.getInt(0)), st.getText(1), static_cast<float>(st.getDouble(2)), optInt(st, 3), optInt(st, 4)};
             gd.attributeIDs_.emplace(a.name, a.id);
             gd.attributes_.emplace(a.id, std::move(a));
         }
@@ -110,7 +110,7 @@ GameData GameData::load(const std::filesystem::path& eveDb, const std::filesyste
         {
             auto it = gd.types_.find(static_cast<int>(st.getInt(0)));
             if (it != gd.types_.end())
-                it->second.attributes.emplace_back(static_cast<int>(st.getInt(1)), st.getDouble(2));
+                it->second.attributes.emplace_back(static_cast<int>(st.getInt(1)), static_cast<float>(st.getDouble(2)));
         }
     }
     {
@@ -182,10 +182,10 @@ std::optional<Module> GameData::loadModule(const std::string& name, const std::v
     return m;
 }
 
-std::unordered_map<std::string, double> GameData::resolveAttributes(const Type& t,
+std::unordered_map<std::string, float> GameData::resolveAttributes(const Type& t,
                                                                     const std::vector<std::string>& attributeNames) const
 {
-    std::unordered_map<std::string, double> out;
+    std::unordered_map<std::string, float> out;
     for (const std::string& attrName : attributeNames)
     {
         const Attribute* a = attribute(attributeID(attrName));
@@ -445,7 +445,7 @@ size_t GameData::loadModifierTable(const std::filesystem::path& tsv,
         m.targetAttr = f[col["targetAttr"]];
         m.sourceAttr = f[col["sourceAttr"]];
         m.sourceOf = f[col["sourceOf"]];
-        m.factor = f[col["factor"]].empty() ? 1.0 : std::stod(f[col["factor"]]);
+        m.factor = f[col["factor"]].empty() ? 1.0f : std::stof(f[col["factor"]]);
         m.invert = f[col["invert"]] == "1";
         m.perLevel = f[col["perLevel"]] == "1";
         m.skill = f[col["skill"]];
@@ -504,6 +504,16 @@ int GameData::effectID(const std::string& name) const
     return it == effectIDs_.end() ? 0 : it->second;
 }
 
+std::vector<int> GameData::typeIDsInGroup(int groupID, bool publishedOnly) const
+{
+    std::vector<int> ids;
+    for (const auto& [id, t] : types_)
+        if (t.groupID == groupID && (t.published || !publishedOnly))
+            ids.push_back(id);
+    std::sort(ids.begin(), ids.end());
+    return ids;
+}
+
 std::vector<std::string> GameData::moduleNamesInGroup(int groupID, bool publishedOnly) const
 {
     std::vector<std::string> names;
@@ -531,7 +541,7 @@ std::vector<std::string> GameData::moduleNamesInGroup(const std::string& groupNa
     return names;
 }
 
-std::optional<double> GameData::typeAttr(const Type& type, const std::string& attrName) const
+std::optional<float> GameData::typeAttr(const Type& type, const std::string& attrName) const
 {
     int id = attributeID(attrName);
     return id ? type.attr(id) : std::nullopt;

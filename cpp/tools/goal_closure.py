@@ -41,7 +41,8 @@ GOALS = {
     'hullActive': [('ship', f'{x.lower()}DamageResonance') for x in RES] + [('module', 'structureDamageAmount')] + CAP,
 }
 # Owner kinds in v1 and the context pyfa runs their effects in.
-OWNERS = {'ship': 'ship', 'skill': 'skill', 'module': 'module', 'charge': 'moduleCharge'}
+OWNERS = {'ship': 'ship', 'skill': 'skill', 'module': 'module', 'charge': 'moduleCharge',
+          'implant': 'implant', 'booster': 'booster'}
 
 
 def unresolved(r):
@@ -54,6 +55,10 @@ def target_kind(r, owner):
         return 'ship'
     if d == 'modules':
         return 'charge' if r['target'] == 'charge' else 'module'
+    if d == 'appliedImplants':
+        return 'implant'
+    if d == 'boosters':
+        return 'booster'
     if d == 'self':
         if owner in ('module', 'charge'):  # charge effects run with the module as owner
             return 'charge' if r['target'] == 'charge' else 'module'

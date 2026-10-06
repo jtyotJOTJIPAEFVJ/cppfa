@@ -57,7 +57,7 @@ bool targetKindOf(const EffectModifier& m, SourceKind source, TargetKind& out)
 
 constexpr int kMaxDepth = 8;  // guards against cycles when amounts depend on modified attributes
 
-double roundTo2(double v) { return pymath::round(v, 2); }
+float roundTo2(float v) { return pymath::round(v, 2); }
 }
 
 AttributeModifier::AttributeModifier(const GameData& gd, const Ship& ship, const Character& character)
@@ -179,17 +179,17 @@ bool AttributeModifier::matches(const AppliedModifier& a, const ModifierTarget& 
     return true;
 }
 
-double AttributeModifier::amount(const AppliedModifier& m) const
+float AttributeModifier::amount(const AppliedModifier& m) const
 {
     return amountImpl(m, 0);
 }
 
-double AttributeModifier::amountImpl(const AppliedModifier& a, int depth) const
+float AttributeModifier::amountImpl(const AppliedModifier& a, int depth) const
 {
     const EffectModifier& m = *a.modifier;
     const Attribute* attr = gd_.attribute(gd_.attributeID(m.sourceAttr));
     if (!attr)
-        return 0.0;
+        return 0.0f;
 
     // Whose attribute holds the amount: usually the effect's owner.
     const Type* from = a.sourceType;
@@ -205,16 +205,16 @@ double AttributeModifier::amountImpl(const AppliedModifier& a, int depth) const
         fromShip = false;
     }
     if (!from)
-        return 0.0;
+        return 0.0f;
 
-    double base = from->attr(attr->id).value_or(attr->defaultValue);
+    float base = from->attr(attr->id).value_or(attr->defaultValue);
     // pyfa reads the *modified* attribute; for the ship that includes skill and
     // ship modifiers on the bonus attribute itself. (Nothing supported yet
     // modifies skill attributes.)
     if (fromShip && depth < kMaxDepth)
         base = modifyImpl(ModifierTarget{}, m.sourceAttr, base, depth + 1);
-    double value = base * a.levelMultiplier;
-    return m.invert ? (value != 0 ? m.factor / value : 0.0) : m.factor * value;
+    float value = base * a.levelMultiplier;
+    return m.invert ? (value != 0 ? m.factor / value : 0.0f) : m.factor * value;
 }
 
 std::vector<const AppliedModifier*> AttributeModifier::modifiersFor(const ModifierTarget& target,
@@ -229,49 +229,49 @@ std::vector<const AppliedModifier*> AttributeModifier::modifiersFor(const Modifi
     return out;
 }
 
-double AttributeModifier::modify(const std::string& attr, double value) const
+float AttributeModifier::modify(const std::string& attr, float value) const
 {
     return modifyImpl(ModifierTarget{}, attr, value, 0);
 }
 
-double AttributeModifier::modify(const ModifierTarget& target, const std::string& attr, double value) const
+float AttributeModifier::modify(const ModifierTarget& target, const std::string& attr, float value) const
 {
     return modifyImpl(target, attr, value, 0);
 }
 
-double AttributeModifier::modifyModule(const Type& module, const std::string& attr, double value, const Type* charge) const
+float AttributeModifier::modifyModule(const Type& module, const std::string& attr, float value, const Type* charge) const
 {
     return modify({TargetKind::Module, &module, nullptr, charge}, attr, value);
 }
 
-double AttributeModifier::modifyCharge(const Type& charge, const Type& module, const std::string& attr, double value) const
+float AttributeModifier::modifyCharge(const Type& charge, const Type& module, const std::string& attr, float value) const
 {
     return modify({TargetKind::Charge, &charge, &module, nullptr}, attr, value);
 }
 
-double AttributeModifier::modifyDrone(const Type& drone, const std::string& attr, double value) const
+float AttributeModifier::modifyDrone(const Type& drone, const std::string& attr, float value) const
 {
     return modify({TargetKind::Drone, &drone, nullptr, nullptr}, attr, value);
 }
 
-double AttributeModifier::modifyFighter(const Type& fighter, const std::string& attr, double value) const
+float AttributeModifier::modifyFighter(const Type& fighter, const std::string& attr, float value) const
 {
     return modify({TargetKind::Fighter, &fighter, nullptr, nullptr}, attr, value);
 }
 
-double AttributeModifier::modifyImpl(const ModifierTarget& target, const std::string& attr, double value, int depth) const
+float AttributeModifier::modifyImpl(const ModifierTarget& target, const std::string& attr, float value, int depth) const
 {
     return finish(target, attr, calculate(target, attr, value, depth), depth);
 }
 
 // Caps and rounding pyfa applies after the modifiers (also to forced values).
-double AttributeModifier::finish(const ModifierTarget& target, const std::string& attr, double val, int depth) const
+float AttributeModifier::finish(const ModifierTarget& target, const std::string& attr, float val, int depth) const
 {
     if (const Attribute* a = gd_.attribute(gd_.attributeID(attr)); a && depth < kMaxDepth)
     {
         // The cap is the (modified) value of another attribute on the same item.
         const Type* item = target.kind == TargetKind::Ship ? ship_ : target.item;
-        auto capValue = [&](int capID) -> std::optional<double> {
+        auto capValue = [&](int capID) -> std::optional<float> {
             const Attribute* cap = gd_.attribute(capID);
             if (!cap || !item)
                 return std::nullopt;
@@ -289,22 +289,22 @@ double AttributeModifier::finish(const ModifierTarget& target, const std::string
     return val;
 }
 
-double AttributeModifier::calculate(const ModifierTarget& target, const std::string& attr, double value, int depth) const
+float AttributeModifier::calculate(const ModifierTarget& target, const std::string& attr, float value, int depth) const
 {
     auto it = byAttr_.find(attr);
     if (it == byAttr_.end())
         return value;
 
-    std::optional<double> forced, preAssigned;
-    double preIncrease = 0.0, postIncrease = 0.0, multiplier = 1.0;
-    std::map<std::string, std::vector<double>> penalized;  // penalty group -> multipliers
+    std::optional<float> forced, preAssigned;
+    float preIncrease = 0.0f, postIncrease = 0.0f, multiplier = 1.0f;
+    std::map<std::string, std::vector<float>> penalized;  // penalty group -> multipliers
 
     for (const AppliedModifier& a : it->second)
     {
         if (!matches(a, target))
             continue;
         const EffectModifier& m = *a.modifier;
-        double amt = amountImpl(a, depth);
+        float amt = amountImpl(a, depth);
 
         if (m.operation == "force")
             forced = amt;
@@ -314,7 +314,7 @@ double AttributeModifier::calculate(const ModifierTarget& target, const std::str
             (m.position == "post" ? postIncrease : preIncrease) += amt;
         else if (m.operation == "boost" || m.operation == "multiply")
         {
-            double mult = m.operation == "boost" ? 1.0 + amt / 100.0 : amt;
+            float mult = m.operation == "boost" ? 1.0f + amt / 100.0f : amt;
             if (m.stackingPenalized)
                 penalized[m.penaltyGroup.empty() ? "default" : m.penaltyGroup].push_back(mult);
             else
@@ -325,22 +325,22 @@ double AttributeModifier::calculate(const ModifierTarget& target, const std::str
     if (forced)
         return *forced;
 
-    double val = preAssigned.value_or(value);
+    float val = preAssigned.value_or(value);
     val += preIncrease;
     val *= multiplier;
     // Each group is penalized independently; bonuses and penalties separately,
     // strongest first: 1 + (m - 1) * exp(-i^2 / 7.1289).
     for (auto& [group, mults] : penalized)
     {
-        std::vector<double> bonuses, maluses;
-        for (double m : mults)
+        std::vector<float> bonuses, maluses;
+        for (float m : mults)
             (m > 1 ? bonuses : maluses).push_back(m);
         for (auto* list : {&bonuses, &maluses})
         {
             std::stable_sort(list->begin(), list->end(),
-                             [](double a, double b) { return std::abs(a - 1) > std::abs(b - 1); });
+                             [](float a, float b) { return std::abs(a - 1) > std::abs(b - 1); });
             for (size_t i = 0; i < list->size(); ++i)
-                val *= 1 + ((*list)[i] - 1) * std::exp(-static_cast<double>(i * i) / 7.1289);
+                val *= 1 + ((*list)[i] - 1) * std::exp(-static_cast<float>(i * i) / 7.1289f);
         }
     }
     val += postIncrease;

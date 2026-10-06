@@ -45,7 +45,7 @@ struct Attribute
 {
     int id = 0;
     std::string name;
-    double defaultValue = 0.0;
+    float defaultValue = 0.0;
     // The modified value is clamped to these attributes' values on the same item.
     std::optional<int> minAttributeID;
     std::optional<int> maxAttributeID;
@@ -66,10 +66,10 @@ struct Type
     bool published = false;
 
     // Sorted by attribute ID / effect ID.
-    std::vector<std::pair<int, double>> attributes;
+    std::vector<std::pair<int, float>> attributes;
     std::vector<int> effects;
 
-    std::optional<double> attr(int attributeID) const;
+    std::optional<float> attr(int attributeID) const;
     bool hasEffect(int effectID) const;
 };
 
@@ -80,11 +80,11 @@ struct Module
     Slot slot = Slot::Low;
     // Requested attribute name -> value. Attributes the type doesn't define get
     // the attribute's default value from dgmattribs (as the game does).
-    std::unordered_map<std::string, double> attributes;
+    std::unordered_map<std::string, float> attributes;
 
     int id() const { return type->id; }
     const std::string& name() const { return type->name; }
-    double attr(const std::string& name) const { return attributes.at(name); }
+    float attr(const std::string& name) const { return attributes.at(name); }
 };
 
 // One attribute modification performed by an effect, as extracted from pyfa's
@@ -135,7 +135,7 @@ struct EffectModifier
     std::string targetAttr;  // attribute that gets modified
     std::string sourceAttr;  // attribute holding the bonus amount...
     std::string sourceOf;    // ...on: owner (the effect's item) | ship | skill:<name> | charge
-    double factor = 1.0;     // constant multiplier on the amount (e.g. -1)
+    float factor = 1.0;     // constant multiplier on the amount (e.g. -1)
     bool invert = false;     // amount = factor / value instead of factor * value
     bool perLevel = false;   // amount is multiplied by the owning skill's level
     std::string skill;       // amount is multiplied by this skill's level; empty = flat (role) bonus
@@ -176,7 +176,7 @@ struct ShipBonus
 {
     const EffectModifier* modifier = nullptr;
     int skillID = 0;              // 0 for role bonuses (modifier->skill empty) or unknown skills
-    std::optional<double> value;  // ship's sourceAttr value; per skill level when skill is set
+    std::optional<float> value;  // ship's sourceAttr value; per skill level when skill is set
 
     bool isRoleBonus() const { return modifier->skill.empty(); }
 };
@@ -186,13 +186,13 @@ struct Ship
     const Type* type = nullptr;
     SlotLayout slots;
     // Requested attribute name -> value, resolved like Module::attributes.
-    std::unordered_map<std::string, double> attributes;
+    std::unordered_map<std::string, float> attributes;
     // Skill bonuses first (by skill name), role bonuses last; effect order within each.
     std::vector<ShipBonus> bonuses;
 
     int id() const { return type->id; }
     const std::string& name() const { return type->name; }
-    double attr(const std::string& name) const { return attributes.at(name); }
+    float attr(const std::string& name) const { return attributes.at(name); }
     std::vector<const ShipBonus*> bonusesForSkill(const std::string& skillName) const;
 };
 
@@ -201,7 +201,7 @@ struct CharacterBonus
 {
     const Type* skill = nullptr;
     const EffectModifier* modifier = nullptr;
-    std::optional<double> value;  // skill's sourceAttr value; per level when modifier->perLevel
+    std::optional<float> value;  // skill's sourceAttr value; per level when modifier->perLevel
 };
 
 struct Character
@@ -233,7 +233,7 @@ public:
     int effectID(const std::string& name) const;
 
     // Convenience: attribute value on a type by attribute name.
-    std::optional<double> typeAttr(const Type& type, const std::string& attrName) const;
+    std::optional<float> typeAttr(const Type& type, const std::string& attrName) const;
 
     // Slot the type fits into (mirrors Module.calculateSlot in eos), or nullopt
     // if it isn't a fittable module.
@@ -272,6 +272,9 @@ public:
     const std::unordered_map<int, std::vector<EffectModifier>>& allWarfareBuffModifiers() const { return warfareBuffModifiers_; }
     size_t effectModifierCount() const { return modifierCount_; }
 
+    // Type IDs in a group, ascending (unpublished ones only if publishedOnly is false).
+    std::vector<int> typeIDsInGroup(int groupID, bool publishedOnly = true) const;
+
     // Names of the fittable modules in a group, sorted alphabetically. The
     // name overload matches every group with that exact name. Unpublished
     // (not obtainable in game) items are skipped unless publishedOnly is false.
@@ -288,7 +291,7 @@ private:
     static size_t loadModifierTable(const std::filesystem::path& tsv,
                                     std::unordered_map<int, std::vector<EffectModifier>>& into);
     // Requested attributes by name; type's value or the attribute's default.
-    std::unordered_map<std::string, double> resolveAttributes(const Type& type,
+    std::unordered_map<std::string, float> resolveAttributes(const Type& type,
                                                               const std::vector<std::string>& attributeNames) const;
 
     std::unordered_map<int, Type> types_;
