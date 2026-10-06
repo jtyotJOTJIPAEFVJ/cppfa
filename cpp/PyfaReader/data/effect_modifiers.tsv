@@ -578,6 +578,14 @@ effectID	effectName	effectType	runTime	contexts	operation	domain	target	targetAt
 2504	shipBonusHybridTrackingGF2	passive	normal	*	boost	modules	item	trackingSpeed	shipBonusGF2	owner	1	0	0	Gallente Frigate	skill:Small Hybrid Turret		0				
 2561	eliteBonusAssaultShipMissileVelocity1	passive	normal	*	boost	modules	charge	maxVelocity	eliteBonusGunship1	owner	1	0	0	Assault Frigates	charge.skill:Missile Launcher Operation		0				
 2589	modifyBoosterEffectChanceWithBoosterChanceBonusPostPercent	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	boosters	item		boosterChanceBonus	owner	1	0	0		unparsed:attr in booster.itemModifiedAttributes		0				targetAttr=attr
+2589	modifyBoosterEffectChanceWithBoosterChanceBonusPostPercent	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	boosters	item		boosterChanceBonus	owner	1	0	0		unparsed:attr in booster.itemModifiedAttributes		0				targetAttr=attr
+2589	modifyBoosterEffectChanceWithBoosterChanceBonusPostPercent	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	boosters	item		boosterChanceBonus	owner	1	0	0		unparsed:attr in booster.itemModifiedAttributes		0				targetAttr=attr
+2589	modifyBoosterEffectChanceWithBoosterChanceBonusPostPercent	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	boosters	item		boosterChanceBonus	owner	1	0	0		unparsed:attr in booster.itemModifiedAttributes		0				targetAttr=attr
+2589	modifyBoosterEffectChanceWithBoosterChanceBonusPostPercent	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	boosters	item		boosterChanceBonus	owner	1	0	0		unparsed:attr in booster.itemModifiedAttributes		0				targetAttr=attr
+2589	modifyBoosterEffectChanceWithBoosterChanceBonusPostPercent	passive	normal	skill	boost	boosters	item		boosterChanceBonus	owner	1	0	1		unparsed:attr in booster.itemModifiedAttributes		0				targetAttr=attr
+2589	modifyBoosterEffectChanceWithBoosterChanceBonusPostPercent	passive	normal	skill	boost	boosters	item		boosterChanceBonus	owner	1	0	1		unparsed:attr in booster.itemModifiedAttributes		0				targetAttr=attr
+2589	modifyBoosterEffectChanceWithBoosterChanceBonusPostPercent	passive	normal	skill	boost	boosters	item		boosterChanceBonus	owner	1	0	1		unparsed:attr in booster.itemModifiedAttributes		0				targetAttr=attr
+2589	modifyBoosterEffectChanceWithBoosterChanceBonusPostPercent	passive	normal	skill	boost	boosters	item		boosterChanceBonus	owner	1	0	1		unparsed:attr in booster.itemModifiedAttributes		0				targetAttr=attr
 2589	modifyBoosterEffectChanceWithBoosterChanceBonusPostPercent	passive	normal	skill	boost	boosters	item		boosterChanceBonus	owner	1	0	1		unparsed:attr in booster.itemModifiedAttributes		0				targetAttr=attr
 2602	shipBonusEmShieldResistanceCB2	passive	normal	*	boost	ship	item	shieldEmDamageResonance	shipBonus2CB	owner	1	0	0	Caldari Battleship			0				
 2603	shipBonusExplosiveShieldResistanceCB2	passive	normal	*	boost	ship	item	shieldExplosiveDamageResonance	shipBonus2CB	owner	1	0	0	Caldari Battleship			0				
@@ -2714,7 +2722,9 @@ effectID	effectName	effectType	runTime	contexts	operation	domain	target	targetAt
 6730	moduleBonusMicrowarpdrive	active	late	*	boost	ship	item	signatureRadius	signatureRadiusBonus	owner	1	0	0				1	default			
 6731	moduleBonusAfterburner	active	late	*	increase	ship	item	mass	massAddition	owner	1	0	0				0		pre		
 6731	moduleBonusAfterburner	active	late	*	boost	ship	item	maxVelocity	mass	ship	1	0	0				1	postMul		module.getModifiedItemAttr('speedFactor') * module.getModifiedItemAttr('speedBoostFactor') / fit.ship.getModifiedItemAttr('mass')	
-6737	chargeBonusWarfareCharge	offline	normal	*	multiply	self	item				1	0	0				0			module.getModifiedChargeAttr('warfareBuff{}Multiplier'.format(x))	targetAttr='warfareBuff{}Value'.format(x); no source attribute
+6737	chargeBonusWarfareCharge	offline	normal	*	multiply	self	item	warfareBuff1Value	warfareBuff1Multiplier	charge	1	0	0				0				
+6737	chargeBonusWarfareCharge	offline	normal	*	multiply	self	item	warfareBuff2Value	warfareBuff2Multiplier	charge	1	0	0				0				
+6737	chargeBonusWarfareCharge	offline	normal	*	multiply	self	item	warfareBuff3Value	warfareBuff3Multiplier	charge	1	0	0				0				
 6762	miningDroneSpecBonus	passive	normal	*	boost	drones	item	miningAmount	miningAmountBonus	owner	1	0	1		skill:Mining Drone Specialization		0				
 6762	miningDroneSpecBonus	passive	normal	*	boost	drones	item	maxVelocity	maxVelocityBonus	owner	1	0	1		skill:Mining Drone Specialization		0				
 6763	iceHarvestingDroneOperationDurationBonus	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	drones	item	duration	rofBonus	owner	1	0	0		skill:Ice Harvesting Drone Operation		0				

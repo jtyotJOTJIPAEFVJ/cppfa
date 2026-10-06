@@ -70,6 +70,7 @@ enum class Attr : uint16_t
     hullKineticDamageResonance,
     hullThermalDamageResonance,
     iceHarvestCycleBonus,
+    industrialCoreBonusMiningBurstStrength,
     industrialCoreLocalLogisticsAmountBonus,
     industrialCoreLocalLogisticsDurationBonus,
     industrialCoreRemoteLogisticsDurationBonus,
@@ -167,6 +168,7 @@ enum class Attr : uint16_t
     subsystemBonusGallenteDefensive,
     subsystemBonusGallenteDefensive2,
     subsystemBonusGallenteDefensive3,
+    subsystemBonusGallenteOffensive,
     subsystemBonusGallenteOffensive2,
     subsystemBonusGallenteOffensive3,
     subsystemBonusGallentePropulsion,
@@ -174,6 +176,7 @@ enum class Attr : uint16_t
     subsystemBonusMinmatarDefensive,
     subsystemBonusMinmatarDefensive2,
     subsystemBonusMinmatarDefensive3,
+    subsystemBonusMinmatarOffensive,
     subsystemBonusMinmatarOffensive2,
     subsystemBonusMinmatarOffensive3,
     subsystemCommandBurstFittingReduction,
@@ -192,10 +195,17 @@ enum class Attr : uint16_t
     upgradeCapacity,
     upgradeCost,
     volume,
+    warfareBuff1Multiplier,
+    warfareBuff1Value,
+    warfareBuff2Multiplier,
+    warfareBuff2Value,
+    warfareBuff3Multiplier,
+    warfareBuff3Value,
+    warfareBuff4Value,
     warfareLinkCPUAdd,
     warfareLinkCPUPenalty,
 };
-inline constexpr size_t kAttrCount = 183;
+inline constexpr size_t kAttrCount = 193;
 
 // eve.db attributeID per Attr.
 inline constexpr uint16_t kAttrEveID[kAttrCount] = {
@@ -203,18 +213,19 @@ inline constexpr uint16_t kAttrEveID[kAttrCount] = {
     6187, 3109, 317, 314, 67, 482, 1079, 147, 6, 144, 38, 72,
     56, 1886, 649, 1870, 1871, 1034, 50, 202, 310, 48, 424, 1082,
     1138, 73, 66, 3115, 312, 984, 2402, 113, 2041, 1190, 985, 2403,
-    111, 1374, 14, 2751, 9, 974, 975, 327, 976, 977, 780, 2607,
-    2606, 2605, 986, 2404, 109, 1369, 101, 1376, 12, 1375, 13, 2691,
-    6082, 2030, 1997, 1998, 2000, 2032, 5962, 5961, 1999, 669, 1230, 1208,
-    1205, 1206, 1231, 30, 313, 549, 323, 11, 145, 90, 55, 1795,
-    806, 1978, 1979, 2746, 1849, 1137, 293, 1923, 1906, 308, 68, 851,
-    548, 263, 337, 146, 271, 272, 273, 274, 2298, 2299, 2300, 2301,
-    2821, 2305, 2347, 5988, 2346, 2345, 2344, 3161, 51, 204, 83, 2743,
-    2688, 150, 2442, 2437, 1431, 1509, 2681, 1433, 1507, 2680, 1434, 1511,
-    1531, 1441, 1443, 1516, 2682, 1444, 1510, 1533, 1436, 1438, 1517, 2684,
-    1521, 1532, 1440, 1446, 1448, 1526, 2686, 1522, 1534, 2692, 2665, 2668,
-    2666, 2669, 2667, 2671, 2670, 987, 2405, 110, 1368, 102, 1132, 1153,
-    161, 1882, 1883,
+    111, 1374, 14, 2751, 9, 974, 975, 327, 976, 977, 780, 2587,
+    2607, 2606, 2605, 986, 2404, 109, 1369, 101, 1376, 12, 1375, 13,
+    2691, 6082, 2030, 1997, 1998, 2000, 2032, 5962, 5961, 1999, 669, 1230,
+    1208, 1205, 1206, 1231, 30, 313, 549, 323, 11, 145, 90, 55,
+    1795, 806, 1978, 1979, 2746, 1849, 1137, 293, 1923, 1906, 308, 68,
+    851, 548, 263, 337, 146, 271, 272, 273, 274, 2298, 2299, 2300,
+    2301, 2821, 2305, 2347, 5988, 2346, 2345, 2344, 3161, 51, 204, 83,
+    2743, 2688, 150, 2442, 2437, 1431, 1509, 2681, 1433, 1507, 2680, 1434,
+    1511, 1531, 1441, 1443, 1516, 2682, 1444, 1510, 1533, 1436, 1438, 1517,
+    2684, 1439, 1521, 1532, 1440, 1446, 1448, 1526, 2686, 1449, 1522, 1534,
+    2692, 2665, 2668, 2666, 2669, 2667, 2671, 2670, 987, 2405, 110, 1368,
+    102, 1132, 1153, 161, 2596, 2469, 2597, 2471, 2598, 2473, 2537, 1882,
+    1883,
 };
 
 inline constexpr const char* kAttrName[kAttrCount] = {
@@ -277,6 +288,7 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "hullKineticDamageResonance",
     "hullThermalDamageResonance",
     "iceHarvestCycleBonus",
+    "industrialCoreBonusMiningBurstStrength",
     "industrialCoreLocalLogisticsAmountBonus",
     "industrialCoreLocalLogisticsDurationBonus",
     "industrialCoreRemoteLogisticsDurationBonus",
@@ -374,6 +386,7 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "subsystemBonusGallenteDefensive",
     "subsystemBonusGallenteDefensive2",
     "subsystemBonusGallenteDefensive3",
+    "subsystemBonusGallenteOffensive",
     "subsystemBonusGallenteOffensive2",
     "subsystemBonusGallenteOffensive3",
     "subsystemBonusGallentePropulsion",
@@ -381,6 +394,7 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "subsystemBonusMinmatarDefensive",
     "subsystemBonusMinmatarDefensive2",
     "subsystemBonusMinmatarDefensive3",
+    "subsystemBonusMinmatarOffensive",
     "subsystemBonusMinmatarOffensive2",
     "subsystemBonusMinmatarOffensive3",
     "subsystemCommandBurstFittingReduction",
@@ -399,6 +413,13 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "upgradeCapacity",
     "upgradeCost",
     "volume",
+    "warfareBuff1Multiplier",
+    "warfareBuff1Value",
+    "warfareBuff2Multiplier",
+    "warfareBuff2Value",
+    "warfareBuff3Multiplier",
+    "warfareBuff3Value",
+    "warfareBuff4Value",
     "warfareLinkCPUAdd",
     "warfareLinkCPUPenalty",
 };
@@ -447,7 +468,7 @@ struct ShipAttrs
 };
 static_assert(sizeof(ShipAttrs) == 28 * sizeof(float));
 
-// Groups: Advanced Artillery Ammo, Advanced Autocannon Ammo, Advanced Beam Laser Crystal, Advanced Cruise Missile, Advanced Heavy Assault Missile, Advanced Heavy Missile, Advanced Light Missile, Advanced Rocket, Advanced Torpedo, Advanced XL Cruise Missile, Advanced XL Torpedo, Armor Command Burst Charges, Auto-Targeting Cruise Missile, Auto-Targeting Heavy Missile, Auto-Targeting Light Missile, Bomb, Bomb ECM, Bomb Energy, Cruise Missile, Defender Missiles, Expedition Command Burst Charges, Guidance Disruption Script, Guided Bomb, Heavy Assault Missile, Heavy Missile, Information Command Burst Charges, Light Missile, Mining Foreman Burst Charges, Missile Guidance Script, Nanite Repair Paste, Projectile Ammo, Rocket, SCARAB Breacher Pods, Scanner Probe, Sensor Booster Script, Sensor Dampener Script, Shield Command Burst Charges, Skirmish Command Burst Charges, Structure Anti-Capital Missile, Structure Anti-Subcapital Missile, Structure Area Denial Ammunition, Structure ECM script, Structure Warp Disruptor Script, Survey Probe, Torpedo, Tracking Disruption Script, Tracking Script, XL Cruise Missile, XL Torpedo
+// Groups: Advanced Artillery Ammo, Advanced Autocannon Ammo, Advanced Beam Laser Crystal, Advanced Cruise Missile, Advanced Heavy Assault Missile, Advanced Heavy Missile, Advanced Light Missile, Advanced Rocket, Advanced Torpedo, Advanced XL Cruise Missile, Advanced XL Torpedo, Auto-Targeting Cruise Missile, Auto-Targeting Heavy Missile, Auto-Targeting Light Missile, Bomb, Bomb ECM, Bomb Energy, Cruise Missile, Defender Missiles, Guidance Disruption Script, Guided Bomb, Heavy Assault Missile, Heavy Missile, Light Missile, Missile Guidance Script, Nanite Repair Paste, Projectile Ammo, Rocket, SCARAB Breacher Pods, Scanner Probe, Sensor Booster Script, Sensor Dampener Script, Structure Anti-Capital Missile, Structure Anti-Subcapital Missile, Structure Area Denial Ammunition, Structure ECM script, Structure Warp Disruptor Script, Survey Probe, Torpedo, Tracking Disruption Script, Tracking Script, XL Cruise Missile, XL Torpedo
 struct ProjectileAmmoChargeAttrs
 {
     float capacitorBonus = 0.0f;
@@ -621,8 +642,11 @@ struct EnergyWeaponAttrs
     float structureRigEwarCapUseBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
 
-    static constexpr Attr kFields[30] = {
+    static constexpr Attr kFields[33] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
         Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus, Attr::hullEmDamageResonance,
@@ -630,10 +654,11 @@ struct EnergyWeaponAttrs
         Attr::overloadRofBonus, Attr::power, Attr::reloadTime, Attr::resistanceKiller,
         Attr::resistanceKillerHull, Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance,
         Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speed, Attr::structureRigEwarCapUseBonus,
-        Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
+        Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value,
+        Attr::warfareBuff3Value,
     };
 };
-static_assert(sizeof(EnergyWeaponAttrs) == 30 * sizeof(float));
+static_assert(sizeof(EnergyWeaponAttrs) == 33 * sizeof(float));
 
 // Groups: Hybrid Weapon, Missile Launcher Heavy Assault, Missile Launcher Rocket, Missile Launcher Torpedo, Projectile Weapon
 struct ProjectileWeaponAttrs
@@ -669,8 +694,11 @@ struct ProjectileWeaponAttrs
     float structureRigEwarCapUseBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
 
-    static constexpr Attr kFields[31] = {
+    static constexpr Attr kFields[34] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
         Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
@@ -678,10 +706,11 @@ struct ProjectileWeaponAttrs
         Attr::kineticDamageResistanceBonus, Attr::overloadRofBonus, Attr::power, Attr::reloadTime,
         Attr::resistanceKiller, Attr::resistanceKillerHull, Attr::shieldBonus, Attr::shieldEmDamageResonance,
         Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speed,
-        Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
+        Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value,
+        Attr::warfareBuff2Value, Attr::warfareBuff3Value,
     };
 };
-static_assert(sizeof(ProjectileWeaponAttrs) == 31 * sizeof(float));
+static_assert(sizeof(ProjectileWeaponAttrs) == 34 * sizeof(float));
 
 // Groups: Interdiction Sphere Launcher, Missile Launcher Cruise, Missile Launcher Heavy, Missile Launcher Light, Missile Launcher Rapid Heavy, Missile Launcher Rapid Light, Missile Launcher Rapid Torpedo, Missile Launcher XL Cruise, Missile Launcher XL Torpedo, Vorton Projector
 struct MissileLauncherLightAttrs
@@ -715,8 +744,11 @@ struct MissileLauncherLightAttrs
     float structureRigEwarCapUseBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
 
-    static constexpr Attr kFields[29] = {
+    static constexpr Attr kFields[32] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
         Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
@@ -724,10 +756,10 @@ struct MissileLauncherLightAttrs
         Attr::kineticDamageResistanceBonus, Attr::overloadRofBonus, Attr::power, Attr::reloadTime,
         Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance,
         Attr::shieldThermalDamageResonance, Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus,
-        Attr::thermalDamageResistanceBonus,
+        Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
     };
 };
-static_assert(sizeof(MissileLauncherLightAttrs) == 29 * sizeof(float));
+static_assert(sizeof(MissileLauncherLightAttrs) == 32 * sizeof(float));
 
 // Groups: Capacitor Power Relay
 struct CapacitorPowerRelayAttrs
@@ -947,8 +979,11 @@ struct CapacitorBoosterAttrs
     float structureRigEwarCapUseBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
 
-    static constexpr Attr kFields[29] = {
+    static constexpr Attr kFields[32] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
         Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
@@ -956,10 +991,10 @@ struct CapacitorBoosterAttrs
         Attr::kineticDamageResistanceBonus, Attr::overloadSelfDurationBonus, Attr::power, Attr::reloadTime,
         Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance,
         Attr::shieldThermalDamageResonance, Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus,
-        Attr::thermalDamageResistanceBonus,
+        Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
     };
 };
-static_assert(sizeof(CapacitorBoosterAttrs) == 29 * sizeof(float));
+static_assert(sizeof(CapacitorBoosterAttrs) == 32 * sizeof(float));
 
 // Groups: Shield Hardener
 struct ShieldHardenerAttrs
@@ -1135,18 +1170,22 @@ struct SensorBoosterAttrs
     float structureRigEwarCapUseBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
 
-    static constexpr Attr kFields[27] = {
+    static constexpr Attr kFields[30] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
         Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus, Attr::hullEmDamageResonance,
         Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus,
         Attr::power, Attr::reloadTime, Attr::shieldBonus, Attr::shieldEmDamageResonance,
         Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speed,
-        Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
+        Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value,
+        Attr::warfareBuff2Value, Attr::warfareBuff3Value,
     };
 };
-static_assert(sizeof(SensorBoosterAttrs) == 27 * sizeof(float));
+static_assert(sizeof(SensorBoosterAttrs) == 30 * sizeof(float));
 
 // Groups: CPU Enhancer
 struct CpuEnhancerAttrs
@@ -1236,8 +1275,11 @@ struct WarpDisruptFieldGeneratorAttrs
     float structureRigEwarCapUseBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
 
-    static constexpr Attr kFields[28] = {
+    static constexpr Attr kFields[31] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
         Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus, Attr::hullEmDamageResonance,
@@ -1245,9 +1287,10 @@ struct WarpDisruptFieldGeneratorAttrs
         Attr::overloadSelfDurationBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
         Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
         Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
+        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
     };
 };
-static_assert(sizeof(WarpDisruptFieldGeneratorAttrs) == 28 * sizeof(float));
+static_assert(sizeof(WarpDisruptFieldGeneratorAttrs) == 31 * sizeof(float));
 
 // Groups: Auxiliary Power Core
 struct AuxiliaryPowerCoreAttrs
@@ -1295,8 +1338,11 @@ struct MissileLauncherBombAttrs
     float structureRigEwarCapUseBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
 
-    static constexpr Attr kFields[29] = {
+    static constexpr Attr kFields[32] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
         Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
@@ -1304,10 +1350,10 @@ struct MissileLauncherBombAttrs
         Attr::kineticDamageResistanceBonus, Attr::moduleReactivationDelay, Attr::power, Attr::reloadTime,
         Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance,
         Attr::shieldThermalDamageResonance, Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus,
-        Attr::thermalDamageResistanceBonus,
+        Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
     };
 };
-static_assert(sizeof(MissileLauncherBombAttrs) == 29 * sizeof(float));
+static_assert(sizeof(MissileLauncherBombAttrs) == 32 * sizeof(float));
 
 // Groups: Gang Coordinator
 struct GangCoordinatorAttrs
@@ -1348,6 +1394,7 @@ struct SiegeModuleAttrs
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
+    float industrialCoreBonusMiningBurstStrength = 0.0f;
     float industrialCoreLocalLogisticsAmountBonus = 0.0f;
     float industrialCoreLocalLogisticsDurationBonus = 0.0f;
     float industrialCoreRemoteLogisticsDurationBonus = 0.0f;
@@ -1364,21 +1411,21 @@ struct SiegeModuleAttrs
     float siegeRemoteLogisticsAmountBonus = 0.0f;
     float siegeRemoteLogisticsDurationBonus = 0.0f;
 
-    static constexpr Attr kFields[33] = {
+    static constexpr Attr kFields[34] = {
         Attr::armorDamageAmountBonus, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::bastionMissileROFBonus, Attr::bastionModeArmorRepairCapDurationBonus, Attr::bastionModeShieldBoosterCapDurationBonus,
         Attr::bastionTurretROFBonus, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
         Attr::duration, Attr::ewCapacitorNeedBonus, Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance,
-        Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance, Attr::industrialCoreLocalLogisticsAmountBonus, Attr::industrialCoreLocalLogisticsDurationBonus,
-        Attr::industrialCoreRemoteLogisticsDurationBonus, Attr::power, Attr::shieldBoostMultiplier, Attr::shieldEmDamageResonance,
-        Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::siegeHAWMissileROFBonus,
-        Attr::siegeLauncherROFBonus, Attr::siegeLocalLogisticsAmountBonus, Attr::siegeLocalLogisticsDurationBonus, Attr::siegeRemoteLogisticsAmountBonus,
-        Attr::siegeRemoteLogisticsDurationBonus,
+        Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance, Attr::industrialCoreBonusMiningBurstStrength, Attr::industrialCoreLocalLogisticsAmountBonus,
+        Attr::industrialCoreLocalLogisticsDurationBonus, Attr::industrialCoreRemoteLogisticsDurationBonus, Attr::power, Attr::shieldBoostMultiplier,
+        Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
+        Attr::siegeHAWMissileROFBonus, Attr::siegeLauncherROFBonus, Attr::siegeLocalLogisticsAmountBonus, Attr::siegeLocalLogisticsDurationBonus,
+        Attr::siegeRemoteLogisticsAmountBonus, Attr::siegeRemoteLogisticsDurationBonus,
     };
 };
-static_assert(sizeof(SiegeModuleAttrs) == 33 * sizeof(float));
+static_assert(sizeof(SiegeModuleAttrs) == 34 * sizeof(float));
 
-// Groups: Capital Mobility Modules, Micro Jump Drive, Micro Jump Field Generators, Super Weapon, Titan Phenomena Generator, Warp Core Stabilizer
+// Groups: Capital Mobility Modules, Micro Jump Drive, Micro Jump Field Generators, Super Weapon, Warp Core Stabilizer
 struct MicroJumpDriveAttrs
 {
     float capacitorNeed = 0.0f;
@@ -1612,8 +1659,11 @@ struct FestivalLauncherAttrs
     float structureRigEwarCapUseBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
 
-    static constexpr Attr kFields[28] = {
+    static constexpr Attr kFields[31] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
         Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
@@ -1621,9 +1671,10 @@ struct FestivalLauncherAttrs
         Attr::kineticDamageResistanceBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
         Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
         Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
+        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
     };
 };
-static_assert(sizeof(FestivalLauncherAttrs) == 28 * sizeof(float));
+static_assert(sizeof(FestivalLauncherAttrs) == 31 * sizeof(float));
 
 // Groups: Cynosural Field Generator
 struct CynosuralFieldGeneratorAttrs
@@ -2018,8 +2069,11 @@ struct AncillaryRemoteArmorRepairerAttrs
     float structureRigEwarCapUseBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
 
-    static constexpr Attr kFields[32] = {
+    static constexpr Attr kFields[35] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
         Attr::chargedArmorDamageMultiplier, Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus,
@@ -2028,9 +2082,10 @@ struct AncillaryRemoteArmorRepairerAttrs
         Attr::overloadSelfDurationBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
         Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
         Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
+        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
     };
 };
-static_assert(sizeof(AncillaryRemoteArmorRepairerAttrs) == 32 * sizeof(float));
+static_assert(sizeof(AncillaryRemoteArmorRepairerAttrs) == 35 * sizeof(float));
 
 // Groups: Ancillary Remote Shield Booster
 struct AncillaryRemoteShieldBoosterAttrs
@@ -2066,8 +2121,11 @@ struct AncillaryRemoteShieldBoosterAttrs
     float structureRigEwarCapUseBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
 
-    static constexpr Attr kFields[31] = {
+    static constexpr Attr kFields[34] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
         Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
@@ -2075,10 +2133,11 @@ struct AncillaryRemoteShieldBoosterAttrs
         Attr::kineticDamageResistanceBonus, Attr::mediumRemoteRepFittingMultiplier, Attr::overloadSelfDurationBonus, Attr::overloadShieldBonus,
         Attr::power, Attr::reloadTime, Attr::shieldBonus, Attr::shieldEmDamageResonance,
         Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speed,
-        Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
+        Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value,
+        Attr::warfareBuff2Value, Attr::warfareBuff3Value,
     };
 };
-static_assert(sizeof(AncillaryRemoteShieldBoosterAttrs) == 31 * sizeof(float));
+static_assert(sizeof(AncillaryRemoteShieldBoosterAttrs) == 34 * sizeof(float));
 
 // Groups: Flex Armor Hardener
 struct FlexArmorHardenerAttrs
@@ -2113,8 +2172,11 @@ struct FlexArmorHardenerAttrs
     float structureRigEwarCapUseBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
 
-    static constexpr Attr kFields[30] = {
+    static constexpr Attr kFields[33] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorHPBonusAdd,
         Attr::armorKineticDamageResonance, Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity,
         Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
@@ -2122,10 +2184,11 @@ struct FlexArmorHardenerAttrs
         Attr::kineticDamageResistanceBonus, Attr::overloadHardeningBonus, Attr::overloadSelfDurationBonus, Attr::power,
         Attr::reloadTime, Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance,
         Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speed, Attr::structureRigEwarCapUseBonus,
-        Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
+        Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value,
+        Attr::warfareBuff3Value,
     };
 };
-static_assert(sizeof(FlexArmorHardenerAttrs) == 30 * sizeof(float));
+static_assert(sizeof(FlexArmorHardenerAttrs) == 33 * sizeof(float));
 
 // Groups: Flex Shield Hardener
 struct FlexShieldHardenerAttrs
@@ -2158,8 +2221,11 @@ struct FlexShieldHardenerAttrs
     float structureRigEwarCapUseBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
 
-    static constexpr Attr kFields[28] = {
+    static constexpr Attr kFields[31] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
         Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus, Attr::hullEmDamageResonance,
@@ -2167,9 +2233,10 @@ struct FlexShieldHardenerAttrs
         Attr::overloadHardeningBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
         Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
         Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
+        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
     };
 };
-static_assert(sizeof(FlexShieldHardenerAttrs) == 28 * sizeof(float));
+static_assert(sizeof(FlexShieldHardenerAttrs) == 31 * sizeof(float));
 
 // Groups: Flex Armor Hardener Script, Flex Shield Hardener Script
 struct FlexArmorHardenerScriptChargeAttrs
@@ -2219,9 +2286,13 @@ struct CommandBurstAttrs
     float structureRigEwarCapUseBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
+    float warfareBuff4Value = 0.0f;
     float warfareLinkCPUAdd = 0.0f;
 
-    static constexpr Attr kFields[29] = {
+    static constexpr Attr kFields[33] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
         Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
@@ -2229,10 +2300,49 @@ struct CommandBurstAttrs
         Attr::kineticDamageResistanceBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
         Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
         Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
+        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warfareBuff4Value,
         Attr::warfareLinkCPUAdd,
     };
 };
-static_assert(sizeof(CommandBurstAttrs) == 29 * sizeof(float));
+static_assert(sizeof(CommandBurstAttrs) == 33 * sizeof(float));
+
+// Groups: Armor Command Burst Charges, Expedition Command Burst Charges, Information Command Burst Charges, Mining Foreman Burst Charges, Shield Command Burst Charges, Skirmish Command Burst Charges
+struct ShieldCommandBurstChargesChargeAttrs
+{
+    float capacitorBonus = 0.0f;
+    float volume = 0.0f;
+    float warfareBuff1Multiplier = 0.0f;
+    float warfareBuff2Multiplier = 0.0f;
+    float warfareBuff3Multiplier = 0.0f;
+
+    static constexpr Attr kFields[5] = {
+        Attr::capacitorBonus, Attr::volume, Attr::warfareBuff1Multiplier, Attr::warfareBuff2Multiplier,
+        Attr::warfareBuff3Multiplier,
+    };
+};
+static_assert(sizeof(ShieldCommandBurstChargesChargeAttrs) == 5 * sizeof(float));
+
+// Groups: Titan Phenomena Generator
+struct TitanPhenomenaGeneratorAttrs
+{
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float moduleReactivationDelay = 0.0f;
+    float power = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
+    float warfareBuff4Value = 0.0f;
+
+    static constexpr Attr kFields[10] = {
+        Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
+        Attr::moduleReactivationDelay, Attr::power, Attr::warfareBuff1Value, Attr::warfareBuff2Value,
+        Attr::warfareBuff3Value, Attr::warfareBuff4Value,
+    };
+};
+static_assert(sizeof(TitanPhenomenaGeneratorAttrs) == 10 * sizeof(float));
 
 // Groups: Defensive Subsystem
 struct DefensiveSubsystemAttrs
@@ -2289,8 +2399,10 @@ struct OffensiveSubsystemAttrs
     float subsystemBonusCaldariOffensive = 0.0f;
     float subsystemBonusCaldariOffensive2 = 0.0f;
     float subsystemBonusCaldariOffensive3 = 0.0f;
+    float subsystemBonusGallenteOffensive = 0.0f;
     float subsystemBonusGallenteOffensive2 = 0.0f;
     float subsystemBonusGallenteOffensive3 = 0.0f;
+    float subsystemBonusMinmatarOffensive = 0.0f;
     float subsystemBonusMinmatarOffensive2 = 0.0f;
     float subsystemBonusMinmatarOffensive3 = 0.0f;
     float subsystemCommandBurstFittingReduction = 0.0f;
@@ -2303,17 +2415,18 @@ struct OffensiveSubsystemAttrs
     float turretHardPointModifier = 0.0f;
     float warfareLinkCPUPenalty = 0.0f;
 
-    static constexpr Attr kFields[27] = {
+    static constexpr Attr kFields[29] = {
         Attr::capacitorCapacity, Attr::capacity, Attr::cpuOutput, Attr::hiSlotModifier,
         Attr::launcherHardPointModifier, Attr::lowSlotModifier, Attr::medSlotModifier, Attr::powerOutput,
         Attr::subsystemBonusAmarrOffensive, Attr::subsystemBonusAmarrOffensive2, Attr::subsystemBonusAmarrOffensive3, Attr::subsystemBonusCaldariOffensive,
-        Attr::subsystemBonusCaldariOffensive2, Attr::subsystemBonusCaldariOffensive3, Attr::subsystemBonusGallenteOffensive2, Attr::subsystemBonusGallenteOffensive3,
-        Attr::subsystemBonusMinmatarOffensive2, Attr::subsystemBonusMinmatarOffensive3, Attr::subsystemCommandBurstFittingReduction, Attr::subsystemMETFittingReduction,
-        Attr::subsystemMHTFittingReduction, Attr::subsystemMMissileFittingReduction, Attr::subsystemMPTFittingReduction, Attr::subsystemMRARFittingReduction,
-        Attr::subsystemMRSBFittingReduction, Attr::turretHardPointModifier, Attr::warfareLinkCPUPenalty,
+        Attr::subsystemBonusCaldariOffensive2, Attr::subsystemBonusCaldariOffensive3, Attr::subsystemBonusGallenteOffensive, Attr::subsystemBonusGallenteOffensive2,
+        Attr::subsystemBonusGallenteOffensive3, Attr::subsystemBonusMinmatarOffensive, Attr::subsystemBonusMinmatarOffensive2, Attr::subsystemBonusMinmatarOffensive3,
+        Attr::subsystemCommandBurstFittingReduction, Attr::subsystemMETFittingReduction, Attr::subsystemMHTFittingReduction, Attr::subsystemMMissileFittingReduction,
+        Attr::subsystemMPTFittingReduction, Attr::subsystemMRARFittingReduction, Attr::subsystemMRSBFittingReduction, Attr::turretHardPointModifier,
+        Attr::warfareLinkCPUPenalty,
     };
 };
-static_assert(sizeof(OffensiveSubsystemAttrs) == 27 * sizeof(float));
+static_assert(sizeof(OffensiveSubsystemAttrs) == 29 * sizeof(float));
 
 // Groups: Propulsion Subsystem
 struct PropulsionSubsystemAttrs
@@ -2586,13 +2699,13 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {1701, true, FlexArmorHardenerScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(FlexArmorHardenerScriptChargeAttrs::kFields))},  // Flex Armor Hardener Script
     {1702, true, FlexArmorHardenerScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(FlexArmorHardenerScriptChargeAttrs::kFields))},  // Flex Shield Hardener Script
     {1706, false, CapitalSensorArrayAttrs::kFields, static_cast<uint8_t>(std::size(CapitalSensorArrayAttrs::kFields))},  // Capital Sensor Array
-    {1769, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Shield Command Burst Charges
+    {1769, true, ShieldCommandBurstChargesChargeAttrs::kFields, static_cast<uint8_t>(std::size(ShieldCommandBurstChargesChargeAttrs::kFields))},  // Shield Command Burst Charges
     {1770, false, CommandBurstAttrs::kFields, static_cast<uint8_t>(std::size(CommandBurstAttrs::kFields))},  // Command Burst
-    {1771, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Mining Foreman Burst Charges
-    {1772, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Skirmish Command Burst Charges
-    {1773, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Information Command Burst Charges
-    {1774, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Armor Command Burst Charges
-    {1815, false, MicroJumpDriveAttrs::kFields, static_cast<uint8_t>(std::size(MicroJumpDriveAttrs::kFields))},  // Titan Phenomena Generator
+    {1771, true, ShieldCommandBurstChargesChargeAttrs::kFields, static_cast<uint8_t>(std::size(ShieldCommandBurstChargesChargeAttrs::kFields))},  // Mining Foreman Burst Charges
+    {1772, true, ShieldCommandBurstChargesChargeAttrs::kFields, static_cast<uint8_t>(std::size(ShieldCommandBurstChargesChargeAttrs::kFields))},  // Skirmish Command Burst Charges
+    {1773, true, ShieldCommandBurstChargesChargeAttrs::kFields, static_cast<uint8_t>(std::size(ShieldCommandBurstChargesChargeAttrs::kFields))},  // Information Command Burst Charges
+    {1774, true, ShieldCommandBurstChargesChargeAttrs::kFields, static_cast<uint8_t>(std::size(ShieldCommandBurstChargesChargeAttrs::kFields))},  // Armor Command Burst Charges
+    {1815, false, TitanPhenomenaGeneratorAttrs::kFields, static_cast<uint8_t>(std::size(TitanPhenomenaGeneratorAttrs::kFields))},  // Titan Phenomena Generator
     {1976, true, InterdictionProbeChargeAttrs::kFields, static_cast<uint8_t>(std::size(InterdictionProbeChargeAttrs::kFields))},  // Structure Festival Charges
     {1986, false, FestivalLauncherAttrs::kFields, static_cast<uint8_t>(std::size(FestivalLauncherAttrs::kFields))},  // Precursor Weapon
     {1987, true, HybridChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(HybridChargeChargeAttrs::kFields))},  // Exotic Plasma Charge
@@ -2615,6 +2728,6 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {4769, false, MicroJumpDriveAttrs::kFields, static_cast<uint8_t>(std::size(MicroJumpDriveAttrs::kFields))},  // Capital Mobility Modules
     {4807, false, FestivalLauncherAttrs::kFields, static_cast<uint8_t>(std::size(FestivalLauncherAttrs::kFields))},  // Breacher Pod Launchers
     {4808, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // SCARAB Breacher Pods
-    {4905, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Expedition Command Burst Charges
+    {4905, true, ShieldCommandBurstChargesChargeAttrs::kFields, static_cast<uint8_t>(std::size(ShieldCommandBurstChargesChargeAttrs::kFields))},  // Expedition Command Burst Charges
 };
 }  // namespace fitschema

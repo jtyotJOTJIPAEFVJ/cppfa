@@ -95,7 +95,7 @@ def main():
     needed = set()
     used = []
     for roots in goal_closure.GOALS.values():
-        attrs, u = goal_closure.closure(rows, roots + goal_closure.FITTING)
+        attrs, u = goal_closure.closure(rows, roots + goal_closure.FITTING + goal_closure.BURSTS)
         needed |= attrs
         used += u
 

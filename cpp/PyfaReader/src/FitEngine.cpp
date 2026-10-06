@@ -53,6 +53,7 @@ enum class SourceSel : uint8_t
     Ship,
     OwnerCharge,
     Skill,  // a character skill's attribute
+    Buff,   // a command burst buff's value (warfare buff table)
 };
 
 enum class ItemKind : uint8_t
@@ -121,6 +122,9 @@ enum : int
     kEffRAH = 4928,
     kEffFueledShieldBoosting = 4936,
     kEffFueledArmorRepair = 5275,
+    // moduleBonusWarfareLink{Armor,Shield,Skirmish,Info,Mining}: command bursts
+    kEffWarfareLinkFirst = 6732,
+    kEffWarfareLinkLast = 6736,
 };
 
 struct Item
@@ -166,9 +170,20 @@ enum : uint32_t
     kRepHull = 8,
 };
 
+// pyfa Fit.commandBonuses entry
+struct CommandBonus
+{
+    int buffID;
+    double value;
+    uint8_t runTime;
+};
+constexpr int kMaxCommandBonuses = 64;
+
 struct Scratch
 {
     std::array<Item, kMaxItems> items;
+    std::array<CommandBonus, kMaxCommandBonuses> bonuses;
+    int bonusCount = 0;
     int count = 0;
     std::array<Penalty, kMaxPenalties> pens;
     int penCount = 0;
@@ -213,6 +228,7 @@ struct Engine::Impl
     const Character& ch;
 
     std::unordered_map<int, EffectInfo> effects;
+    std::unordered_map<int, std::vector<Mod>> buffMods;  // warfare buff ID -> modifiers
     std::unordered_map<std::string, Attr> attrByName;
     std::unordered_map<int, Attr> attrByEve;
     std::array<int, fitschema::kAttrCount> capMin{}, capMax{};  // eve attributeIDs of cap attributes, 0 = none
@@ -230,6 +246,7 @@ struct Engine::Impl
         eveArmorDamage, eveStructureDamage, eveCapacitorBonus, eveChargedArmorMult, eveCpu, evePower, eveUpgradeCost,
         eveResistanceShift;
     std::array<int, 4> eveBurstDurations{};
+    std::array<int, 4> eveWarfareBuffID{}, eveWarfareBuffValue{};
     std::array<int, 4> eveArmorRes{}, eveShipArmorRes{};
     Attr attrCpu, attrPower, attrCpuOutput, attrPowerOutput;
 
@@ -293,6 +310,11 @@ struct Engine::Impl
         eveUpgradeCost = eve("upgradeCost");
         eveResistanceShift = eve("resistanceShiftAmount");
         eveCapacitorBonus = eve("capacitorBonus");
+        for (int x = 0; x < 4; ++x)
+        {
+            eveWarfareBuffID[x] = eve(("warfareBuff" + std::to_string(x + 1) + "ID").c_str());
+            eveWarfareBuffValue[x] = eve(("warfareBuff" + std::to_string(x + 1) + "Value").c_str());
+        }
         const char* res[4] = {"Em", "Thermal", "Kinetic", "Explosive"};
         for (int i = 0; i < 4; ++i)
             eveArmorRes[i] = eveShipArmorRes[i] = eve((std::string("armor") + res[i] + "DamageResonance").c_str());
@@ -353,9 +375,11 @@ struct Engine::Impl
         out.penaltyGroup = penaltyGroupID(m.penaltyGroup);
 
         out.sourceEveAttr = gd.attributeID(m.sourceAttr);
-        if (!out.sourceEveAttr)
+        if (m.sourceOf == "buff")
+            out.source = SourceSel::Buff;
+        else if (!out.sourceEveAttr)
             return std::nullopt;
-        if (m.sourceOf.empty() || m.sourceOf == "owner")
+        else if (m.sourceOf.empty() || m.sourceOf == "owner")
             out.source = SourceSel::Owner;
         else if (m.sourceOf == "ship")
             out.source = SourceSel::Ship;
@@ -424,6 +448,13 @@ struct Engine::Impl
                 }
             }
         }
+        for (const auto& [buffID, rows] : gd.allWarfareBuffModifiers())
+            for (const EffectModifier& m : rows)
+                if (auto mod = compile(m))
+                {
+                    buffMods[buffID].push_back(std::move(*mod));
+                    ++compiled;
+                }
         // Effects handled in code that may have no table rows.
         auto ensure = [&](int eid, uint8_t runTime) {
             EffectInfo& info = effects[eid];
@@ -434,6 +465,8 @@ struct Engine::Impl
             }
         };
         ensure(kEffCapBooster, 1);
+        for (int eid = kEffWarfareLinkFirst; eid <= kEffWarfareLinkLast; ++eid)
+            ensure(eid, 1);
         for (int eid : {kEffShieldBoosting, kEffStructureRepair, kEffArmorRepair, kEffFueledShieldBoosting,
                         kEffFueledArmorRepair, kEffRAH})
             ensure(eid, 2);
@@ -708,11 +741,15 @@ struct Engine::Impl
         return true;
     }
 
-    std::optional<double> amountOf(Scratch& s, const Mod& m, int owner, const Type* ownerSkill) const
+    std::optional<double> amountOf(Scratch& s, const Mod& m, int owner, const Type* ownerSkill,
+                                   double buffValue) const
     {
         double v = 0;
         switch (m.source)
         {
+        case SourceSel::Buff:
+            v = buffValue;
+            break;
         case SourceSel::Owner:
             if (owner >= 0)
                 v = read(s, owner, m.sourceEveAttr, 0);
@@ -747,11 +784,11 @@ struct Engine::Impl
         return m.invert ? (value != 0 ? m.factor / value : 0.0) : m.factor * value;
     }
 
-    void applyMod(Scratch& s, const Mod& m, int owner, const Type* ownerSkill) const
+    void applyMod(Scratch& s, const Mod& m, int owner, const Type* ownerSkill, double buffValue = 0) const
     {
         if (!conditionsHold(s, m, owner))
             return;
-        auto amount = amountOf(s, m, owner, ownerSkill);
+        auto amount = amountOf(s, m, owner, ownerSkill, buffValue);
         if (!amount)
             return;
         switch (m.target)
@@ -799,6 +836,19 @@ struct Engine::Impl
         // 'reloadTime' attribute is None - and it never is (dgmattribs default
         // 10000). Cap boosters' forceReload doesn't matter either: reload is
         // always factored in here. So none of those need handling.
+        if (eid >= kEffWarfareLinkFirst && eid <= kEffWarfareLinkLast)
+        {
+            // for x in 1..4: if charge warfareBuff{x}ID: addCommandBonus(id, module warfareBuff{x}Value)
+            if (it.charge < 0)
+                return;
+            for (int x = 0; x < 4; ++x)
+            {
+                int id = static_cast<int>(read(s, it.charge, eveWarfareBuffID[x], 0));
+                if (id)
+                    addCommandBonus(s, id, read(s, module, eveWarfareBuffValue[x], 0), 1);
+            }
+            return;
+        }
         switch (eid)
         {
         case kEffCapBooster:
@@ -976,7 +1026,34 @@ struct Engine::Impl
                 for (int eid : s.items[s.mode].type->effects)
                     if (const EffectInfo* e = effect(eid); e && e->runTime == pass)
                         runMods(s, *e, CtxModule, s.mode, nullptr);
+
+            // pyfa Fit.__runCommandBoosts(runTime), in commandBonuses insertion order
+            for (int b = 0; b < s.bonusCount; ++b)
+            {
+                const CommandBonus& cb = s.bonuses[b];
+                if (cb.runTime != pass)
+                    continue;
+                auto mods = buffMods.find(cb.buffID);
+                if (mods != buffMods.end())
+                    for (const Mod& m : mods->second)
+                        applyMod(s, m, -1, nullptr, cb.value);
+            }
         }
+    }
+
+    // pyfa Fit.addCommandBonus: per buff, the value with the largest magnitude wins.
+    static void addCommandBonus(Scratch& s, int buffID, double value, uint8_t runTime)
+    {
+        for (int b = 0; b < s.bonusCount; ++b)
+            if (s.bonuses[b].buffID == buffID)
+            {
+                if (std::abs(s.bonuses[b].value) < std::abs(value))
+                    s.bonuses[b] = {buffID, value, runTime};
+                return;
+            }
+        if (s.bonusCount >= kMaxCommandBonuses)
+            throw std::runtime_error("too many command bonuses");
+        s.bonuses[s.bonusCount++] = {buffID, value, runTime};
     }
 
     // pyfa Module.numShots
@@ -1054,7 +1131,7 @@ struct Engine::Impl
         if (!scratch)
             scratch = std::make_unique<Scratch>();
         Scratch& s = *scratch;
-        s.count = s.penCount = s.moduleCount = 0;
+        s.count = s.penCount = s.moduleCount = s.bonusCount = 0;
         s.mode = -1;
         FitResult out;
 

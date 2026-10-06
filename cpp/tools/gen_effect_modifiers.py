@@ -145,6 +145,13 @@ class Env(dict):
             if any(a is UNRESOLVED for a in args):
                 return UNRESOLVED
             return node.func.value.value.format(*args)
+        # range(1, 5)
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'range'
+                and not node.keywords and 1 <= len(node.args) <= 3):
+            args = [self.resolve(a) for a in node.args]
+            if all(isinstance(a, int) and not isinstance(a, bool) for a in args):
+                return tuple(range(*args))
+            return UNRESOLVED
         # s[0], s[1:]
         if isinstance(node, ast.Subscript):
             v = self.resolve(node.value)
@@ -392,8 +399,9 @@ def negate_condition(cond):
 
 
 class HandlerWalker:
-    def __init__(self, effect_id, effect_name, effect_type, owner, run_time='normal'):
+    def __init__(self, effect_id, effect_name, effect_type, owner, run_time='normal', buff_value=None):
         self.run_time = run_time  # early | normal | late: pyfa runs effects in these passes
+        self.buff_value = buff_value  # warfare buffs: name of the variable holding the buff value
         self.effect_id = effect_id
         self.effect_name = effect_name
         self.effect_type = effect_type
@@ -500,6 +508,9 @@ class HandlerWalker:
         # amount = factor * v (or factor / v when inverted), v = sourceAttr [* level]
         factor = factor / (factor2 * factor3) if invert else factor * factor2 * factor3
         src_attr, src_call, source_of = source_attr(value_node, env, self.owner)
+        if self.buff_value and isinstance(value_node, ast.Name) and value_node.id == self.buff_value:
+            # warfare buff table: the amount is the buff's value
+            src_attr, src_call, source_of = 'warfareBuffValue', value_node, 'buff'
 
         kw = {k.arg: k.value for k in call.keywords if k.arg}
         skill = env.resolve(kw['skill']) if 'skill' in kw else None
@@ -612,6 +623,53 @@ def handler_rows(cls, handler):
     return out
 
 
+def warfare_buff_rows(fit_py_path):
+    """Rows for each warfare buff in pyfa's Fit.__runCommandBoosts.
+
+    That method applies command burst buffs by ID in a long
+    `if warfareBuffID == N: ... elif ...` chain, written with the same calls as
+    effect handlers (self.ship.boostItemAttr, self.modules.filteredItemBoost, ...)
+    with the buff's `value` as the amount. Each branch becomes rows with
+    effectID = buff ID, sourceOf 'buff'.
+    """
+    with open(fit_py_path, encoding='utf-8') as f:
+        tree = ast.parse(f.read())
+    method = next(n for n in ast.walk(tree)
+                  if isinstance(n, ast.FunctionDef) and n.name == '__runCommandBoosts')
+
+    class SelfToFit(ast.NodeTransformer):
+        def visit_Name(self, n):
+            return ast.copy_location(ast.Name(id='fit', ctx=n.ctx), n) if n.id == 'self' else n
+
+    rows = []
+    for node in ast.walk(method):
+        if not (isinstance(node, ast.If) and isinstance(node.test, ast.Compare)
+                and ast.unparse(node.test.left) == 'warfareBuffID' and isinstance(node.test.ops[0], ast.Eq)
+                and is_number(node.test.comparators[0])):
+            continue
+        buff_id = node.test.comparators[0].value
+        comment = ''
+        body = [SelfToFit().visit(ast.parse(ast.unparse(st))).body[0] for st in node.body]
+        walker = HandlerWalker(buff_id, f'warfareBuff{buff_id}', 'gang', owner='', buff_value='value')
+        walker.walk(body, Env())
+        for r in walker.rows:
+            rows.append(dict(r, contexts='*', effectName=comment or r['effectName']))
+    return rows
+
+
+def write_rows(path, rows):
+    def clean(v):
+        return str(v).replace('\t', ' ').replace('\n', ' ')
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w', encoding='utf-8', newline='\n') as f:
+        f.write('\t'.join(COLUMNS) + '\n')
+        for r in rows:
+            f.write('\t'.join(clean(r[c]) for c in COLUMNS) + '\n')
+    return sum(1 for r in rows if r['note'] or r['valueExpr'] or r['filter'].startswith('unparsed:')
+               or 'unparsed:' in r['condition'])
+
+
 def main():
     effects_path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_EFFECTS
     output_path = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_OUTPUT
@@ -629,19 +687,16 @@ def main():
             continue
         effects += 1
         rows.extend(handler_rows(cls, handler))
-
-    def clean(v):
-        return str(v).replace('\t', ' ').replace('\n', ' ')
-
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, 'w', encoding='utf-8', newline='\n') as f:
-        f.write('\t'.join(COLUMNS) + '\n')
-        for r in rows:
-            f.write('\t'.join(clean(r[c]) for c in COLUMNS) + '\n')
-
-    flagged = sum(1 for r in rows if r['note'] or r['valueExpr'] or r['filter'].startswith('unparsed:')
-                  or 'unparsed:' in r['condition'])
+    flagged = write_rows(output_path, rows)
     print(f'{effects} effects -> {len(rows)} modifiers ({flagged} only partly resolved) -> {output_path}')
+
+    # Command burst buffs live in eos/saveddata/fit.py, next to effects.py's package.
+    fit_py = os.path.join(os.path.dirname(effects_path), 'saveddata', 'fit.py')
+    buff_path = os.path.join(os.path.dirname(output_path), 'warfare_buffs.tsv')
+    buff_rows = warfare_buff_rows(fit_py)
+    flagged = write_rows(buff_path, buff_rows)
+    print(f'{len({r["effectID"] for r in buff_rows})} warfare buffs -> {len(buff_rows)} modifiers '
+          f'({flagged} only partly resolved) -> {buff_path}')
 
 
 if __name__ == '__main__':

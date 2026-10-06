@@ -3,8 +3,8 @@
 Usage:
     python compare_engine.py reference.jsonl engine.tsv [--eve path/to/eve.db] [--show N] [--key PREFIX]
 
-Values match when |a - b| <= 1e-6 * max(1, |b|). Fits that use sources the
-engine doesn't model yet (active command bursts) are reported separately.
+Values match when |a - b| <= 1e-6 * max(1, |b|). Fits with active command
+bursts are counted separately too; structures (citadels) are out of scope.
 """
 import argparse
 import collections
@@ -60,7 +60,7 @@ def main():
     stats = collections.Counter()      # key -> mismatches
     compared = collections.Counter()   # key -> comparisons
     missing = collections.Counter()
-    bad_fits, burst_fits, structure_fits, ok_fits = [], 0, 0, 0
+    bad_fits, burst_fits, burst_ok, structure_fits, ok_fits = [], 0, 0, 0, 0
     examples = []
     for line in open(args.reference, encoding='utf-8'):
         ref = json.loads(line)
@@ -101,8 +101,6 @@ def main():
             compared[key] += 1
             if not close(have, want):
                 fit_bad = True
-                if has_burst:
-                    continue
                 stats[key] += 1
                 if key.startswith(args.key) and len(examples) < args.show:
                     mod = entry[3] if len(entry) > 3 else None
@@ -111,14 +109,16 @@ def main():
                                     f"{key} pyfa {want!r} engine {have!r}")
         if has_burst:
             burst_fits += 1
-        elif fit_bad:
+            burst_ok += not fit_bad
+        if fit_bad:
             bad_fits.append(fid)
         else:
             ok_fits += 1
 
     total = ok_fits + len(bad_fits)
-    print(f'fits: {ok_fits}/{total} fully match ({len(bad_fits)} differ); '
-          f'{burst_fits} with active command bursts and {structure_fits} structures not counted')
+    print(f'fits: {ok_fits}/{total} fully match ({len(bad_fits)} differ), '
+          f'of which with active command bursts: {burst_ok}/{burst_fits}; '
+          f'{structure_fits} structures not counted')
     print(f'values: {sum(compared.values()) - sum(stats.values())}/{sum(compared.values())} match')
     if stats:
         print('mismatches by key:')

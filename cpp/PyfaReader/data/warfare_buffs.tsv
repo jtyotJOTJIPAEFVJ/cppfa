@@ -1,0 +1,177 @@
+effectID	effectName	effectType	runTime	contexts	operation	domain	target	targetAttr	sourceAttr	sourceOf	factor	invert	perLevel	skill	filter	condition	stackingPenalized	penaltyGroup	position	valueExpr	note
+10	warfareBuff10	gang	normal	*	boost	ship	item	shieldEmDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+10	warfareBuff10	gang	normal	*	boost	ship	item	shieldExplosiveDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+10	warfareBuff10	gang	normal	*	boost	ship	item	shieldThermalDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+10	warfareBuff10	gang	normal	*	boost	ship	item	shieldKineticDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+11	warfareBuff11	gang	normal	*	boost	modules	item	capacitorNeed	warfareBuffValue	buff	1	0	0		skill:Shield Operation|skill:Shield Emission Systems|skill:Capital Shield Emission Systems		0				
+11	warfareBuff11	gang	normal	*	boost	modules	item	duration	warfareBuffValue	buff	1	0	0		skill:Shield Operation|skill:Shield Emission Systems|skill:Capital Shield Emission Systems		0				
+12	warfareBuff12	gang	normal	*	boost	ship	item	shieldCapacity	warfareBuffValue	buff	1	0	0				0				
+13	warfareBuff13	gang	normal	*	boost	ship	item	armorEmDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+13	warfareBuff13	gang	normal	*	boost	ship	item	armorThermalDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+13	warfareBuff13	gang	normal	*	boost	ship	item	armorExplosiveDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+13	warfareBuff13	gang	normal	*	boost	ship	item	armorKineticDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+14	warfareBuff14	gang	normal	*	boost	modules	item	capacitorNeed	warfareBuffValue	buff	1	0	0		skill:Remote Armor Repair Systems|skill:Repair Systems|skill:Capital Remote Armor Repair Systems		0				
+14	warfareBuff14	gang	normal	*	boost	modules	item	duration	warfareBuffValue	buff	1	0	0		skill:Remote Armor Repair Systems|skill:Repair Systems|skill:Capital Remote Armor Repair Systems		0				
+15	warfareBuff15	gang	normal	*	boost	ship	item	armorHP	warfareBuffValue	buff	1	0	0				0				
+16	warfareBuff16	gang	normal	*	boost	ship	item	scanResolution	warfareBuffValue	buff	1	0	0				1	default			
+17	warfareBuff17	gang	normal	*	boost	modules	item	maxRange	warfareBuffValue	buff	1	0	0		group:ECM|group:Sensor Dampener|group:Weapon Disruptor|group:Target Painter		1	default			
+17	warfareBuff17	gang	normal	*	boost	modules	item	falloffEffectiveness	warfareBuffValue	buff	1	0	0		group:ECM|group:Sensor Dampener|group:Weapon Disruptor|group:Target Painter		1	default			
+17	warfareBuff17	gang	normal	*	boost	modules	item	scanMagnetometricStrengthBonus	warfareBuffValue	buff	1	0	0		group:ECM		1	default			
+17	warfareBuff17	gang	normal	*	boost	modules	item	scanRadarStrengthBonus	warfareBuffValue	buff	1	0	0		group:ECM		1	default			
+17	warfareBuff17	gang	normal	*	boost	modules	item	scanLadarStrengthBonus	warfareBuffValue	buff	1	0	0		group:ECM		1	default			
+17	warfareBuff17	gang	normal	*	boost	modules	item	scanGravimetricStrengthBonus	warfareBuffValue	buff	1	0	0		group:ECM		1	default			
+17	warfareBuff17	gang	normal	*	boost	modules	item	missileVelocityBonus	warfareBuffValue	buff	1	0	0		group:Weapon Disruptor		0				
+17	warfareBuff17	gang	normal	*	boost	modules	item	explosionDelayBonus	warfareBuffValue	buff	1	0	0		group:Weapon Disruptor		0				
+17	warfareBuff17	gang	normal	*	boost	modules	item	aoeVelocityBonus	warfareBuffValue	buff	1	0	0		group:Weapon Disruptor		0				
+17	warfareBuff17	gang	normal	*	boost	modules	item	falloffBonus	warfareBuffValue	buff	1	0	0		group:Weapon Disruptor		0				
+17	warfareBuff17	gang	normal	*	boost	modules	item	maxRangeBonus	warfareBuffValue	buff	1	0	0		group:Weapon Disruptor		0				
+17	warfareBuff17	gang	normal	*	boost	modules	item	aoeCloudSizeBonus	warfareBuffValue	buff	1	0	0		group:Weapon Disruptor		0				
+17	warfareBuff17	gang	normal	*	boost	modules	item	trackingSpeedBonus	warfareBuffValue	buff	1	0	0		group:Weapon Disruptor		0				
+17	warfareBuff17	gang	normal	*	boost	modules	item	maxTargetRangeBonus	warfareBuffValue	buff	1	0	0		group:Sensor Dampener		0				
+17	warfareBuff17	gang	normal	*	boost	modules	item	scanResolutionBonus	warfareBuffValue	buff	1	0	0		group:Sensor Dampener		0				
+17	warfareBuff17	gang	normal	*	boost	modules	item	signatureRadiusBonus	warfareBuffValue	buff	1	0	0		group:Target Painter		1	default			
+18	warfareBuff18	gang	normal	*	boost	ship	item	scanGravimetricStrength	warfareBuffValue	buff	1	0	0				1	default			
+18	warfareBuff18	gang	normal	*	boost	ship	item	scanRadarStrength	warfareBuffValue	buff	1	0	0				1	default			
+18	warfareBuff18	gang	normal	*	boost	ship	item	scanLadarStrength	warfareBuffValue	buff	1	0	0				1	default			
+18	warfareBuff18	gang	normal	*	boost	ship	item	scanMagnetometricStrength	warfareBuffValue	buff	1	0	0				1	default			
+19	warfareBuff19	gang	normal	*	boost	ship	item	sensorDampenerResistance	warfareBuffValue	buff	1	0	0				0				
+19	warfareBuff19	gang	normal	*	boost	ship	item	weaponDisruptionResistance	warfareBuffValue	buff	1	0	0				0				
+20	warfareBuff20	gang	normal	*	boost	ship	item	signatureRadius	warfareBuffValue	buff	1	0	0				1	default			
+21	warfareBuff21	gang	normal	*	boost	modules	item	maxRange	warfareBuffValue	buff	1	0	0		group:Stasis Web|group:Warp Scrambler		1	default			
+22	warfareBuff22	gang	normal	*	boost	modules	item	speedFactor	warfareBuffValue	buff	1	0	0		skill:Afterburner|skill:High Speed Maneuvering		1	default			
+23	warfareBuff23	gang	normal	*	boost	modules	item	maxRange	warfareBuffValue	buff	1	0	0		skill:Mining|skill:Ice Harvesting|skill:Gas Cloud Harvesting		1	default			
+24	warfareBuff24	gang	normal	*	boost	modules	item	capacitorNeed	warfareBuffValue	buff	1	0	0		skill:Mining|skill:Ice Harvesting|skill:Gas Cloud Harvesting		1	default			
+24	warfareBuff24	gang	normal	*	boost	modules	item	duration	warfareBuffValue	buff	1	0	0		skill:Mining|skill:Ice Harvesting|skill:Gas Cloud Harvesting		1	default			
+25	warfareBuff25	gang	normal	*	boost	modules	charge	crystalVolatilityChance	warfareBuffValue	buff	1	0	0		skill:Mining		1	default			
+26	warfareBuff26	gang	normal	*	boost	ship	item	maxTargetRange	warfareBuffValue	buff	1	0	0				1	default			
+60	warfareBuff60	gang	normal	*	boost	ship	item	agility	warfareBuffValue	buff	1	0	0				1	default			
+39	warfareBuff39	gang	normal	*	boost	ship	item	rechargeRate	warfareBuffValue	buff	1	0	0				1	default			
+40	warfareBuff40	gang	normal	*	boost	ship	item	armorKineticDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+40	warfareBuff40	gang	normal	*	boost	ship	item	shieldKineticDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+40	warfareBuff40	gang	normal	*	boost	ship	item	kineticDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+41	warfareBuff41	gang	normal	*	boost	ship	item	armorEmDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+41	warfareBuff41	gang	normal	*	boost	ship	item	shieldEmDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+41	warfareBuff41	gang	normal	*	boost	ship	item	emDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+42	warfareBuff42	gang	normal	*	boost	ship	item	armorHP	warfareBuffValue	buff	1	0	0				0				
+43	warfareBuff43	gang	normal	*	boost	ship	item	armorExplosiveDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+43	warfareBuff43	gang	normal	*	boost	ship	item	shieldExplosiveDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+43	warfareBuff43	gang	normal	*	boost	ship	item	explosiveDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+44	warfareBuff44	gang	normal	*	boost	ship	item	armorThermalDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+44	warfareBuff44	gang	normal	*	boost	ship	item	shieldThermalDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+44	warfareBuff44	gang	normal	*	boost	ship	item	thermalDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+45	warfareBuff45	gang	normal	*	boost	ship	item	signatureRadius	warfareBuffValue	buff	1	0	0				1	default			
+46	warfareBuff46	gang	normal	*	boost	ship	item	armorThermalDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+46	warfareBuff46	gang	normal	*	boost	ship	item	shieldThermalDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+46	warfareBuff46	gang	normal	*	boost	ship	item	thermalDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+47	warfareBuff47	gang	normal	*	boost	ship	item	armorExplosiveDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+47	warfareBuff47	gang	normal	*	boost	ship	item	shieldExplosiveDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+47	warfareBuff47	gang	normal	*	boost	ship	item	explosiveDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+48	warfareBuff48	gang	normal	*	boost	ship	item	shieldCapacity	warfareBuffValue	buff	1	0	0				0				
+49	warfareBuff49	gang	normal	*	boost	ship	item	armorEmDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+49	warfareBuff49	gang	normal	*	boost	ship	item	shieldEmDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+49	warfareBuff49	gang	normal	*	boost	ship	item	emDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+50	warfareBuff50	gang	normal	*	boost	ship	item	armorKineticDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+50	warfareBuff50	gang	normal	*	boost	ship	item	shieldKineticDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+50	warfareBuff50	gang	normal	*	boost	ship	item	kineticDamageResonance	warfareBuffValue	buff	1	0	0				1	default			
+51	warfareBuff51	gang	normal	*	boost	ship	item	maxVelocity	warfareBuffValue	buff	1	0	0				1	default			
+52	warfareBuff52	gang	normal	*	boost	modules	item	shieldBonus	warfareBuffValue	buff	1	0	0		skill:Shield Emission Systems		1	default			
+53	warfareBuff53	gang	normal	*	boost	modules	item	armorDamageAmount	warfareBuffValue	buff	1	0	0		skill:Remote Armor Repair Systems		1	default			
+54	warfareBuff54	gang	normal	*	boost	modules	item	maxRange	warfareBuffValue	buff	1	0	0		group:Energy Weapon|group:Hybrid Weapon		1	default			
+79	warfareBuff79	gang	normal	*	boost	ship	item	signatureRadius	warfareBuffValue	buff	1	0	0				1	default			
+79	warfareBuff79	gang	normal	*	boost	drones	item	signatureRadius	warfareBuffValue	buff	1	0	0		skill:Drones		1	default			
+80	warfareBuff80	gang	normal	*	boost	ship	item	agility	warfareBuffValue	buff	1	0	0				1	default			
+81	warfareBuff81	gang	normal	*	boost	ship	item	maxVelocity	warfareBuffValue	buff	1	0	0				1	default			
+88	warfareBuff88	gang	normal	*	boost	modules	item	shieldBonus	warfareBuffValue	buff	1	0	0		skill:Shield Operation		1	default			
+89	warfareBuff89	gang	normal	*	boost	modules	item	duration	warfareBuffValue	buff	1	0	0		skill:Shield Operation		1	default			
+90	warfareBuff90	gang	normal	*	boost	ship	item	shieldEmDamageResonance	warfareBuffValue	buff	1	0	0				0				
+90	warfareBuff90	gang	normal	*	boost	drones	item	shieldEmDamageResonance	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+90	warfareBuff90	gang	normal	*	boost	ship	item	armorEmDamageResonance	warfareBuffValue	buff	1	0	0				0				
+90	warfareBuff90	gang	normal	*	boost	drones	item	armorEmDamageResonance	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+90	warfareBuff90	gang	normal	*	boost	ship	item	emDamageResonance	warfareBuffValue	buff	1	0	0				0				
+90	warfareBuff90	gang	normal	*	boost	drones	item	emDamageResonance	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+92	warfareBuff92	gang	normal	*	boost	ship	item	rechargeRate	warfareBuffValue	buff	1	0	0				1	default			
+93	warfareBuff93	gang	normal	*	boost	ship	item	shieldExplosiveDamageResonance	warfareBuffValue	buff	1	0	0				0				
+93	warfareBuff93	gang	normal	*	boost	drones	item	shieldExplosiveDamageResonance	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+93	warfareBuff93	gang	normal	*	boost	ship	item	armorExplosiveDamageResonance	warfareBuffValue	buff	1	0	0				0				
+93	warfareBuff93	gang	normal	*	boost	drones	item	armorExplosiveDamageResonance	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+93	warfareBuff93	gang	normal	*	boost	ship	item	explosiveDamageResonance	warfareBuffValue	buff	1	0	0				0				
+93	warfareBuff93	gang	normal	*	boost	drones	item	explosiveDamageResonance	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+94	warfareBuff94	gang	normal	*	boost	ship	item	shieldCapacity	warfareBuffValue	buff	1	0	0				0				
+94	warfareBuff94	gang	normal	*	boost	drones	item	shieldCapacity	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+95	warfareBuff95	gang	normal	*	boost	ship	item	shieldThermalDamageResonance	warfareBuffValue	buff	1	0	0				0				
+95	warfareBuff95	gang	normal	*	boost	drones	item	shieldThermalDamageResonance	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+95	warfareBuff95	gang	normal	*	boost	ship	item	armorThermalDamageResonance	warfareBuffValue	buff	1	0	0				0				
+95	warfareBuff95	gang	normal	*	boost	drones	item	armorThermalDamageResonance	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+95	warfareBuff95	gang	normal	*	boost	ship	item	thermalDamageResonance	warfareBuffValue	buff	1	0	0				0				
+95	warfareBuff95	gang	normal	*	boost	drones	item	thermalDamageResonance	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+96	warfareBuff96	gang	normal	*	boost	ship	item	armorHP	warfareBuffValue	buff	1	0	0				0				
+96	warfareBuff96	gang	normal	*	boost	drones	item	armorHP	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+97	warfareBuff97	gang	normal	*	boost	modules	item	maxRange	warfareBuffValue	buff	1	0	0		skill:Gunnery		1	default			
+97	warfareBuff97	gang	normal	*	boost	drones	item	maxRange	warfareBuffValue	buff	1	0	0		skill:Drones		1	default			
+97	warfareBuff97	gang	normal	*	boost	modules	item	falloff	warfareBuffValue	buff	1	0	0		skill:Gunnery		1	default			
+97	warfareBuff97	gang	normal	*	boost	drones	item	falloff	warfareBuffValue	buff	1	0	0		skill:Drones		1	default			
+98	warfareBuff98	gang	normal	*	boost	ship	item	maxVelocity	warfareBuffValue	buff	1	0	0				0				
+98	warfareBuff98	gang	normal	*	boost	drones	item	maxVelocity	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+99	warfareBuff99	gang	normal	*	boost	ship	item	shieldKineticDamageResonance	warfareBuffValue	buff	1	0	0				0				
+99	warfareBuff99	gang	normal	*	boost	drones	item	shieldKineticDamageResonance	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+99	warfareBuff99	gang	normal	*	boost	ship	item	armorKineticDamageResonance	warfareBuffValue	buff	1	0	0				0				
+99	warfareBuff99	gang	normal	*	boost	drones	item	armorKineticDamageResonance	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+99	warfareBuff99	gang	normal	*	boost	ship	item	kineticDamageResonance	warfareBuffValue	buff	1	0	0				0				
+99	warfareBuff99	gang	normal	*	boost	drones	item	kineticDamageResonance	warfareBuffValue	buff	1	0	0		skill:Drones		0				
+100	warfareBuff100	gang	normal	*	boost	ship	item	scanResolution	warfareBuffValue	buff	1	0	0				1	default			
+2405	warfareBuff2405	gang	normal	*	boost	modules	item	maxRange	warfareBuffValue	buff	1	0	0		skill:Navigation		1	default			
+2405	warfareBuff2405	gang	normal	*	boost	modules	item	maxRange	warfareBuffValue	buff	1	0	0		group:Stasis Web		1	default			
+2433	warfareBuff2433	gang	normal	*	boost	ship	item	shieldCapacity	warfareBuffValue	buff	1	0	0				0				
+2434	warfareBuff2434	gang	normal	*	boost	ship	item	capacitorCapacity	warfareBuffValue	buff	1	0	0				0				
+2435	warfareBuff2435	gang	normal	*	boost	ship	item	armorHP	warfareBuffValue	buff	1	0	0				0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadDurationBonus	warfareBuffValue	buff	1	0	0		hasAttr:overloadDurationBonus		0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadRofBonus	warfareBuffValue	buff	1	0	0		hasAttr:overloadRofBonus		0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadSelfDurationBonus	warfareBuffValue	buff	1	0	0		hasAttr:overloadSelfDurationBonus		0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadHardeningBonus	warfareBuffValue	buff	1	0	0		hasAttr:overloadHardeningBonus		0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadDamageModifier	warfareBuffValue	buff	1	0	0		hasAttr:overloadDamageModifier		0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadRangeBonus	warfareBuffValue	buff	1	0	0		hasAttr:overloadRangeBonus		0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadSpeedFactorBonus	warfareBuffValue	buff	1	0	0		hasAttr:overloadSpeedFactorBonus		0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadECMStrengthBonus	warfareBuffValue	buff	1	0	0		hasAttr:overloadECMStrengthBonus		0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadECCMStrenghtBonus	warfareBuffValue	buff	1	0	0		hasAttr:overloadECCMStrenghtBonus		0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadArmorDamageAmount	warfareBuffValue	buff	1	0	0		hasAttr:overloadArmorDamageAmount		0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadShieldBonus	warfareBuffValue	buff	1	0	0		hasAttr:overloadShieldBonus		0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadTrackingModuleStrengthBonus	warfareBuffValue	buff	1	0	0		hasAttr:overloadTrackingModuleStrengthBonus		0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadSensorModuleStrengthBonus	warfareBuffValue	buff	1	0	0		hasAttr:overloadSensorModuleStrengthBonus		0				
+2436	warfareBuff2436	gang	normal	*	boost	modules	item	overloadPainterStrengthBonus	warfareBuffValue	buff	1	0	0		hasAttr:overloadPainterStrengthBonus		0				
+2437	warfareBuff2437	gang	normal	*	boost	ship	item	rechargeRate	warfareBuffValue	buff	1	0	0				0				
+2438	warfareBuff2438	gang	normal	*	boost	ship	item	maxTargetRange	warfareBuffValue	buff	1	0	0				0				
+2438	warfareBuff2438	gang	normal	*	boost	ship	item	maxDirectionalScanRange	warfareBuffValue	buff	1	0	0				0				
+2439	warfareBuff2439	gang	normal	*	boost	ship	item	scanResolution	warfareBuffValue	buff	1	0	0				0				
+2440	warfareBuff2440	gang	normal	*	increase	ship	item	warpSpeedMultiplier	warfareBuffValue	buff	1	0	0				0		pre		
+2441	warfareBuff2441	gang	normal	*	boost	modules	item	shieldBonus	warfareBuffValue	buff	1	0	0		skill:Shield Operation|skill:Capital Shield Operation		1	default			
+2442	warfareBuff2442	gang	normal	*	boost	modules	item	armorDamageAmount	warfareBuffValue	buff	1	0	0		skill:Repair Systems|skill:Capital Repair Systems		1	default			
+2464	warfareBuff2464	gang	normal	*	boost	modules	item	expeditionCommandBurstProbeStrengthBonusCharID	warfareBuffValue	buff	1	0	0		charge.skill:Astrometrics		1	default			
+2465	warfareBuff2465	gang	normal	*	boost	ship	item	maxDirectionalScanRange	warfareBuffValue	buff	1	0	0				0				
+2465	warfareBuff2465	gang	normal	*	boost	modules	item	maxRange	warfareBuffValue	buff	1	0	0		group:Data Miners|group:Salvager		1	default			
+2466	warfareBuff2466	gang	normal	*	boost	modules	item	expeditionCommandBurstProbeDeviationBonusCharID	warfareBuffValue	buff	1	0	0		charge.skill:Astrometrics		1	default			
+2468	warfareBuff2468	gang	normal	*	increase	modules	item	virusCoherence	warfareBuffValue	buff	1	0	0		group:Data Miners		0		pre		
+2474	warfareBuff2474	gang	normal	*	force	ship	item	miningScannerUpgrade	warfareBuffValue	buff	1	0	0				0				
+2481	warfareBuff2481	gang	normal	*	boost	modules	item	duration	warfareBuffValue	buff	1	0	0		skill:Salvaging		0				
+2516	warfareBuff2516	gang	normal	*	boost	modules	item	miningCritChance	warfareBuffValue	buff	1	0	0		skill:Mining|skill:Ice Harvesting		0				
+2517	warfareBuff2517	gang	normal	*	boost	modules	item	miningWasteProbability	warfareBuffValue	buff	1	0	0		skill:Mining|skill:Ice Harvesting|skill:Gas Cloud Harvesting		1	default			
+2534	warfareBuff2534	gang	normal	*	boost	ship	item	maxLockedTargets	warfareBuffValue	buff	1	0	0				0				
+2535	warfareBuff2535	gang	normal	*	boost	ship	item	warpSpeedMultiplier	warfareBuffValue	buff	1	0	0				1	default			
+2538	warfareBuff2538	gang	normal	*	boost	modules	item	armorDamageAmount	warfareBuffValue	buff	1	0	0		skill:Remote Armor Repair Systems|skill:Capital Remote Armor Repair Systems		1	default			
+2539	warfareBuff2539	gang	normal	*	boost	modules	item	shieldBonus	warfareBuffValue	buff	1	0	0		skill:Shield Emission Systems|skill:Capital Shield Emission Systems		1	default			
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusABC1	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusABC2	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusABC3	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusABC4	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusCBC1	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusCBC2	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusCBC3	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusCBC4	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusGBC1	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusGBC2	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusGBC3	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusGBC4	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusMBC1	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusMBC2	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusMBC3	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusMBC4	warfareBuffValue	buff	1	0	0				0				
+2545	warfareBuff2545	gang	normal	*	increase	ship	item	proximityDbuffEffectTacticalDestroyerHP	warfareBuffValue	buff	1	0	0				0		pre		
