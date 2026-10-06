@@ -143,7 +143,12 @@ GameData GameData::load(const std::filesystem::path& eveDb, const std::filesyste
     }
 
     if (!effectModifiersTsv.empty())
-        gd.loadEffectModifiers(effectModifiersTsv);
+    {
+        gd.modifierCount_ = loadModifierTable(effectModifiersTsv, gd.effectModifiers_);
+        auto buffs = effectModifiersTsv.parent_path() / "warfare_buffs.tsv";
+        if (std::filesystem::is_regular_file(buffs))
+            loadModifierTable(buffs, gd.warfareBuffModifiers_);
+    }
 
     return gd;
 }
@@ -340,8 +345,10 @@ const std::vector<EffectModifier>& GameData::effectModifiers(int effectID) const
     return it == effectModifiers_.end() ? none : it->second;
 }
 
-void GameData::loadEffectModifiers(const std::filesystem::path& tsv)
+size_t GameData::loadModifierTable(const std::filesystem::path& tsv,
+                                   std::unordered_map<int, std::vector<EffectModifier>>& into)
 {
+    size_t count = 0;
     std::ifstream in(tsv, std::ios::binary);
     if (!in)
         throw std::runtime_error("cannot open " + tsv.string());
@@ -473,9 +480,10 @@ void GameData::loadEffectModifiers(const std::filesystem::path& tsv)
         m.position = f[col["position"]];
         m.valueExpr = f[col["valueExpr"]];
         m.note = f[col["note"]];
-        effectModifiers_[m.effectID].push_back(std::move(m));
-        ++modifierCount_;
+        into[m.effectID].push_back(std::move(m));
+        ++count;
     }
+    return count;
 }
 
 const Type* GameData::type(int typeID) const { return findPtr(types_, typeID); }

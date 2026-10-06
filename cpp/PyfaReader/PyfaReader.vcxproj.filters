@@ -82,6 +82,9 @@
     <CopyFileToFolders Include="data\effect_modifiers.tsv">
       <Filter>Data</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="data\warfare_buffs.tsv">
+      <Filter>Data</Filter>
+    </CopyFileToFolders>
     <None Include="..\tools\gen_effect_modifiers.py">
       <Filter>Data</Filter>
     </None>

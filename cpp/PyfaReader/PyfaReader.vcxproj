@@ -106,6 +106,9 @@
     <CopyFileToFolders Include="data\effect_modifiers.tsv">
       <DestinationFolders>$(OutDir)</DestinationFolders>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="data\warfare_buffs.tsv">
+      <DestinationFolders>$(OutDir)</DestinationFolders>
+    </CopyFileToFolders>
     <None Include="..\tools\gen_effect_modifiers.py" />
     <None Include="..\tools\gen_fit_schema.py" />
     <None Include="..\tools\goal_closure.py" />

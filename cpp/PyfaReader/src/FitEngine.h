@@ -5,8 +5,9 @@
 // generated compact layouts (src/generated/FitSchema.generated.h).
 //
 // Sources supported: ship, character skills, modules (with state), charges,
-// T3 destroyer modes. Not yet: implants, boosters, command bursts, system
-// effects, projected effects, drones/fighters.
+// T3 destroyer modes, the fit's own command bursts. Not yet: implants,
+// boosters, bursts from other fits, system effects, projected effects,
+// drones/fighters.
 //
 // Matches pyfa with: All-5 style character, uniform damage profile, reload
 // factored into cycle times.

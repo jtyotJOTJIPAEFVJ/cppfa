@@ -18,6 +18,9 @@ CAP = [('ship', 'capacitorCapacity'), ('ship', 'rechargeRate')] + \
       [('module', a) for a in ('capacitorNeed', 'duration', 'durationHighisGood', 'speed', 'moduleReactivationDelay',
                                'reloadTime', 'capacity', 'chargeRate')] + \
       [('charge', 'volume'), ('charge', 'capacitorBonus')]
+# Command bursts: the buff value is the burst module's warfareBuff{1..4}Value
+# (pyfa addCommandBonus), modified by skills, ship bonuses and the charge.
+BURSTS = [('module', f'warfareBuff{x}Value') for x in range(1, 5)]
 # Reactive Armor Hardener: pyfa simulates it in code (effect 4928), so its rows
 # are unresolved and the backward pass can't find these on its own.
 RAH = [('module', 'resistanceShiftAmount')] + [('module', f'armor{x}DamageResonance')
@@ -94,7 +97,7 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     rows = list(csv.DictReader(open(args[0] if args else TSV, encoding='utf-8'), delimiter='\t'))
     for goal, roots in GOALS.items():
-        attrs, used = closure(rows, roots + FITTING)
+        attrs, used = closure(rows, roots + FITTING + BURSTS)
         un = {(r['effectID'], r['effectName'], owner, r['targetAttr'], (r['note'] or r['valueExpr'] or r['filter']
                or r['condition'])[:90]) for r, owner in used if unresolved(r)}
         print(f"{goal}: attrs {dict(collections.Counter(k for k, _ in attrs))}, rows {len(used)}, unresolved {len(un)}")

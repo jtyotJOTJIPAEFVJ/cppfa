@@ -266,6 +266,10 @@ public:
     // Modifiers an effect applies (empty if unknown or no table was loaded).
     const std::vector<EffectModifier>& effectModifiers(int effectID) const;
     const std::unordered_map<int, std::vector<EffectModifier>>& allEffectModifiers() const { return effectModifiers_; }
+    // Command burst buffs (pyfa Fit.__runCommandBoosts), keyed by warfare buff ID;
+    // rows have sourceOf "buff": the amount is the buff's value. Loaded from
+    // warfare_buffs.tsv next to the effect table, when present.
+    const std::unordered_map<int, std::vector<EffectModifier>>& allWarfareBuffModifiers() const { return warfareBuffModifiers_; }
     size_t effectModifierCount() const { return modifierCount_; }
 
     // Names of the fittable modules in a group, sorted alphabetically. The
@@ -281,7 +285,8 @@ public:
     size_t typeCount() const { return types_.size(); }
 
 private:
-    void loadEffectModifiers(const std::filesystem::path& tsv);
+    static size_t loadModifierTable(const std::filesystem::path& tsv,
+                                    std::unordered_map<int, std::vector<EffectModifier>>& into);
     // Requested attributes by name; type's value or the attribute's default.
     std::unordered_map<std::string, double> resolveAttributes(const Type& type,
                                                               const std::vector<std::string>& attributeNames) const;
@@ -298,5 +303,6 @@ private:
     std::unordered_map<std::string, int> shipIDsByName_;
     std::unordered_map<std::string, int> skillIDsByName_;
     std::unordered_map<int, std::vector<EffectModifier>> effectModifiers_;
+    std::unordered_map<int, std::vector<EffectModifier>> warfareBuffModifiers_;
     size_t modifierCount_ = 0;
 };
