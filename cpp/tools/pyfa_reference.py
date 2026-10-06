@@ -1,0 +1,199 @@
+"""Dump pyfa's tank / capacitor / fitting results as the reference for the C++ engine.
+
+Runs pyfa's own code (needs pyfa's Python environment, including wxPython) on a
+*temporary copy* of saveddata.db, so your fits and settings are never touched.
+In the copy, every fit is normalized to what the C++ engine v1 supports:
+
+  - character "All 5", implants/boosters removed (fit and character implants)
+  - projected fits/modules/drones/fighters and command fits removed
+  - damage profile: builtin Uniform
+  - reload factored into cycle times (pyfa's "useGlobalForceReload")
+
+Fits are loaded through pyfa's normal service path (the same as the GUI), which
+matters: hand-built fits skip some 'early' runtime effects.
+
+Output: one JSON object per line per fit, see dump_fit().
+
+Usage (from anywhere, with pyfa's python):
+    python cpp/tools/pyfa_reference.py out.jsonl [--fits ID ID ...] [--limit N]
+                                       [--save path/to/saveddata.db]
+"""
+import argparse
+import json
+import math
+import os
+import shutil
+import sqlite3
+import sys
+import tempfile
+
+PYFA_ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
+
+SHIP_ATTRS = (
+    'shieldCapacity', 'armorHP', 'hp',
+    'shieldEmDamageResonance', 'shieldThermalDamageResonance',
+    'shieldKineticDamageResonance', 'shieldExplosiveDamageResonance',
+    'armorEmDamageResonance', 'armorThermalDamageResonance',
+    'armorKineticDamageResonance', 'armorExplosiveDamageResonance',
+    'emDamageResonance', 'thermalDamageResonance', 'kineticDamageResonance', 'explosiveDamageResonance',
+    'capacitorCapacity', 'rechargeRate',
+    'cpuOutput', 'powerOutput', 'upgradeCapacity',
+    'shieldRepair', 'armorRepair', 'hullRepair',  # fit.extraAttributes == ship attributes in pyfa
+)
+
+MODULE_ATTRS = (
+    'cpu', 'power', 'upgradeCost',
+    'capacitorNeed', 'duration', 'speed', 'durationHighisGood', 'moduleReactivationDelay',
+    'shieldBonus', 'armorDamageAmount', 'structureDamageAmount', 'chargedArmorDamageMultiplier',
+    'reloadTime', 'capacity', 'chargeRate',
+)
+
+CHARGE_ATTRS = ('volume', 'capacitorBonus')
+
+
+def normalize_save_db(path):
+    """Strip everything the C++ engine v1 doesn't model from the copied database."""
+    db = sqlite3.connect(path)
+    all5 = db.execute("SELECT ID FROM characters WHERE name = 'All 5'").fetchone()
+    db.executescript("""
+        DELETE FROM fitImplants;
+        DELETE FROM boosters;
+        DELETE FROM boosterSideEffects;
+        DELETE FROM projectedFits;
+        DELETE FROM commandFits;
+        DELETE FROM modules WHERE projected = 1;
+        DELETE FROM drones WHERE projected = 1;
+        DELETE FROM fighters WHERE projected = 1;
+        UPDATE fits SET implantLocation = 0, damagePatternID = NULL, builtinDamagePatternID = -1;
+    """)
+    # All 5 is created by pyfa on demand; fits pointing elsewhere get it after load.
+    if all5:
+        db.execute('UPDATE fits SET characterID = ?', all5)
+    db.commit()
+    db.close()
+
+
+def num(v):
+    if v is None:
+        return None
+    v = float(v)
+    return None if math.isnan(v) else (str(v) if math.isinf(v) else v)
+
+
+def dump_fit(fit, svc_fit):
+    from eos.const import FittingModuleState
+
+    ship = fit.ship
+    out = {
+        'fitID': fit.ID,
+        'name': fit.name,
+        'shipTypeID': ship.item.ID,
+        'modeTypeID': fit.mode.item.ID if fit.mode else None,
+        'character': fit.character.name if fit.character else None,
+        'factorReload': fit.factorReload,
+        'ship': {a: num(ship.getModifiedItemAttr(a)) for a in SHIP_ATTRS},
+        'used': {'cpu': num(fit.cpuUsed), 'power': num(fit.pgUsed), 'calibration': num(fit.calibrationUsed)},
+        'hp': {k: num(v) for k, v in fit.hp.items()},
+        'ehp': {k: num(v) for k, v in fit.ehp.items()},
+        'cap': {
+            'peakRecharge': num(fit.calculateCapRecharge()),
+            'recharge': num(fit.capRecharge),  # peak recharge + injectors
+            'used': num(fit.capUsed),
+            'stable': bool(fit.capStable),
+        },
+        'sustainable': {k: num(v) for k, v in fit.sustainableTank.items()},
+        'effectiveSustainable': {k: num(v) for k, v in fit.effectiveSustainableTank.items()},
+        'modules': [],
+    }
+    for pos, mod in enumerate(fit.modules):
+        if mod.isEmpty:
+            continue
+        cycle = mod.getCycleParameters()
+        entry = {
+            'position': pos,
+            'typeID': mod.item.ID,
+            'baseTypeID': mod.baseItem.ID if mod.isMutated else None,
+            'mutaplasmidID': mod.mutaplasmid.ID if mod.isMutated else None,
+            'chargeID': mod.charge.ID if mod.charge else None,
+            'state': int(mod.state),
+            'slot': int(mod.slot) if mod.slot is not None else None,
+            'attrs': {a: num(mod.getModifiedItemAttr(a)) for a in MODULE_ATTRS
+                      if mod.getModifiedItemAttr(a) is not None},
+            'rawCycleTime': num(mod.rawCycleTime),
+            'reactivationDelay': num(mod.reactivationDelay),
+            'numShots': mod.numShots,
+            'moduleReloadTime': num(mod.reloadTime),
+            'averageCycleTime': num(cycle.averageTime) if cycle is not None else None,
+            'capUse': num(mod.capUse) if mod.state >= FittingModuleState.ACTIVE else 0.0,
+        }
+        if mod.charge:
+            entry['chargeAttrs'] = {a: num(mod.getModifiedChargeAttr(a)) for a in CHARGE_ATTRS
+                                    if mod.getModifiedChargeAttr(a) is not None}
+        out['modules'].append(entry)
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('output')
+    ap.add_argument('--fits', type=int, nargs='*', help='only these fit IDs')
+    ap.add_argument('--limit', type=int, help='stop after this many fits')
+    ap.add_argument('--save', default=os.path.expanduser(os.path.join('~', '.pyfa', 'saveddata.db')),
+                    help='saveddata.db to copy (default: %(default)s)')
+    args = ap.parse_args()
+
+    tmp = tempfile.mkdtemp(prefix='pyfa_reference_')
+    try:
+        shutil.copy2(args.save, os.path.join(tmp, 'saveddata.db'))
+        normalize_save_db(os.path.join(tmp, 'saveddata.db'))
+
+        sys.path.insert(0, PYFA_ROOT)
+        os.chdir(PYFA_ROOT)
+        import config
+        config.defPaths(customSavePath=tmp)
+
+        # pyfa's services expect a wx app and its normal import order.
+        import wx
+        app = wx.App(False)  # noqa: F841
+        import eos.db
+        import eos.events  # noqa: F401
+        import service.prefetch  # noqa: F401
+        import gui.mainFrame  # noqa: F401
+        from service.port.eft import exportEft  # noqa: F401  (breaks a circular import)
+        from service.fit import Fit as SvcFit
+        from eos.saveddata.character import Character
+
+        svc_fit = SvcFit.getInstance()
+        svc_fit.serviceFittingOptions['useGlobalForceReload'] = True
+        all5 = Character.getAll5()
+
+        ids = args.fits or [f.ID for f in eos.db.getFitList()]
+        if args.limit:
+            ids = ids[:args.limit]
+
+        written = failed = 0
+        with open(args.output, 'w', encoding='utf-8', newline='\n') as f:
+            for fit_id in ids:
+                try:
+                    fit = svc_fit.getFit(fit_id)
+                    if fit is None:
+                        continue
+                    if fit.character is None or fit.character.name != 'All 5':
+                        fit.character = all5
+                        svc_fit.recalc(fit)
+                    f.write(json.dumps(dump_fit(fit, svc_fit), ensure_ascii=False) + '\n')
+                    written += 1
+                except Exception as e:  # keep going; report at the end
+                    failed += 1
+                    print(f'fit {fit_id}: {type(e).__name__}: {e}', file=sys.stderr)
+        print(f'{written} fits written to {args.output}, {failed} failed')
+    finally:
+        try:
+            eos.db.saveddata_session.close()  # noqa: F821  (release the copy before deleting)
+        except Exception:
+            pass
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+if __name__ == '__main__':
+    main()
