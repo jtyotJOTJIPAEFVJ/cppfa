@@ -36,6 +36,11 @@ if os_name == 'Windows':
 
     icon = 'dist_assets/win/pyfa.ico'
 
+    # Module optimizer (service/moduleOptimizer.py looks for it here); built separately
+    # from cpp/PyfaReader.sln, Release x64
+    if os.path.isfile('cpp/bin/Release/PyfaReader.exe'):
+        added_files.append(('cpp/bin/Release/PyfaReader.exe', 'cpp/bin/Release'))
+
     pathex.extend([
          # Need this, see https://github.com/pyinstaller/pyinstaller/issues/1566
          # To get this, download and install windows 10 SDK
