@@ -59,6 +59,7 @@ from .gui.localModule.fillClone import GuiFillWithClonedLocalModulesCommand
 from .gui.localModule.mutatedConvert import GuiConvertMutatedLocalModuleCommand
 from .gui.localModule.mutatedImport import GuiImportLocalMutatedModuleCommand
 from .gui.localModule.mutatedRevert import GuiRevertMutatedLocalModuleCommand
+from .gui.localModule.optimizerApply import GuiApplyOptimizedModulesCommand
 from .gui.localModule.remove import GuiRemoveLocalModuleCommand
 from .gui.localModule.replace import GuiReplaceLocalModuleCommand
 from .gui.localModule.swap import GuiSwapLocalModulesCommand

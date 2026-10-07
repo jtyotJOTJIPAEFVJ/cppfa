@@ -6,6 +6,14 @@
 //   PyfaReader [--game ...] [--save ...] --engine-dump <out.tsv>
 //   PyfaReader [--game ...] [--save ...] --search-check [maxFits]
 //   PyfaReader [--game ...] [--save ...] --bench [fitID [seconds [goal]]]   (profiling case)
+//   PyfaReader [--game ...] [--save ...] --optimize <fitID> <goal> [--racks mid,low,rig] [--price-cap ISK]
+//              [--allow-officer] [--top K] [--results N] [--dump-kinds] [--slots m,l,r] [--threads N]
+//   PyfaReader [--game ...] [--save ...] --optimize-check <fitID>[,<fitID>...] [goal|all] [--slots m,l,r]
+//              [--verbose]   (stage 1 vs brute force; default 2 mid / 2 low / 1 rig open)
+//   PyfaReader [--game ...] [--save ...] --optimize-request <in.json|-> [--out <out.json>] [--goal G] [--check]
+//              [--threads N] [--slots m,l,r] [--verbose]   (pyfa integration, see cpp/OPTIMIZER_CLI.md)
+//   PyfaReader [--game ...] [--save ...] --make-request <fitID> [--open all|mid:0,1;low:2;rig:*] [--goal G]
+//              [--out <req.json>]   (a request for a saved fit, for testing)
 //
 // Without a fit it lists the most recently modified fits. A fit name is matched
 // exactly, then case-insensitively, then as a substring; if several fits match,
@@ -19,7 +27,9 @@
 #include "Fit.h"
 #include "FitEngine.h"
 #include "GameData.h"
+#include "Optimizer.h"
 #include "PyfaPaths.h"
+#include "Request.h"
 #include "Sqlite.h"
 
 #define WIN32_LEAN_AND_MEAN
@@ -30,9 +40,13 @@
 #include <algorithm>
 #include <array>
 #include <cstdio>
+#include <fstream>
+#include <iterator>
 #include <numeric>
 #include <random>
 #include <iostream>
+#include <map>
+#include <unordered_map>
 #include <string>
 
 namespace fs = std::filesystem;
@@ -196,7 +210,7 @@ int searchCheck(const GameData& gd, const Database& save, int maxFits)
                           Goal::ArmorActive};
     const char* goalNames[] = {"shieldPassive", "armorPassive", "hullPassive", "shieldActive", "armorActive"};
 
-    size_t fits = 0, tests = 0, mismatches = 0, instructions = 0, dynamic = 0, orderFits = 0;
+    size_t fits = 0, tests = 0, mismatches = 0, detailMismatches = 0, instructions = 0, dynamic = 0, orderFits = 0;
     double planSeconds = 0, fullSeconds = 0, buildSeconds = 0;
     size_t planCalls = 0, fullCalls = 0;
     // Plan and engine sum the same float terms in a different order.
@@ -281,6 +295,23 @@ int searchCheck(const GameData& gd, const Database& save, int maxFits)
                 ++planCalls;
                 TestResult want = toTestResult(full, goals[g]);
                 ++tests;
+                // The detail must reproduce the test's own numbers exactly when
+                // recombined with the shared totals code (as the optimizer does).
+                {
+                    static thread_local TestDetail detail;
+                    TestResult again = plan.evaluate(choice.data(), goals[g], &detail);
+                    CapSums cs = capSums(detail.modules.data(), detail.moduleCount);
+                    float recharge = cs.added + detail.capPeak;
+                    bool same = cs.used == again.capUsed && recharge == again.capRecharge;
+                    int layer = goals[g] == Goal::ShieldActive ? Shield : goals[g] == Goal::ArmorActive ? Armor : -1;
+                    if (layer >= 0)
+                    {
+                        RepProfile p = makeRepProfile(detail.modules.data(), detail.moduleCount, cs.used, recharge);
+                        same &= p.repair(layer) / detail.divider[static_cast<size_t>(layer)] == again.goal;
+                    }
+                    if (!same && detailMismatches++ < 10)
+                        std::cerr << "fit " << fit->id << " " << goalNames[g] << ": detail doesn't reproduce the test\n";
+                }
                 bool ok = close(got.goal, want.goal) && close(got.cpuUsed, want.cpuUsed) &&
                           close(got.powerUsed, want.powerUsed) && close(got.calibrationUsed, want.calibrationUsed) &&
                           close(got.cpuOutput, want.cpuOutput) && close(got.powerOutput, want.powerOutput) &&
@@ -293,14 +324,15 @@ int searchCheck(const GameData& gd, const Database& save, int maxFits)
             }
         }
     }
-    std::cerr << fits << " fits, " << tests << " tests: " << mismatches << " mismatches\n"
+    std::cerr << fits << " fits, " << tests << " tests: " << mismatches << " mismatches, " << detailMismatches
+              << " detail mismatches\n"
               << "instructions per plan: " << instructions / std::max<size_t>(fits, 1) << " recorded, "
               << dynamic / std::max<size_t>(fits, 1) << " replayed per test; plans with order-sensitive reads: "
               << orderFits << "\n"
               << "plan build " << buildSeconds * 1e3 / std::max<size_t>(fits, 1) << " ms, test "
               << planSeconds * 1e6 / std::max<size_t>(planCalls, 1) << " us vs full evaluation "
               << fullSeconds * 1e6 / std::max<size_t>(fullCalls, 1) << " us\n";
-    return mismatches ? 1 : 0;
+    return mismatches || detailMismatches ? 1 : 0;
 }
 
 // Profiling case: one SearchPlan over a fit's mid and low slots (each: the fitted
@@ -417,6 +449,244 @@ int bench(const GameData& gd, const Database& save, int64_t fitID, double second
     return 0;
 }
 
+std::optional<fitengine::Goal> parseGoal(const std::string& name)
+{
+    using fitengine::Goal;
+    const std::pair<const char*, Goal> goals[] = {{"shieldPassive", Goal::ShieldPassive},
+                                                  {"armorPassive", Goal::ArmorPassive},
+                                                  {"hullPassive", Goal::HullPassive},
+                                                  {"shieldActive", Goal::ShieldActive},
+                                                  {"armorActive", Goal::ArmorActive}};
+    for (const auto& [n, g] : goals)
+        if (name == n)
+            return g;
+    return std::nullopt;
+}
+
+// The best modules for a saved fit's mid/low/rig slots (fitengine::opt).
+int optimize(const GameData& gd, const Database& save, int64_t fitID, fitengine::opt::Options opt)
+{
+    using namespace fitengine;
+    auto fit = loadFit(save, fitID);
+    if (!fit)
+    {
+        std::cerr << "no fit #" << fitID << "\n";
+        return 1;
+    }
+    std::vector<int> positions;
+    FitInput in = toEngineInput(*fit, gd, positions);
+    std::unordered_map<int, double> prices;
+    try
+    {
+        auto st = save.prepare("SELECT typeID, price FROM prices");
+        while (st.step())
+            prices[static_cast<int>(st.getInt(0))] = st.getDouble(1);
+    }
+    catch (const std::exception&)
+    {
+    }
+    opt.prices = prices.empty() ? nullptr : &prices;
+    opt.log = &std::cerr;
+
+    Character ch = gd.loadCharacter(5);
+    Engine engine(gd, ch);
+    std::cerr << "fit #" << fit->id << " " << fit->name << " [" << gd.type(fit->shipID)->name << "], "
+              << prices.size() << " prices\n";
+    opt::Result res = opt::optimize(gd, engine, in, opt);
+    for (const auto& w : res.warnings)
+        std::cerr << "warning: " << w << "\n";
+
+    auto line = [&](const TestResult& r) {
+        char buf[256];
+        std::snprintf(buf, sizeof(buf), "goal %.2f | cpu %.2f/%.2f pg %.2f/%.2f cal %.0f/%.0f | cap %.2f/%.2f",
+                      r.goal, r.cpuUsed, r.cpuOutput, r.powerUsed, r.powerOutput, r.calibrationUsed,
+                      r.calibrationOutput, r.capUsed, r.capRecharge);
+        return std::string(buf);
+    };
+    std::cout << "start: " << line(res.start) << "\n\n";
+    for (size_t i = 0; i < res.fits.size(); ++i)
+    {
+        const opt::FoundFit& f = res.fits[i];
+        std::cout << "#" << i + 1 << (f.fits ? "" : " (does not fit)") << ": " << line(f.exact) << " | gain "
+                  << f.exact.goal - res.start.goal;
+        if (opt.prices)
+            std::cout << " | " << f.price / 1e6 << "M ISK";
+        std::cout << "\n";
+        for (int r = 0; r < opt::RackCount; ++r)
+        {
+            if (f.typeIDs[r].empty())
+                continue;
+            std::cout << "    " << opt::rackName(r) << ":";
+            std::map<std::string, int> names;
+            for (int id : f.typeIDs[r])
+                ++names[gd.type(id)->name];
+            for (const auto& [n, c] : names)
+                std::cout << " " << (c > 1 ? std::to_string(c) + "x " : "") << n << ";";
+            std::cout << "\n";
+        }
+    }
+    const auto& s = res.stats;
+    std::cerr << "\ntime: candidates " << s.seconds[0] << " s, model " << s.seconds[1] << " s, stage 1 "
+              << s.seconds[2] << " s, stage 2 " << s.seconds[3] << " s, total " << s.seconds[4] << " s; "
+              << s.engineCalls << " engine calls\n";
+    return 0;
+}
+
+// Stage 1 against brute force on small open-slot configurations (Options::maxSlots),
+// for each fit and goal. Returns 1 if any case mismatched.
+int optimizeCheck(const GameData& gd, const Database& save, const std::vector<int64_t>& fitIDs,
+                  const std::vector<fitengine::Goal>& goals, fitengine::opt::Options opt, bool verbose)
+{
+    using namespace fitengine;
+    std::unordered_map<int, double> prices;
+    try
+    {
+        auto st = save.prepare("SELECT typeID, price FROM prices");
+        while (st.step())
+            prices[static_cast<int>(st.getInt(0))] = st.getDouble(1);
+    }
+    catch (const std::exception&)
+    {
+    }
+    opt.prices = prices.empty() ? nullptr : &prices;
+    opt.bruteForce = true;
+    opt.log = verbose ? &std::cerr : nullptr;
+    const char* goalNames[] = {"shieldPassive", "armorPassive", "hullPassive", "shieldActive", "armorActive"};
+    Character ch = gd.loadCharacter(5);
+    Engine engine(gd, ch);
+    size_t cases = 0, bad = 0;
+    for (int64_t id : fitIDs)
+    {
+        auto fit = loadFit(save, id);
+        if (!fit)
+        {
+            std::cerr << "no fit #" << id << "\n";
+            continue;
+        }
+        std::vector<int> positions;
+        FitInput in = toEngineInput(*fit, gd, positions);
+        for (Goal g : goals)
+        {
+            opt.goal = g;
+            auto t0 = std::chrono::steady_clock::now();
+            opt::Result res = opt::optimize(gd, engine, in, opt);
+            double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+            const opt::BruteForceCheck& c = res.check;
+            ++cases;
+            bool ok = c.ran && c.mismatches == 0 && c.fittingGoalChanges == 0;
+            bad += ok ? 0 : 1;
+            char buf[512];
+            std::snprintf(buf, sizeof(buf),
+                          "#%-5lld %-14s %-13s %10.0f combos %8zu fit | best %12.4f vs stage 1 %12.4f | %3zu ranks, "
+                          "max err %.2g | %s (%.1f s)",
+                          static_cast<long long>(id), gd.type(fit->shipID)->name.c_str(),
+                          goalNames[static_cast<int>(g)], c.combinations, c.feasible, c.bruteBest, c.stage1Best,
+                          c.compared, c.maxError,
+                          ok ? "ok" : ("MISMATCH " + std::to_string(c.mismatches) +
+                                       (c.fittingGoalChanges ? " (fitting changed goal)" : ""))
+                                          .c_str(),
+                          sec);
+            std::cout << buf << std::endl;
+        }
+    }
+    std::cout << cases << " cases, " << bad << " with mismatches\n";
+    return bad ? 1 : 0;
+}
+
+std::unordered_map<int, double> loadPrices(const Database& save)
+{
+    std::unordered_map<int, double> prices;
+    try
+    {
+        auto st = save.prepare("SELECT typeID, price FROM prices");
+        while (st.step())
+            prices[static_cast<int>(st.getInt(0))] = st.getDouble(1);
+    }
+    catch (const std::exception&)
+    {
+    }
+    return prices;
+}
+
+std::string dumpJson(const json::Value& v)
+{
+    return v.dump(2, ' ', false, json::Value::error_handler_t::replace) + "\n";
+}
+
+bool writeText(const std::optional<fs::path>& path, const std::string& text)
+{
+    if (!path || path->wstring() == L"-")
+    {
+        std::cout << text << std::flush;
+        return true;
+    }
+    std::ofstream f(*path, std::ios::binary);
+    f << text;
+    return static_cast<bool>(f);
+}
+
+// --optimize-request: JSON request in, JSON response out. Exit code 0 ok, 1 check
+// mismatch (--check), 2 error (the response then has status "error").
+int optimizeRequest(const GameData& gd, const Database* save, const fs::path& in, const std::optional<fs::path>& out,
+                    const request::RunOptions& ro, int threads)
+{
+    json::Value response;
+    int code = 0;
+    try
+    {
+        std::string text;
+        if (in.wstring() == L"-")
+            text.assign(std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>());
+        else
+        {
+            std::ifstream f(in, std::ios::binary);
+            if (!f)
+                throw std::runtime_error("cannot read " + toUtf8(in));
+            text.assign(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>());
+        }
+        if (text.size() >= 3 && text.compare(0, 3, "\xEF\xBB\xBF") == 0)
+            text.erase(0, 3);  // UTF-8 BOM
+        request::Request req = request::parse(json::Value::parse(text), gd);
+        if (threads)
+            req.threads = threads;
+        std::unordered_map<int, double> prices;
+        if (!req.prices && save)
+            prices = loadPrices(*save);
+        bool ok = true;
+        response = request::run(gd, req, prices.empty() ? nullptr : &prices, ro, ok);
+        code = ok ? 0 : 1;
+        if (response.contains("check"))
+            std::cerr << "check: " << response["check"].dump() << "\n";
+    }
+    catch (const std::exception& e)
+    {
+        response = request::errorResponse(e.what());
+        std::cerr << "error: " << e.what() << "\n";
+        code = 2;
+    }
+    if (!writeText(out, dumpJson(response)))
+    {
+        std::cerr << "cannot write " << toUtf8(*out) << "\n";
+        return 2;
+    }
+    return code;
+}
+
+int makeRequest(const GameData& gd, const Database& save, int64_t fitID, const std::string& open, fitengine::Goal goal,
+                const std::optional<fs::path>& out)
+{
+    auto fit = loadFit(save, fitID);
+    if (!fit)
+    {
+        std::cerr << "no fit #" << fitID << "\n";
+        return 1;
+    }
+    Character ch = gd.loadCharacter(5);
+    fitengine::Engine engine(gd, ch);
+    json::Value doc = request::makeRequest(gd, engine, *fit, open, goal);
+    return writeText(out, dumpJson(doc)) ? 0 : 1;
+}
+
 int wmain(int argc, wchar_t* argv[])
 {
     SetConsoleOutputCP(CP_UTF8);
@@ -424,6 +694,17 @@ int wmain(int argc, wchar_t* argv[])
     std::optional<fs::path> gameDb, saveDb, engineDumpPath;
     std::optional<int> searchCheckFits;
     std::optional<std::array<std::string, 3>> benchArgs;  // fitID, seconds, goal
+    std::optional<int64_t> optimizeFit;
+    fitengine::opt::Options optimizeOpt;
+    std::vector<int64_t> checkFits;
+    std::vector<fitengine::Goal> checkGoals;
+    std::optional<std::array<int, fitengine::opt::RackCount>> slotsOverride;
+    bool verbose = false;
+    std::optional<fs::path> requestIn, outPath;
+    std::optional<int64_t> makeRequestFit;
+    std::string openSpec = "all";
+    std::optional<fitengine::Goal> goalOverride;
+    bool check = false;
     std::optional<std::string> fitQuery;
     for (int i = 1; i < argc; ++i)
     {
@@ -441,6 +722,95 @@ int wmain(int argc, wchar_t* argv[])
                 a[k] = toUtf8(std::wstring(argv[++i]));
             benchArgs = a;
         }
+        else if (arg == L"--optimize" && i + 2 < argc)
+        {
+            std::string id = toUtf8(std::wstring(argv[++i]));
+            optimizeFit = std::stoll(id[0] == '#' ? id.substr(1) : id);
+            auto goal = parseGoal(toUtf8(std::wstring(argv[++i])));
+            if (!goal)
+            {
+                std::cerr << "unknown goal (shieldPassive, armorPassive, hullPassive, shieldActive, armorActive)\n";
+                return 1;
+            }
+            optimizeOpt.goal = *goal;
+        }
+        else if (arg == L"--racks" && i + 1 < argc)
+        {
+            std::string racks = toUtf8(std::wstring(argv[++i]));
+            for (int r = 0; r < fitengine::opt::RackCount; ++r)
+                optimizeOpt.search[static_cast<size_t>(r)] = racks.find(fitengine::opt::rackName(r)) != std::string::npos;
+        }
+        else if (arg == L"--price-cap" && i + 1 < argc)
+            optimizeOpt.priceCap = std::stod(toUtf8(std::wstring(argv[++i])));
+        else if (arg == L"--allow-officer")
+            optimizeOpt.allowOfficer = true;
+        else if (arg == L"--top" && i + 1 < argc)
+            optimizeOpt.topK = std::stoi(toUtf8(std::wstring(argv[++i])));
+        else if (arg == L"--results" && i + 1 < argc)
+            optimizeOpt.results = std::stoi(toUtf8(std::wstring(argv[++i])));
+        else if (arg == L"--dump-kinds")
+            optimizeOpt.dumpKinds = true;
+        else if (arg == L"--optimize-check" && i + 1 < argc)
+        {
+            std::string ids = toUtf8(std::wstring(argv[++i]));
+            for (size_t at = 0; at < ids.size();)
+            {
+                size_t end = ids.find(',', at);
+                if (end == std::string::npos)
+                    end = ids.size();
+                std::string id = ids.substr(at, end - at);
+                if (!id.empty())
+                    checkFits.push_back(std::stoll(id[0] == '#' ? id.substr(1) : id));
+                at = end + 1;
+            }
+            std::string g = i + 1 < argc ? toUtf8(std::wstring(argv[i + 1])) : "";
+            if (auto goal = parseGoal(g))
+            {
+                checkGoals = {*goal};
+                ++i;
+            }
+            else
+            {
+                if (g == "all")
+                    ++i;
+                for (int k = 0; k < 5; ++k)
+                    checkGoals.push_back(static_cast<fitengine::Goal>(k));
+            }
+            optimizeOpt.maxSlots = {2, 2, 1};
+        }
+        else if (arg == L"--slots" && i + 1 < argc)
+        {
+            std::string v = toUtf8(std::wstring(argv[++i]));
+            std::array<int, fitengine::opt::RackCount> m{};
+            if (sscanf_s(v.c_str(), "%d,%d,%d", &m[0], &m[1], &m[2]) == 3)
+                slotsOverride = m;
+        }
+        else if (arg == L"--threads" && i + 1 < argc)
+            optimizeOpt.threads = std::stoi(toUtf8(std::wstring(argv[++i])));
+        else if (arg == L"--verbose")
+            verbose = true;
+        else if (arg == L"--optimize-request" && i + 1 < argc)
+            requestIn = fs::path(argv[++i]);
+        else if (arg == L"--out" && i + 1 < argc)
+            outPath = fs::path(argv[++i]);
+        else if (arg == L"--make-request" && i + 1 < argc)
+        {
+            std::string id = toUtf8(std::wstring(argv[++i]));
+            makeRequestFit = std::stoll(id[0] == '#' ? id.substr(1) : id);
+        }
+        else if (arg == L"--open" && i + 1 < argc)
+            openSpec = toUtf8(std::wstring(argv[++i]));
+        else if (arg == L"--goal" && i + 1 < argc)
+        {
+            goalOverride = request::parseGoal(toUtf8(std::wstring(argv[++i])));
+            if (!goalOverride)
+            {
+                std::cerr << "unknown goal (shieldPassive, armorPassive, hullPassive, shieldActive, armorActive)\n";
+                return 2;
+            }
+        }
+        else if (arg == L"--check")
+            check = true;
         else if (arg == L"--search-check")
             searchCheckFits = (i + 1 < argc && iswdigit(argv[i + 1][0])) ? std::stoi(argv[++i]) : 0;
         else if (!fitQuery)
@@ -456,10 +826,43 @@ int wmain(int argc, wchar_t* argv[])
     if (!gameDb)
     {
         std::cerr << "Could not find eve.db; pass --game <path>\n";
-        return 1;
+        if (requestIn)
+            writeText(outPath, dumpJson(request::errorResponse("could not find eve.db; pass --game <path>")));
+        return requestIn ? 2 : 1;
     }
     if (!saveDb)
         saveDb = pyfa::findSaveDb(pyfa::findPyfaRoot(gameDb->parent_path()));
+    if (requestIn)
+    {
+        // saveddata.db is optional here: only pyfa's prices table is read from it.
+        try
+        {
+            fs::path modifiersTsv = exeDir() / "effect_modifiers.tsv";
+            if (!fs::is_regular_file(modifiersTsv))
+                throw std::runtime_error(toUtf8(modifiersTsv) + " not found");
+            GameData gd = GameData::load(*gameDb, modifiersTsv);
+            std::optional<Database> save;
+            if (saveDb)
+                save.emplace(*saveDb);
+            request::RunOptions ro;
+            ro.check = check;
+            ro.goal = goalOverride;
+            ro.log = verbose ? &std::cerr : nullptr;
+            if (slotsOverride)
+                ro.maxSlots = *slotsOverride;
+            ro.progress = [](double f, const std::string& phase) {
+                std::fprintf(stderr, "progress %.3f %s\n", f, phase.c_str());
+                std::fflush(stderr);
+            };
+            return optimizeRequest(gd, save ? &*save : nullptr, *requestIn, outPath, ro, optimizeOpt.threads);
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Error: " << e.what() << "\n";
+            writeText(outPath, dumpJson(request::errorResponse(e.what())));
+            return 2;
+        }
+    }
     if (!saveDb)
     {
         std::cerr << "Could not find saveddata.db (looked in " << toUtf8(pyfa::defaultSavePath())
@@ -489,6 +892,15 @@ int wmain(int argc, wchar_t* argv[])
             return engineDump(gd, save, *engineDumpPath);
         if (searchCheckFits)
             return searchCheck(gd, save, *searchCheckFits);
+        if (slotsOverride)
+            optimizeOpt.maxSlots = *slotsOverride;
+        if (makeRequestFit)
+            return makeRequest(gd, save, *makeRequestFit, openSpec, goalOverride.value_or(fitengine::Goal::ArmorActive),
+                               outPath);
+        if (!checkFits.empty())
+            return optimizeCheck(gd, save, checkFits, checkGoals, optimizeOpt, verbose);
+        if (optimizeFit)
+            return optimize(gd, save, *optimizeFit, optimizeOpt);
         if (benchArgs)
             return bench(gd, save, std::stoll((*benchArgs)[0]), std::stod((*benchArgs)[1]), (*benchArgs)[2]);
 

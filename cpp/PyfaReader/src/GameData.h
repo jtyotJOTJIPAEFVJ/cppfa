@@ -64,6 +64,7 @@ struct Type
     int groupID = 0;
     std::optional<int> marketGroupID;
     bool published = false;
+    int metaGroupID = 0;  // invtypes.metaGroupID: 1 Tech I, 2 Tech II, 4 Faction, 5 Officer, 6 Deadspace, ...
 
     // Sorted by attribute ID / effect ID.
     std::vector<std::pair<int, float>> attributes;
@@ -275,6 +276,8 @@ public:
 
     // Type IDs in a group, ascending (unpublished ones only if publishedOnly is false).
     std::vector<int> typeIDsInGroup(int groupID, bool publishedOnly = true) const;
+    // Fittable modules for a slot, ascending type ID.
+    std::vector<int> moduleTypeIDs(Slot slot, bool publishedOnly = true) const;
 
     // Names of the fittable modules in a group, sorted alphabetically. The
     // name overload matches every group with that exact name. Unpublished
