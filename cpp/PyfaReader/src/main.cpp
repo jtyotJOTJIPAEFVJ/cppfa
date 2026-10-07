@@ -12,6 +12,8 @@
 //              [--verbose]   (stage 1 vs brute force; default 2 mid / 2 low / 1 rig open)
 //   PyfaReader [--game ...] [--save ...] --optimize-request <in.json|-> [--out <out.json>] [--goal G] [--check]
 //              [--threads N] [--slots m,l,r] [--verbose]   (pyfa integration, see cpp/OPTIMIZER_CLI.md)
+//              [--members] [--no-refine] [--time-budget S] [--refine-rounds N] [--refine-patience N]
+//              [--refine-pairs N] [--refine-chains N] [--refine-starts N] [--refine-exact N]   (refine tests; also for --optimize)
 //   PyfaReader [--game ...] [--save ...] --make-request <fitID> [--open all|mid:0,1;low:2;rig:*] [--goal G]
 //              [--out <req.json>]   (a request for a saved fit, for testing)
 //
@@ -495,6 +497,8 @@ int optimize(const GameData& gd, const Database& save, int64_t fitID, fitengine:
     opt::Result res = opt::optimize(gd, engine, in, opt);
     for (const auto& w : res.warnings)
         std::cerr << "warning: " << w << "\n";
+    if (res.infeasible.infeasible)
+        std::cerr << "infeasible (" << res.infeasible.reason << "): " << res.infeasible.message << "\n";
 
     auto line = [&](const TestResult& r) {
         char buf[256];
@@ -705,6 +709,9 @@ int wmain(int argc, wchar_t* argv[])
     std::string openSpec = "all";
     std::optional<fitengine::Goal> goalOverride;
     bool check = false;
+    bool members = false, refineOff = false;
+    std::optional<double> timeBudget, refineExact;
+    std::optional<int> refineRounds, refinePatience, refinePairs, refineChains, refineStarts;
     std::optional<std::string> fitQuery;
     for (int i = 1; i < argc; ++i)
     {
@@ -811,6 +818,24 @@ int wmain(int argc, wchar_t* argv[])
         }
         else if (arg == L"--check")
             check = true;
+        else if (arg == L"--members")
+            members = true;
+        else if (arg == L"--no-refine")
+            refineOff = true;
+        else if (arg == L"--time-budget" && i + 1 < argc)
+            timeBudget = std::stod(toUtf8(std::wstring(argv[++i])));
+        else if (arg == L"--refine-rounds" && i + 1 < argc)
+            refineRounds = std::stoi(toUtf8(std::wstring(argv[++i])));
+        else if (arg == L"--refine-patience" && i + 1 < argc)
+            refinePatience = std::stoi(toUtf8(std::wstring(argv[++i])));
+        else if (arg == L"--refine-pairs" && i + 1 < argc)
+            refinePairs = std::stoi(toUtf8(std::wstring(argv[++i])));
+        else if (arg == L"--refine-chains" && i + 1 < argc)
+            refineChains = std::stoi(toUtf8(std::wstring(argv[++i])));
+        else if (arg == L"--refine-exact" && i + 1 < argc)
+            refineExact = std::stod(toUtf8(std::wstring(argv[++i])));
+        else if (arg == L"--refine-starts" && i + 1 < argc)
+            refineStarts = std::stoi(toUtf8(std::wstring(argv[++i])));
         else if (arg == L"--search-check")
             searchCheckFits = (i + 1 < argc && iswdigit(argv[i + 1][0])) ? std::stoi(argv[++i]) : 0;
         else if (!fitQuery)
@@ -850,6 +875,16 @@ int wmain(int argc, wchar_t* argv[])
             ro.log = verbose ? &std::cerr : nullptr;
             if (slotsOverride)
                 ro.maxSlots = *slotsOverride;
+            ro.members = members;
+            if (refineOff)
+                ro.refine = false;
+            ro.timeBudget = timeBudget;
+            ro.refineRounds = refineRounds;
+            ro.refinePatience = refinePatience;
+            ro.refinePairs = refinePairs;
+            ro.refineChains = refineChains;
+            ro.refineStarts = refineStarts;
+            ro.refineExact = refineExact;
             ro.progress = [](double f, const std::string& phase) {
                 std::fprintf(stderr, "progress %.3f %s\n", f, phase.c_str());
                 std::fflush(stderr);
@@ -894,6 +929,22 @@ int wmain(int argc, wchar_t* argv[])
             return searchCheck(gd, save, *searchCheckFits);
         if (slotsOverride)
             optimizeOpt.maxSlots = *slotsOverride;
+        optimizeOpt.refine = !refineOff;
+        optimizeOpt.memberBruteForce = members;
+        if (timeBudget)
+            optimizeOpt.timeBudget = *timeBudget;
+        if (refineRounds)
+            optimizeOpt.refineRounds = *refineRounds;
+        if (refinePatience)
+            optimizeOpt.refinePatience = *refinePatience;
+        if (refinePairs)
+            optimizeOpt.refinePairs = *refinePairs;
+        if (refineChains)
+            optimizeOpt.refineChains = *refineChains;
+        if (refineStarts)
+            optimizeOpt.refineStarts = *refineStarts;
+        if (refineExact)
+            optimizeOpt.refineExact = *refineExact;
         if (makeRequestFit)
             return makeRequest(gd, save, *makeRequestFit, openSpec, goalOverride.value_or(fitengine::Goal::ArmorActive),
                                outPath);

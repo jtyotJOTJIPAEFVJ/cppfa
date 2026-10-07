@@ -124,10 +124,11 @@ def buildModuleEntry(position, mod, optimize):
 
 
 def buildRequest(fit, positions, goal, priceCap=0, allowOfficer=False, results=10, threads=0,
-                 prices=None, allSkillsV=False):
+                 prices=None, allSkillsV=False, timeBudget=60):
     """
     The request dict for fit, with the modules (or empty slots) at positions (indices in
     fit.modules) open. prices: {typeID: ISK}; None reads pyfa's price cache.
+    timeBudget: seconds the optimizer may spend improving its results, 0 for no limit.
     allSkillsV sends no character (all skills at V), for tests.
     """
     if goal not in GOALS:
@@ -154,6 +155,7 @@ def buildRequest(fit, positions, goal, priceCap=0, allowOfficer=False, results=1
     request['allowOfficer'] = bool(allowOfficer)
     request['results'] = int(results)
     request['threads'] = int(threads)
+    request['timeBudget'] = max(0.0, float(timeBudget or 0))
     if prices is None:
         prices = readPrices()
     # Always sent, so the exe never reads saveddata itself
@@ -282,10 +284,44 @@ class Option:
         return [name if count == 1 else '{}x {}'.format(count, name) for name, count in counts.items()]
 
 
+class Shortfall:
+    """One resource the pinned part (the modules outside the selection) is over on."""
+
+    def __init__(self, data):
+        data = data or {}
+        self.resource = data.get('resource', '')  # 'cpu', 'power' or 'calibration'
+        self.pinnedUsed = data.get('pinnedUsed', 0.0)
+        self.output = data.get('output', 0.0)
+        self.bestPinnedUsed = data.get('bestPinnedUsed', 0.0)
+        self.bestOutput = data.get('bestOutput', 0.0)
+        self.shortfall = data.get('shortfall', 0.0)
+        self.message = data.get('message', '')
+
+
+class Infeasibility:
+    """Why no option can fit (response status "infeasible")."""
+
+    def __init__(self, data):
+        data = data or {}
+        self.reason = data.get('reason', '')  # 'calibration', 'outputs' or 'search'
+        self.message = data.get('message', '')
+        self.resources = [Shortfall(r) for r in data.get('resources', ())]
+        # Pinned modules named in the message: {position, slot, typeID, name, cost}
+        self.modules = list(data.get('modules', ()))
+
+
 class OptimizerResult:
 
     def __init__(self, data):
         self.raw = data
+        self.status = data.get('status', 'ok')
+        self.message = data.get('message', '')
+        # Infeasibility when no option can fit (then there are no options), else None.
+        self.infeasible = None
+        if self.status == 'infeasible':
+            self.infeasible = Infeasibility(data.get('infeasible'))
+            if not self.infeasible.message:
+                self.infeasible.message = self.message
         self.goal = data.get('goal')
         self.openSlots = data.get('openSlots', {})
         self.start = FitStats(data.get('start'))
@@ -296,10 +332,14 @@ class OptimizerResult:
 
 
 def parseResponse(data):
-    """OptimizerResult from the response dict; OptimizerError for an error response."""
+    """OptimizerResult from the response dict; OptimizerError for an error response.
+
+    Status "infeasible" (no choice for the selected slots can fit) is a result, not an
+    error: OptimizerResult.infeasible says why, and there are no options.
+    """
     if not isinstance(data, dict):
         raise OptimizerError('The optimizer returned no response.')
-    if data.get('status') != 'ok':
+    if data.get('status') not in ('ok', 'infeasible'):
         raise OptimizerError(data.get('message') or 'The optimizer failed.')
     return OptimizerResult(data)
 

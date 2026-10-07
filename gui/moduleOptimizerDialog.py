@@ -170,6 +170,15 @@ class ModuleOptimizerDialog(wx.Frame):
         self.resultCount = wx.SpinCtrl(panel, min=1, max=100, initial=self.settings.get('results'))
         options.Add(self.resultCount, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
 
+        budgetLabel = wx.StaticText(panel, label=_t('Max time (s):'))
+        options.Add(budgetLabel, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+        self.timeBudget = wx.SpinCtrl(panel, min=0, max=3600, initial=int(self.settings.get('timeBudget')))
+        tip = _t('How long the optimizer may keep improving its results. Small selections finish much sooner. '
+                 '0 for no limit.')
+        budgetLabel.SetToolTip(tip)
+        self.timeBudget.SetToolTip(tip)
+        options.Add(self.timeBudget, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+
         options.AddStretchSpacer()
         self.runButton = wx.Button(panel, label=_t('Run'))
         self.runButton.SetDefault()
@@ -268,6 +277,7 @@ class ModuleOptimizerDialog(wx.Frame):
         self.settings.set('priceCap', max(0.0, self.priceCap.GetValue()) * 1e6)
         self.settings.set('allowOfficer', self.allowOfficer.GetValue())
         self.settings.set('results', self.resultCount.GetValue())
+        self.settings.set('timeBudget', self.timeBudget.GetValue())
         return goal
 
     # -------------------------------------------------------------------------
@@ -294,7 +304,7 @@ class ModuleOptimizerDialog(wx.Frame):
             self.request = mo.buildRequest(
                 fit, positions, goal, priceCap=self.settings.get('priceCap'),
                 allowOfficer=self.settings.get('allowOfficer'), results=self.settings.get('results'),
-                threads=self.settings.get('threads'))
+                threads=self.settings.get('threads'), timeBudget=self.settings.get('timeBudget'))
         except Exception as e:
             pyfalog.exception('Failed to build the optimizer request')
             wx.MessageBox(_t('Could not describe the fit to the optimizer:\n{}').format(e),
@@ -308,8 +318,15 @@ class ModuleOptimizerDialog(wx.Frame):
         self.setRunning(True)
         self.gauge.SetValue(0)
         self.phaseText.SetLabel(_t('Starting...'))
+        # The run timeout must leave room for the time budget (and the search before it)
+        timeout = self.settings.get('timeout') or None
+        budget = self.settings.get('timeBudget') or 0
+        if timeout and budget:
+            timeout = max(timeout, budget + 120)
+        elif not budget:
+            timeout = None  # no time limit: the optimizer stops when its results stop improving
         self.run = mo.OptimizerRun(
-            self.request, exe=exe, timeout=self.settings.get('timeout') or None,
+            self.request, exe=exe, timeout=timeout,
             progress=lambda fraction, phase: wx.CallAfter(self.onProgress, fraction, phase))
         thread = threading.Thread(target=self.worker, args=(self.run,), name='ModuleOptimizer', daemon=True)
         thread.start()
@@ -349,7 +366,10 @@ class ModuleOptimizerDialog(wx.Frame):
             wx.MessageBox(error, _t('Optimize Modules'), wx.OK | wx.ICON_ERROR, self)
             return
         self.gauge.SetValue(1000)
-        self.phaseText.SetLabel(_t('Done in {:.1f} s: {} options').format(run.seconds or 0, len(result.options)))
+        if result.infeasible is not None:
+            self.phaseText.SetLabel(_t('Done in {:.1f} s: no option can fit').format(run.seconds or 0))
+        else:
+            self.phaseText.SetLabel(_t('Done in {:.1f} s: {} options').format(run.seconds or 0, len(result.options)))
         self.setResult(result)
 
     def onCancel(self, event):
@@ -359,7 +379,8 @@ class ModuleOptimizerDialog(wx.Frame):
     def setRunning(self, running):
         self.runButton.Enable(not running)
         self.cancelButton.Enable(running)
-        for control in (self.goalChoice, self.priceCap, self.allowOfficer, self.resultCount, self.exeButton):
+        for control in (self.goalChoice, self.priceCap, self.allowOfficer, self.resultCount, self.timeBudget,
+                        self.exeButton):
             control.Enable(not running)
 
     # -------------------------------------------------------------------------
@@ -378,13 +399,12 @@ class ModuleOptimizerDialog(wx.Frame):
         result = self.result
         lines = []
         if result is not None:
+            if result.infeasible is not None:
+                # The optimizer's diagnosis: which resource, by how much, what to change.
+                lines.append(_t('No option can fit.') + ' ' + result.infeasible.message)
+            elif not result.options:
+                lines.append(_t('No options found.'))
             lines.extend(result.warnings)
-            if not result.options:
-                if not result.start.fits:
-                    lines.append(_t('No options: the fit without the selected slots already needs more CPU, '
-                                    'powergrid or calibration than it has.'))
-                else:
-                    lines.append(_t('No options found.'))
         self.warningText.SetLabel('\n'.join(lines))
         self.warningText.Wrap(800)
         self.onlineButton.Show(bool(result is not None and result.clampedModules))

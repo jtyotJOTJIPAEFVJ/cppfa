@@ -582,7 +582,9 @@ class ModuleOptimizerSettings:
             'results': 10,
             # 0 for all hardware threads
             'threads': 0,
-            # Seconds before the optimizer is stopped
+            # Seconds the optimizer may spend improving its results (refine), 0 for no limit
+            'timeBudget': 60,
+            # Seconds before the optimizer is stopped (at least the time budget plus 120 s)
             'timeout': 300}
         self.settings = SettingsProvider.getInstance().getSettings('pyfaModuleOptimizerSettings', defaults)
 
