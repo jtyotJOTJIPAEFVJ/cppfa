@@ -6,6 +6,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <deque>
@@ -20,6 +21,7 @@
 #include <numeric>
 #include <ostream>
 #include <queue>
+#include <random>
 #include <regex>
 #include <set>
 #include <shared_mutex>
@@ -34,6 +36,12 @@ const char* rackName(int rack)
 {
     static const char* names[RackCount] = {"mid", "low", "rig"};
     return rack >= 0 && rack < RackCount ? names[rack] : "?";
+}
+
+const char* resourceName(int resource)
+{
+    static const char* names[ResourceCount] = {"cpu", "power", "calibration"};
+    return resource >= 0 && resource < ResourceCount ? names[resource] : "?";
 }
 
 namespace
@@ -68,6 +76,9 @@ double secondsSince(Clock::time_point t) { return std::chrono::duration<double>(
 constexpr double kTiny = 1e-6;
 constexpr int kMaxRackSlots = 8;
 constexpr int kPlanItemBudget = 480;  // options + their charges per measurement plan (kMaxItems is 512)
+// Stage 2 local search: accepted moves per starting set at most. The search provably
+// ends without it (each move strictly improves a strict weak order); it is a backstop.
+constexpr size_t kStage2MaxMoves = 10000;
 
 const Slot kRackSlot[RackCount] = {Slot::Med, Slot::Low, Slot::Rig};
 
@@ -201,6 +212,9 @@ struct Candidate
     double cpu = 0, power = 0, calibration = 0, capUse = 0;
     uint16_t resMask = 0;  // which of the 12 ship resonances it changes
     std::array<double, 3> outputDelta{};
+    // How much it lowers the pinned modules' CPU / power / calibration (>= 0): the
+    // change of the fit's total use minus its own cost.
+    std::array<double, 3> pinnedDrop{};
 
     uint64_t shipChanged = 0;  // ShipAttrs fields it changes alone
 
@@ -521,6 +535,52 @@ private:
 
 namespace
 {
+// Goals within ~1e-7 relative are float noise between variants; they compare by
+// price. The goal is bucketed (a fixed grid on log(goal)) rather than compared with
+// a tolerance: "within tolerance" is not transitive, and the local search cycled
+// on it (A -> cheaper B within 1e-7 -> cheaper C within 1e-7 -> A, C being more
+// than 1e-7 below A). Buckets make the key a strict weak order, so every accepted
+// move strictly improves it and the search terminates. Goals that are not > 0
+// (including NaN) share the lowest bucket.
+int64_t goalBucket(double goal)
+{
+    if (!(goal > 0) || !std::isfinite(goal))
+        return std::numeric_limits<int64_t>::min();
+    return static_cast<int64_t>(std::floor(std::log(goal) * 1e7));
+}
+
+struct Scored
+{
+    bool valid = false;
+    bool fits = false;
+    double goal = 0;
+    int64_t bucket = std::numeric_limits<int64_t>::min();
+    double price = 0;
+    TestResult r;
+};
+// Lexicographic (valid, fits, goal bucket, cheaper): a strict weak order.
+bool better(const Scored& a, const Scored& b)
+{
+    if (a.valid != b.valid)
+        return a.valid;
+    if (a.fits != b.fits)
+        return a.fits;
+    if (a.bucket != b.bucket)
+        return a.bucket > b.bucket;
+    return a.price < b.price;
+}
+// A limit of stage 1's model (key sizes, plan size). The search then skips stages 1
+// and 2: refine, which evaluates exactly and needs no model, searches from the empty set.
+struct ModelLimit : std::runtime_error
+{
+    using std::runtime_error::runtime_error;
+};
+
+bool fitsOf(const TestResult& t)
+{
+    return t.cpuUsed <= t.cpuOutput && t.powerUsed <= t.powerOutput && t.calibrationUsed <= t.calibrationOutput;
+}
+
 // One search: everything derived from the fit, the goal and the options.
 class Search
 {
@@ -540,6 +600,18 @@ private:
     void measure();
     void interactions();
     void classify();
+
+    // ---- infeasibility (Result::infeasible): see the comments at the definitions
+    bool pinnedOver() const;
+    bool diagnoseCalibration();
+    bool diagnoseOutputs();
+    void diagnoseSearch(bool found);
+    std::string fmt(double v) const;
+    std::string selectionNote() const;
+    std::array<double, 3> pinnedUsed_{}, pinnedOutput_{};  // the pinned part alone (open slots empty)
+    std::vector<int> pinnedIndex_;  // base_.modules index -> fit_.modules index
+    std::vector<Shortfall> bounds_;  // diagnoseOutputs' bounds per over resource (for diagnoseSearch)
+    void noGoalWarning();
 
     // ---- model
     void buildKinds();
@@ -662,9 +734,71 @@ private:
         return on;
     }();
     double costScale_ = 1;               // most any rigs can scale module costs down
+    bool noRigCalSplit_ = [] {           // OPT_NO_RIG_CAL_SPLIT: one rig subgroup per family (the old way)
+        char* e = nullptr;
+        size_t n = 0;
+        bool on = _dupenv_s(&e, &n, "OPT_NO_RIG_CAL_SPLIT") == 0 && e;
+        free(e);
+        return on;
+    }();
     void countsOf(const std::array<uint32_t, RackCount>& ms, int level, std::vector<uint8_t>& counts) const;
     // ---- stage 2
     void stage2();
+    struct FinalSet
+    {
+        Scored s;
+        std::vector<int> cands;  // cands_ indices
+        FitInput fit;
+    };
+    std::vector<FinalSet> finals_;  // stage 2 (then refine) end sets, distinct
+    void report();                  // the best fitting finals_ -> result_.fits
+
+    // ---- refine: exact local search over every member (and charge) of every rack,
+    // across subgroups and roles, from stage 2's sets; then iterated local search
+    // within the time budget (see the comments at the definitions).
+    std::vector<Candidate> chargeAlts_;             // non-best charges (measure)
+    std::array<std::vector<int>, RackCount> choices_;     // module choices per rack (cands_ indices), dominated ones dropped
+    std::array<std::vector<int>, RackCount> allChoices_;  // every module choice (memberBrute's reference)
+    void buildPool();
+    struct RSet
+    {
+        std::array<std::vector<int>, RackCount> m;  // sorted cands_ indices per rack
+        Scored s;                                   // canonical evaluation
+        // At a local optimum: the strongest one-move neighbours that don't improve it
+        // (mostly upgrades that don't fit), (rack, out, in), strongest first; perturb() kicks with them.
+        std::vector<std::array<int, 3>> kicks;
+    };
+    std::string keyOf(const RSet& x) const;
+    bool validIds(const std::vector<int>& ids) const;
+    bool validSet(const RSet& x) const;
+    FitInput fitOf(const RSet& x) const;
+    double priceOf(const RSet& x) const;
+    Scored canonical(RSet& x);
+    struct RefineStats
+    {
+        size_t sweeps = 0, pairChecks = 0, evaluations = 0, canonicalEvals = 0, plans = 0;
+    };
+    bool improveOnce(RSet& x, RefineStats& st, bool pairs);
+    void localSearch(RSet& x, RefineStats& st, const Clock::time_point* deadline);
+    void refine(Clock::time_point t0);
+    std::mutex canonM_;
+    std::unordered_map<std::string, Scored> canonMemo_;
+    std::atomic<size_t> refineEvals_{0};
+
+    // ---- every combination of the given choices per rack, exactly (refine's exact
+    // pass on small requests; Options::memberBruteForce with every choice)
+    struct Enumerated
+    {
+        bool ran = false;
+        std::string skipped;
+        double combinations = 0, plans = 0, seconds = 0;
+        size_t fitting = 0;
+        Scored best;           // the best fitting set (goal, then cheaper)
+        std::vector<int> ids;  // its modules
+    };
+    Enumerated enumerate(const std::array<std::vector<int>, RackCount>& lists, double limit,
+                         double maxPlans = std::numeric_limits<double>::infinity());
+    void memberBrute();
 
     // ---- validation (Options::bruteForce)
     void bruteForce();
@@ -837,6 +971,7 @@ void Search::setup()
             }
         }
         base_.modules.push_back(m);
+        pinnedIndex_.push_back(static_cast<int>(i));
         if (const Type* t = gd_.type(m.typeID))
         {
             ++pinnedGroupCount_[t->groupID];
@@ -844,6 +979,11 @@ void Search::setup()
         }
     }
     FitResult b = engine_.evaluate(base_);
+    {
+        const TestResult tb = toTestResult(b, goal_);
+        pinnedUsed_ = {tb.cpuUsed, tb.powerUsed, tb.calibrationUsed};
+        pinnedOutput_ = {tb.cpuOutput, tb.powerOutput, tb.calibrationOutput};
+    }
     const Attr slotAttr[RackCount] = {Attr::medSlots, Attr::lowSlots, Attr::rigSlots};
     for (int r = 0; r < RackCount; ++r)
     {
@@ -981,6 +1121,11 @@ void Search::gatherCandidates()
                         continue;
                     Candidate cc = c;
                     cc.input.chargeID = chargeID;
+                    // Prices compare module + charge, as the response reports them (the cap
+                    // applies to the module); an unknown charge price counts 0.
+                    if (opt_.prices)
+                        if (auto p = opt_.prices->find(chargeID); p != opt_.prices->end() && p->second > 0)
+                            cc.price += p->second;
                     cands_.push_back(cc);
                 }
             }
@@ -1045,6 +1190,13 @@ void Search::measure()
             c.cpu = m.cpu;
             c.power = m.power;
             c.calibration = m.calibration;
+            {
+                const double used[3] = {r.cpuUsed, r.powerUsed, r.calibrationUsed};
+                const double used0[3] = {r0.cpuUsed, r0.powerUsed, r0.calibrationUsed};
+                const double own[3] = {m.cpu, m.power, m.calibration};
+                for (size_t k = 0; k < 3; ++k)
+                    c.pinnedDrop[k] = std::max(0.0, -((used[k] - used0[k]) - own[k]));
+            }
             c.capUse = (m.state >= State::Active && m.capNeed != 0 && m.rawCycle + m.reactivation > 0) ? m.capUse : 0;
             c.rep = repStrength(m, layer_);
             c.shipChanged = 0;
@@ -1075,6 +1227,8 @@ void Search::measure()
             return a.capGain > b.capGain;
         return a.goalGain > b.goalGain;
     };
+    // The other charges are kept aside: refine() offers them as module choices of their own.
+    chargeAlts_.clear();
     for (Candidate& c : cands_)
     {
         if (!c.input.chargeID)
@@ -1089,7 +1243,12 @@ void Search::measure()
             kept.push_back(std::move(c));
         }
         else if (better(c, kept[it->second]))
+        {
+            chargeAlts_.push_back(std::move(kept[it->second]));
             kept[it->second] = std::move(c);
+        }
+        else
+            chargeAlts_.push_back(std::move(c));
     }
     cands_ = std::move(kept);
 }
@@ -1129,7 +1288,11 @@ void Search::interactions()
         const Group* g = gd_.groupOf(*c.type);
         std::string key = std::string(rackName(c.rack)) + "|";
         if (c.rack == RackRig)
-            key += rigFamily(c.type->name);
+            // Split by calibration cost: T1 and T2 rigs of a family differ in it, and the
+            // stronger (dearer) representative alone can make stage 1 miss sets where
+            // only the cheaper rig fits (e.g. a CPU rig next to pinned rigs).
+            key += rigFamily(c.type->name) +
+                   (noRigCalSplit_ ? std::string() : "|cal" + std::to_string(std::lround(c.calibration)));
         else
             key += (g ? g->name : std::to_string(c.groupID)) + "|" + std::to_string(c.resMask) + "|" +
                    sizeToken(c.type->name);
@@ -1408,7 +1571,7 @@ void Search::buildKinds()
     }
     result_.stats.kinds = kinds_.size();
     if (kinds_.size() > 250)
-        throw std::runtime_error("too many module kinds");
+        throw ModelLimit("too many module kinds");
 }
 
 void Search::buildCorePlan()
@@ -1434,7 +1597,7 @@ void Search::buildCorePlan()
             spec.slots.push_back(options);
     }
     if (items * kMaxRackSlots > 4 * kPlanItemBudget)
-        throw std::runtime_error("too many core kinds");
+        throw ModelLimit("too many core kinds");
     coreSlots_ = static_cast<int>(spec.slots.size());
     corePlan_ = std::make_unique<SearchPlan>(engine_, spec);
     coreOptionKind_.assign(static_cast<size_t>(corePlan_->optionCount()), -1);
@@ -1532,7 +1695,7 @@ void Search::buildCorePlan()
         std::sort(v.begin(), v.end());
     for (auto* v : {&inflCap_, &inflHp_, &eps_, &inflFit_, &capAll_})
         if (v->size() > 32)
-            throw std::runtime_error("too many influencing kinds for one record");
+            throw ModelLimit("too many influencing kinds for one record");
     kindRec_.clear();
     pinRec_.clear();
     for (size_t k = 0; k < kinds_.size(); ++k)
@@ -1896,7 +2059,7 @@ void Search::buildResistSets()
     resistPlan_ = makePlan(resistKinds_, eps_, resistRackOptions_, resistFirstSlot_, resistOptionKind_);
     fitPlan_ = makePlan(fitKinds_, inflFit_, fitRackOptions_, fitFirstSlot_, fitOptionKind_);
     if (eps_.size() > 24 || inflFit_.size() > 24)
-        throw std::runtime_error("too many kinds change resists or fitting");
+        throw ModelLimit("too many kinds change resists or fitting");
     logLine(std::to_string(resistSets_.size()) + " resist sets, " + std::to_string(fitSets_.size()) +
             " fitting-module sets");
 }
@@ -2644,7 +2807,7 @@ const std::vector<std::vector<int>>& Search::projections(const std::vector<int>&
     ks.erase(std::unique(ks.begin(), ks.end()), ks.end());
     // Key: the kinds as a bit set (bits 0..124), the free racks in the top 3 bits.
     if (kinds_.size() > 125)
-        throw std::runtime_error("too many kinds for a projection key");
+        throw ModelLimit("too many kinds for a projection key");
     Key key;
     key.b = static_cast<uint64_t>(freeMask & 7u) << 61;
     for (int k : ks)
@@ -2713,7 +2876,7 @@ double Search::partialBound(const uint8_t* fixed, unsigned freeMask)
         {
             room[0] -= basePinned_[p].cpu * costScale_;
             room[1] -= basePinned_[p].power * costScale_;
-            room[2] -= basePinned_[p].calibration * costScale_;
+            room[2] -= basePinned_[p].calibration;
         }
     for (size_t k = 0; k < kinds_.size(); ++k)
         if (base[k])
@@ -2721,7 +2884,7 @@ double Search::partialBound(const uint8_t* fixed, unsigned freeMask)
             const Candidate& c = cands_[static_cast<size_t>(kinds_[k].cand)];
             room[0] -= base[k] * c.cpu * costScale_;
             room[1] -= base[k] * c.power * costScale_;
-            room[2] -= base[k] * c.calibration * costScale_;
+            room[2] -= base[k] * c.calibration;
         }
     auto projectionFits = [&](const std::vector<int>& proj) {
         std::array<double, 3> cost{};
@@ -2730,7 +2893,7 @@ double Search::partialBound(const uint8_t* fixed, unsigned freeMask)
             const Candidate& c = cands_[static_cast<size_t>(kinds_[static_cast<size_t>(k)].cand)];
             cost[0] += c.cpu * costScale_;
             cost[1] += c.power * costScale_;
-            cost[2] += c.calibration * costScale_;
+            cost[2] += c.calibration;
         }
         return cost[0] <= room[0] + 0.01 && cost[1] <= room[1] + 0.01 && cost[2] <= room[2] + 0.01;
     };
@@ -2981,7 +3144,7 @@ bool Search::partialFits(const uint8_t* fixed, unsigned freeMask)
         {
             cost[0] += basePinned_[p].cpu * costScale_;
             cost[1] += basePinned_[p].power * costScale_;
-            cost[2] += basePinned_[p].calibration * costScale_;
+            cost[2] += basePinned_[p].calibration;
         }
     for (size_t k = 0; k < kinds_.size(); ++k)
         if (fixed[k])
@@ -2989,7 +3152,7 @@ bool Search::partialFits(const uint8_t* fixed, unsigned freeMask)
             const Candidate& c = cands_[static_cast<size_t>(kinds_[k].cand)];
             cost[0] += fixed[k] * c.cpu * costScale_;
             cost[1] += fixed[k] * c.power * costScale_;
-            cost[2] += fixed[k] * c.calibration * costScale_;
+            cost[2] += fixed[k] * c.calibration;
         }
     for (size_t i = 0; i < 3; ++i)
         if (cost[i] > outputMax_[i] + 0.01)
@@ -3072,6 +3235,10 @@ void Search::stage1()
             for (int m : sg.members)
                 if (cands_[static_cast<size_t>(m)].rack == RackRig)
                     maxCostGain = std::max(maxCostGain, cands_[static_cast<size_t>(m)].costGain);
+        // Nothing raises calibration output or lowers a rig's calibration cost: the
+        // calibration bounds use the base output and the full cost (costScale_ is
+        // applied to CPU and power only).
+        outputMax_[2] = baseRec.outputs[2];
         costScale_ = std::pow(std::max(0.0, 1 - maxCostGain), slots_[RackRig]);
         for (const Subgroup& sg : subgroups_)
             for (int m : sg.members)
@@ -3386,36 +3553,10 @@ void Search::stage1()
 
 namespace
 {
-struct Scored
-{
-    bool valid = false;
-    bool fits = false;
-    double goal = 0;
-    double price = 0;
-    TestResult r;
-};
-// fits first, then goal, then cheaper
-bool better(const Scored& a, const Scored& b)
-{
-    if (a.valid != b.valid)
-        return a.valid;
-    if (a.fits != b.fits)
-        return a.fits;
-    double tol = 1e-7 * std::max(std::abs(a.goal), std::abs(b.goal));
-    if (std::abs(a.goal - b.goal) > tol)
-        return a.goal > b.goal;
-    return a.price < b.price;
-}
-
 void Search::stage2()
 {
     using Memo = std::unordered_map<std::string, Scored>;
-    struct Final
-    {
-        Scored s;
-        std::vector<int> cands;
-        FitInput fit;
-    };
+    using Final = FinalSet;
     // One starting set's local search.
     struct Start
     {
@@ -3424,6 +3565,7 @@ void Search::stage2()
         FitInput fit;
         Memo memo;  // its own evaluations
         size_t evaluations = 0;
+        bool capped = false;  // hit kStage2MaxMoves (should never happen)
     };
     const int budget = kPlanItemBudget - 2 * static_cast<int>(base_.modules.size()) - 4;
     auto search = [&](const Found& f, const Memo& shared, Start& out) {
@@ -3518,8 +3660,8 @@ void Search::stage2()
                 s.r = plan.evaluate(ch.data(), goal_);
                 ++out.evaluations;
                 s.goal = s.r.goal;
-                s.fits = s.r.cpuUsed <= s.r.cpuOutput && s.r.powerUsed <= s.r.powerOutput &&
-                         s.r.calibrationUsed <= s.r.calibrationOutput;
+                s.bucket = goalBucket(s.goal);
+                s.fits = fitsOf(s.r);
             }
             out.memo.emplace(key, s);
             return s;
@@ -3527,8 +3669,16 @@ void Search::stage2()
 
         Scored cur = evaluate(choice);
         out.first = cur;
+        // Every accepted move strictly improves `better`'s key (a strict weak order),
+        // so no set is visited twice and the search ends. The cap is a backstop only.
+        size_t moves = 0;
         for (bool improved = true; improved;)
         {
+            if (moves >= kStage2MaxMoves)
+            {
+                out.capped = true;
+                break;
+            }
             improved = false;
             for (size_t i = 0; i < choice.size(); ++i)
                 for (int o = 0; o < static_cast<int>(options[i].size()); ++o)
@@ -3539,7 +3689,7 @@ void Search::stage2()
                     next[i] = o;
                     Scored s = evaluate(next);
                     if (better(s, cur))
-                        cur = s, choice = next, improved = true;
+                        cur = s, choice = next, improved = true, ++moves;
                 }
             if (improved)
                 continue;
@@ -3556,7 +3706,7 @@ void Search::stage2()
                             Scored s = evaluate(next);
                             if (better(s, cur))
                             {
-                                cur = s, choice = next, improved = true;
+                                cur = s, choice = next, improved = true, ++moves;
                                 break;
                             }
                         }
@@ -3576,13 +3726,14 @@ void Search::stage2()
     Scored bestFit;
     int sinceBest = 0;
     bool done = false;
+    size_t cappedStarts = 0;
     std::vector<Start> starts;
     for (size_t first = 0; first < top_.size() && !done; first += kBatch)
     {
         const size_t n = std::min(kBatch, top_.size() - first);
         starts.assign(n, Start{});
         if (opt_.progress && first > 0)
-            opt_.progress(0.7 + 0.3 * std::min(1.0, static_cast<double>(first) /
+            opt_.progress(0.7 + (opt_.refine ? 0.1 : 0.3) * std::min(1.0, static_cast<double>(first) /
                                                         static_cast<double>(std::min<size_t>(top_.size(), 4 * static_cast<size_t>(opt_.patience)))),
                           "stage 2");
         pool_->run(n, 1, [&](size_t i, int) { search(top_[first + i], memo, starts[i]); });
@@ -3592,6 +3743,8 @@ void Search::stage2()
             const Found& f = top_[first + i];
             ++result_.stats.stage2Starts;
             result_.stats.stage2Evaluations += st.evaluations;
+            if (st.capped)
+                ++cappedStarts;
             for (auto& [k, v] : st.memo)
                 memo.emplace(k, v);
             if (st.first.valid && f.score > 0)
@@ -3613,11 +3766,38 @@ void Search::stage2()
     }
 
 
-    std::vector<Final*> order;
+    if (cappedStarts)
+    {
+        const std::string w = "stage 2: local search stopped at the move cap (" + std::to_string(kStage2MaxMoves) +
+                              ") on " + std::to_string(cappedStarts) + " starting sets";
+        logLine("warning: " + w);
+        result_.warnings.push_back(w);
+    }
+
+    // Every distinct end set (in key order), for refine() and the report.
+    finals_.clear();
     for (auto& [k, v] : finals)
-        order.push_back(&v);
-    std::sort(order.begin(), order.end(), [](const Final* a, const Final* b) { return better(a->s, b->s); });
-    for (const Final* fin : order)
+        finals_.push_back({v.s, v.cands, std::move(v.fit)});
+    if (bestFit.fits)
+        result_.stats.stage2Best = bestFit.goal;
+    logLine("stage 2: " + std::to_string(result_.stats.stage2Starts) + " starting sets, " +
+            std::to_string(result_.stats.stage2Evaluations) + " exact evaluations; model vs exact max relative error " +
+            std::to_string(maxModelError_));
+}
+
+// The best fitting sets of finals_ (stage 2's, then refine's): only fitting sets are
+// reported, a set that doesn't fit can't be applied. When none fits, run() reports
+// the request as infeasible.
+void Search::report()
+{
+    std::vector<const FinalSet*> order;
+    for (const FinalSet& f : finals_)
+        if (f.s.valid && f.s.fits)
+            order.push_back(&f);
+    // Stable over finals_' order (stage 2's key order, then refine's finds), so ties stay deterministic.
+    std::stable_sort(order.begin(), order.end(), [](const FinalSet* a, const FinalSet* b) { return better(a->s, b->s); });
+    result_.fits.clear();
+    for (const FinalSet* fin : order)
     {
         if (static_cast<int>(result_.fits.size()) >= opt_.results)
             break;
@@ -3634,9 +3814,1151 @@ void Search::stage2()
         }
         result_.fits.push_back(std::move(ff));
     }
-    logLine("stage 2: " + std::to_string(result_.stats.stage2Starts) + " starting sets, " +
-            std::to_string(result_.stats.stage2Evaluations) + " exact evaluations; model vs exact max relative error " +
-            std::to_string(maxModelError_));
+}
+
+// ---- refine
+// Stage 1 sees one representative per subgroup, and stage 2 swaps members only within
+// a slot's subgroup. Refine searches every module choice of each open rack: every
+// useful member of every subgroup (any role) and the other charges of charge-using
+// modules (measure() keeps the best charge only), less the dominated ones (buildPool).
+// Moves, each evaluated exactly with a SearchPlan built for it:
+// - one position (a fitted module, or an empty slot) to any choice of its rack, or empty;
+// - two positions at once: the pairs whose one-move effects, added up, promise the
+//   best goal and to fit are evaluated exactly (Options::refinePairs per test). This
+//   finds trades a single move can't make, e.g. a cheaper repairer that frees the CPU
+//   for a stronger hardener.
+// A set's score is its canonical evaluation (Engine::evaluate of the pinned modules
+// followed by the set in rack and candidate order), memoized by set, so `better` is a
+// strict weak order on sets and every accepted move strictly improves it. Moves are
+// screened with their plan's evaluation and accepted on the canonical one.
+//
+// Phase 1 descends from stage 2's best end sets (in parallel; from the empty set when
+// none fits). Phase 2 is an iterated local search on Options::refineChains chains
+// (16): each round perturbs every chain's set, descends again and keeps the result if
+// it is better. Half the perturbations kick in one of the strongest one-move
+// neighbours that didn't improve the set (as a rule an upgrade that doesn't fit, which
+// the descent then pays for elsewhere) plus 0-1 random changes; the others change 1-3
+// random positions to random choices. Rounds run until the time budget
+// (Options::timeBudget, whole run) is used, Options::refinePatience chain iterations
+// bring no better best set, or Options::refineRounds is reached. Each chain's random
+// numbers depend only on its index and the round, and rounds are synchronous, so with
+// a fixed chain count the result doesn't depend on the thread count or timing unless
+// the time budget ends the run.
+
+void Search::buildPool()
+{
+    for (auto& p : choices_)
+        p.clear();
+    for (auto& p : allChoices_)
+        p.clear();
+    // Per subgroup: its useful members, then the other charges of its charge modules.
+    std::vector<std::vector<int>> bySub(subgroups_.size());
+    std::unordered_map<int, int> subOfType;
+    for (size_t g = 0; g < subgroups_.size(); ++g)
+        for (int m : subgroups_[g].members)
+        {
+            bySub[g].push_back(m);
+            subOfType.emplace(cands_[static_cast<size_t>(m)].type->id, static_cast<int>(g));
+        }
+    // OPT_NO_CHARGE_ALTS (study): only the best charge of each charge-using module.
+    const bool noAlts = [] {
+        char* e = nullptr;
+        size_t n = 0;
+        bool on = _dupenv_s(&e, &n, "OPT_NO_CHARGE_ALTS") == 0 && e;
+        free(e);
+        return on;
+    }();
+    std::vector<bool> isAlt(cands_.size(), false);
+    for (Candidate& c : chargeAlts_)
+    {
+        auto g = subOfType.find(c.input.typeID);
+        if (noAlts || g == subOfType.end() || slots_[static_cast<size_t>(c.rack)] <= 0)
+            continue;
+        c.useful = true;
+        c.subgroup = g->second;
+        bySub[static_cast<size_t>(g->second)].push_back(static_cast<int>(cands_.size()));
+        cands_.push_back(std::move(c));
+        isAlt.push_back(true);
+    }
+    chargeAlts_.clear();
+
+    // Dominated choices go: another choice of the same subgroup (same group, rack, resists
+    // changed and size) that is at least as strong in every measured effect and costs at
+    // most as much CPU, power, calibration, capacitor and ISK, with no tighter fitting
+    // limit, is at least as good in every set. (Charge alternatives aren't measured
+    // against other modules: in a subgroup that modifies others they are kept.)
+    // OPT_NO_PRUNE (study) keeps every choice.
+    const bool noPrune = [] {
+        char* e = nullptr;
+        size_t n = 0;
+        bool on = _dupenv_s(&e, &n, "OPT_NO_PRUNE") == 0 && e;
+        free(e);
+        return on;
+    }();
+    auto gains = [&](const Candidate& c) {
+        return std::array<double, 15>{c.goalGain,      c.dividerDrop,    c.hpGain,         c.capGain,
+                                      c.outputGain,    c.rep,            c.pairGain,       c.costGain,
+                                      c.outputDelta[0], c.outputDelta[1], c.outputDelta[2], c.pinnedDrop[0],
+                                      c.pinnedDrop[1], c.pinnedDrop[2],  -c.capUse};
+    };
+    auto costs = [&](const Candidate& c) { return std::array<double, 4>{c.cpu, c.power, c.calibration, c.price}; };
+    auto limitOk = [](int a, int b) { return a == 0 || (b != 0 && a >= b); };  // a's limit no tighter than b's
+    size_t pruned = 0;
+    for (size_t g = 0; g < bySub.size(); ++g)
+    {
+        const auto& list = bySub[g];
+        bool influences = false;
+        for (int m : list)
+            influences |= cands_[static_cast<size_t>(m)].pairGain > 0 || cands_[static_cast<size_t>(m)].costGain > 0;
+        for (size_t i = 0; i < list.size(); ++i)
+        {
+            const Candidate& b = cands_[static_cast<size_t>(list[i])];
+            allChoices_[static_cast<size_t>(b.rack)].push_back(list[i]);
+            bool dominated = false;
+            for (size_t j = 0; j < list.size() && !dominated && !noPrune; ++j)
+            {
+                if (i == j)
+                    continue;
+                const Candidate& a = cands_[static_cast<size_t>(list[j])];
+                if (influences && (isAlt[static_cast<size_t>(list[i])] || isAlt[static_cast<size_t>(list[j])]))
+                    continue;
+                if (!limitOk(a.maxType, b.maxType) || !limitOk(a.maxGroup, b.maxGroup))
+                    continue;
+                const auto ga = gains(a), gb = gains(b);
+                const auto ca = costs(a), cb = costs(b);
+                bool ge = true, strict = false;
+                for (size_t k = 0; k < ga.size() && ge; ++k)
+                    ge = ga[k] >= gb[k], strict |= ga[k] > gb[k];
+                for (size_t k = 0; k < ca.size() && ge; ++k)
+                    ge = ca[k] <= cb[k], strict |= ca[k] < cb[k];
+                // Equal in everything: the earlier one stays.
+                dominated = ge && (strict || j < i);
+            }
+            if (dominated)
+                ++pruned;
+            else
+                choices_[static_cast<size_t>(b.rack)].push_back(list[i]);
+        }
+    }
+    logLine("refine: " + std::to_string(choices_[RackMid].size()) + " mid, " + std::to_string(choices_[RackLow].size()) +
+            " low, " + std::to_string(choices_[RackRig].size()) + " rig choices (" + std::to_string(pruned) +
+            " dominated dropped)");
+}
+
+std::string Search::keyOf(const RSet& x) const
+{
+    std::vector<int> ids;
+    for (const auto& v : x.m)
+        ids.insert(ids.end(), v.begin(), v.end());
+    std::sort(ids.begin(), ids.end());
+    return std::string(reinterpret_cast<const char*>(ids.data()), ids.size() * sizeof(int));
+}
+
+// Group and type limits (pyfa: the raw maxGroupFitted / maxTypeFitted of each
+// module), the pinned modules counted.
+bool Search::validIds(const std::vector<int>& ids) const
+{
+    for (size_t i = 0; i < ids.size(); ++i)
+    {
+        const Candidate& c = cands_[static_cast<size_t>(ids[i])];
+        if (!c.maxGroup && !c.maxType)
+            continue;
+        int g = 0, t = 0;
+        if (auto it = pinnedGroupCount_.find(c.groupID); it != pinnedGroupCount_.end())
+            g = it->second;
+        if (auto it = pinnedTypeCount_.find(c.type->id); it != pinnedTypeCount_.end())
+            t = it->second;
+        for (int j : ids)
+        {
+            const Candidate& d = cands_[static_cast<size_t>(j)];
+            g += d.groupID == c.groupID;
+            t += d.type->id == c.type->id;
+        }
+        if ((c.maxGroup && g > c.maxGroup) || (c.maxType && t > c.maxType))
+            return false;
+    }
+    return true;
+}
+
+bool Search::validSet(const RSet& x) const
+{
+    std::vector<int> ids;
+    for (int r = 0; r < RackCount; ++r)
+    {
+        const auto& v = x.m[static_cast<size_t>(r)];
+        if (static_cast<int>(v.size()) > slots_[static_cast<size_t>(r)])
+            return false;
+        ids.insert(ids.end(), v.begin(), v.end());
+    }
+    return validIds(ids);
+}
+
+FitInput Search::fitOf(const RSet& x) const
+{
+    FitInput f = base_;
+    for (const auto& v : x.m)
+        for (int c : v)
+            f.modules.push_back(cands_[static_cast<size_t>(c)].input);
+    return f;
+}
+
+double Search::priceOf(const RSet& x) const
+{
+    double p = 0;
+    for (const auto& v : x.m)
+        for (int c : v)
+            p += cands_[static_cast<size_t>(c)].price;
+    return p;
+}
+
+Scored Search::canonical(RSet& x)
+{
+    const std::string key = keyOf(x);
+    {
+        std::lock_guard lock(canonM_);
+        if (auto it = canonMemo_.find(key); it != canonMemo_.end())
+            return x.s = it->second;
+    }
+    Scored s;
+    s.valid = validSet(x);
+    s.price = priceOf(x);
+    if (s.valid)
+    {
+        s.r = toTestResult(engine_.evaluate(fitOf(x)), goal_);
+        s.goal = s.r.goal;
+        s.bucket = goalBucket(s.goal);
+        s.fits = fitsOf(s.r);
+        refineEvals_.fetch_add(1, std::memory_order_relaxed);
+    }
+    {
+        std::lock_guard lock(canonM_);
+        canonMemo_.emplace(key, s);
+    }
+    return x.s = s;
+}
+
+namespace
+{
+// Plan items a module takes (itself and its charge).
+int itemsOf(const ModuleInput& m) { return m.chargeID ? 2 : 1; }
+int itemsOf(const FitInput& f)
+{
+    int n = 0;
+    for (const ModuleInput& m : f.modules)
+        n += itemsOf(m);
+    return n;
+}
+}  // namespace
+
+// One step of the local search on x: the best one-move neighbour that improves x,
+// else (with `pairs`) the best verified pair move. Returns whether x changed.
+bool Search::improveOnce(RSet& x, RefineStats& st, bool pairs)
+{
+    ++st.sweeps;
+    struct Pos
+    {
+        int rack, out;  // out: the fitted module (cands_ index) it replaces, -1 for an empty slot
+    };
+    struct Nb
+    {
+        int pos = 0, in = -1;  // in: the choice put there (-1: the slot is emptied)
+        int pos2 = -1, in2 = -1;
+        Scored s;  // as evaluated in the move's plan (screening)
+    };
+    std::vector<Pos> pos;
+    for (int r = 0; r < RackCount; ++r)
+    {
+        const size_t ri = static_cast<size_t>(r);
+        if (!slots_[ri])
+            continue;
+        const auto& v = x.m[ri];
+        for (size_t i = 0; i < v.size(); ++i)
+            if (i == 0 || v[i] != v[i - 1])
+                pos.push_back({r, v[i]});
+        if (static_cast<int>(v.size()) < slots_[ri])
+            pos.push_back({r, -1});
+    }
+    auto without = [&](const RSet& s, int rack, int out) {
+        RSet y = s;
+        if (out >= 0)
+        {
+            auto& v = y.m[static_cast<size_t>(rack)];
+            v.erase(std::find(v.begin(), v.end(), out));
+        }
+        return y;
+    };
+    auto withIn = [&](RSet& y, int rack, int in) {
+        if (in < 0)
+            return;
+        auto& v = y.m[static_cast<size_t>(rack)];
+        v.insert(std::upper_bound(v.begin(), v.end(), in), in);
+    };
+    auto allIds = [&](const RSet& y) {
+        std::vector<int> ids;
+        for (const auto& v : y.m)
+            ids.insert(ids.end(), v.begin(), v.end());
+        return ids;
+    };
+    auto score = [&](const TestResult& r, double price) {
+        Scored s;
+        s.valid = true;
+        s.r = r;
+        s.goal = r.goal;
+        s.bucket = goalBucket(r.goal);
+        s.fits = fitsOf(r);
+        s.price = price;
+        return s;
+    };
+    // Tries the screened moves best first: the first whose canonical evaluation beats x wins.
+    auto accept = [&](std::vector<Nb>& moves) {
+        std::vector<size_t> idx;
+        for (size_t i = 0; i < moves.size(); ++i)
+            if (better(moves[i].s, x.s))
+                idx.push_back(i);
+        std::stable_sort(idx.begin(), idx.end(), [&](size_t a, size_t b) { return better(moves[a].s, moves[b].s); });
+        constexpr size_t kTries = 4;
+        for (size_t t = 0; t < idx.size() && t < kTries; ++t)
+        {
+            const Nb& n = moves[idx[t]];
+            const Pos& p = pos[static_cast<size_t>(n.pos)];
+            RSet y = without(x, p.rack, p.out);
+            if (n.pos2 >= 0)
+            {
+                const Pos& q = pos[static_cast<size_t>(n.pos2)];
+                y = without(y, q.rack, q.out);
+                withIn(y, q.rack, n.in2);
+            }
+            withIn(y, p.rack, n.in);
+            canonical(y);
+            ++st.canonicalEvals;
+            if (better(y.s, x.s))
+            {
+                x = std::move(y);
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // One-move neighbours: per position, one plan (chunked) over the rack's choices.
+    std::vector<Nb> nbs;
+    for (size_t p = 0; p < pos.size(); ++p)
+    {
+        const int r = pos[p].rack, out = pos[p].out;
+        if (out < 0 && choices_[static_cast<size_t>(r)].empty())
+            continue;
+        const RSet rest = without(x, r, out);
+        const double restPrice = priceOf(rest);
+        std::vector<int> ids = allIds(rest);
+        std::vector<int> opts;
+        for (int c : choices_[static_cast<size_t>(r)])
+        {
+            if (c == out)
+                continue;
+            ids.push_back(c);
+            if (validIds(ids))
+                opts.push_back(c);
+            ids.pop_back();
+        }
+        SearchSpec spec;
+        spec.base = fitOf(rest);
+        const int budget = kPlanItemBudget - 2 * static_cast<int>(spec.base.modules.size()) - 4;
+        bool first = true;
+        for (size_t at = 0; at < opts.size() || first;)
+        {
+            size_t end = at;
+            int items = 0;
+            std::vector<ModuleInput> in;
+            while (end < opts.size() && items + 2 <= budget)
+            {
+                in.push_back(cands_[static_cast<size_t>(opts[end])].input);
+                items += itemsOf(in.back());
+                ++end;
+            }
+            spec.slots = {std::move(in)};
+            SearchPlan plan(engine_, spec);
+            ++st.plans;
+            if (first && out >= 0)
+            {
+                int none = -1;
+                Nb n;
+                n.pos = static_cast<int>(p);
+                n.s = score(plan.evaluate(&none, goal_), restPrice);
+                nbs.push_back(n);
+                ++st.evaluations;
+            }
+            first = false;
+            for (size_t i = at; i < end; ++i)
+            {
+                int choice = static_cast<int>(i - at);
+                Nb n;
+                n.pos = static_cast<int>(p);
+                n.in = opts[i];
+                n.s = score(plan.evaluate(&choice, goal_), restPrice + cands_[static_cast<size_t>(opts[i])].price);
+                nbs.push_back(n);
+                ++st.evaluations;
+            }
+            at = end;
+        }
+    }
+    if (accept(nbs))
+        return true;
+    {
+        // Kicks for the iterated search: the strongest neighbours by goal alone.
+        std::vector<size_t> idx;
+        for (size_t i = 0; i < nbs.size(); ++i)
+            if (nbs[i].in >= 0 && nbs[i].s.goal > x.s.goal)
+                idx.push_back(i);
+        std::stable_sort(idx.begin(), idx.end(), [&](size_t a, size_t b) { return nbs[a].s.goal > nbs[b].s.goal; });
+        x.kicks.clear();
+        for (size_t t = 0; t < idx.size() && t < 32; ++t)
+        {
+            const Pos& p = pos[static_cast<size_t>(nbs[idx[t]].pos)];
+            x.kicks.push_back({p.rack, p.out, nbs[idx[t]].in});
+        }
+    }
+    if (!pairs || nbs.empty())
+        return false;
+
+    // Pair moves: the one-move effects (against x) added up. The pairs with the best
+    // estimated goal that are estimated to fit (0.5 % slack: costs interact, e.g. rigs
+    // that lower module costs) are evaluated exactly.
+    ++st.pairChecks;
+    const TestResult& r0 = x.s.r;
+    const double used0[3] = {r0.cpuUsed, r0.powerUsed, r0.calibrationUsed};
+    const double out0[3] = {r0.cpuOutput, r0.powerOutput, r0.calibrationOutput};
+    struct Delta
+    {
+        double goal;
+        double used[3], out[3];
+    };
+    std::vector<Delta> d(nbs.size());
+    for (size_t i = 0; i < nbs.size(); ++i)
+    {
+        const TestResult& r = nbs[i].s.r;
+        d[i].goal = r.goal - r0.goal;
+        const double used[3] = {r.cpuUsed, r.powerUsed, r.calibrationUsed};
+        const double out[3] = {r.cpuOutput, r.powerOutput, r.calibrationOutput};
+        for (size_t k = 0; k < 3; ++k)
+        {
+            d[i].used[k] = used[k] - used0[k];
+            d[i].out[k] = out[k] - out0[k];
+        }
+    }
+    std::vector<size_t> byGain(nbs.size());
+    std::iota(byGain.begin(), byGain.end(), size_t{0});
+    std::stable_sort(byGain.begin(), byGain.end(), [&](size_t a, size_t b) { return d[a].goal > d[b].goal; });
+    auto multiplicity = [&](const Pos& p) {
+        const auto& v = x.m[static_cast<size_t>(p.rack)];
+        if (p.out < 0)
+            return slots_[static_cast<size_t>(p.rack)] - static_cast<int>(v.size());
+        return static_cast<int>(std::count(v.begin(), v.end(), p.out));
+    };
+    struct Pair
+    {
+        double est;
+        size_t a, b;  // byGain ranks
+    };
+    auto worse = [](const Pair& a, const Pair& b) { return a.est != b.est ? a.est > b.est : std::make_pair(a.a, a.b) < std::make_pair(b.a, b.b); };
+    std::vector<Pair> heap;  // min-heap by est (the worst kept pair on top)
+    const size_t N = static_cast<size_t>(std::max(1, opt_.refinePairs));
+    const double floorGain = x.s.fits ? std::max(1e-7 * std::abs(r0.goal), 1e-9) : -std::numeric_limits<double>::infinity();
+    for (size_t ia = 0; ia < byGain.size(); ++ia)
+    {
+        const size_t a = byGain[ia];
+        for (size_t ib = ia + 1; ib < byGain.size(); ++ib)
+        {
+            const size_t b = byGain[ib];
+            const double gain = d[a].goal + d[b].goal;
+            const double thr = heap.size() >= N ? std::max(floorGain, heap.front().est) : floorGain;
+            if (!(gain > thr))
+                break;
+            if (nbs[a].pos == nbs[b].pos && multiplicity(pos[static_cast<size_t>(nbs[a].pos)]) < 2)
+                continue;
+            bool fit = true;
+            for (size_t k = 0; k < 3 && fit; ++k)
+                fit = used0[k] + d[a].used[k] + d[b].used[k] <= (out0[k] + d[a].out[k] + d[b].out[k]) * 1.005 + 1e-6;
+            if (!fit)
+                continue;
+            heap.push_back({gain, ia, ib});
+            std::push_heap(heap.begin(), heap.end(), worse);
+            if (heap.size() > N)
+            {
+                std::pop_heap(heap.begin(), heap.end(), worse);
+                heap.pop_back();
+            }
+        }
+    }
+    if (heap.empty())
+        return false;
+    std::sort(heap.begin(), heap.end(), [&](const Pair& p, const Pair& q) { return worse(p, q); });
+    // Exact evaluation, one plan per position pair.
+    std::map<std::pair<int, int>, std::vector<std::pair<int, int>>> byPos;  // (pos, pos2) -> (in, in2)
+    for (const Pair& pr : heap)
+    {
+        size_t a = byGain[pr.a], b = byGain[pr.b];
+        if (nbs[a].pos > nbs[b].pos || (nbs[a].pos == nbs[b].pos && nbs[a].in > nbs[b].in))
+            std::swap(a, b);
+        byPos[{nbs[a].pos, nbs[b].pos}].push_back({nbs[a].in, nbs[b].in});
+    }
+    std::vector<Nb> moves;
+    for (const auto& [pp, list] : byPos)
+    {
+        const Pos& p = pos[static_cast<size_t>(pp.first)];
+        const Pos& q = pos[static_cast<size_t>(pp.second)];
+        const RSet rest = without(without(x, p.rack, p.out), q.rack, q.out);
+        const double restPrice = priceOf(rest);
+        std::vector<int> ins[2];
+        for (const auto& [i1, i2] : list)
+        {
+            if (i1 >= 0 && std::find(ins[0].begin(), ins[0].end(), i1) == ins[0].end())
+                ins[0].push_back(i1);
+            if (i2 >= 0 && std::find(ins[1].begin(), ins[1].end(), i2) == ins[1].end())
+                ins[1].push_back(i2);
+        }
+        SearchSpec spec;
+        spec.base = fitOf(rest);
+        for (const auto& v : ins)
+        {
+            std::vector<ModuleInput> in;
+            for (int c : v)
+                in.push_back(cands_[static_cast<size_t>(c)].input);
+            spec.slots.push_back(std::move(in));
+        }
+        if (itemsOf(spec.base) + 2 * static_cast<int>(ins[0].size() + ins[1].size()) > kPlanItemBudget)
+            continue;  // can't happen with refinePairs in the hundreds; skip rather than fail
+        SearchPlan plan(engine_, spec);
+        ++st.plans;
+        std::vector<int> ids = allIds(rest);
+        const size_t restN = ids.size();
+        for (const auto& [i1, i2] : list)
+        {
+            ids.resize(restN);
+            if (i1 >= 0)
+                ids.push_back(i1);
+            if (i2 >= 0)
+                ids.push_back(i2);
+            if (!validIds(ids))
+                continue;
+            int choice[2] = {i1 < 0 ? -1 : static_cast<int>(std::find(ins[0].begin(), ins[0].end(), i1) - ins[0].begin()),
+                             i2 < 0 ? -1 : static_cast<int>(std::find(ins[1].begin(), ins[1].end(), i2) - ins[1].begin())};
+            double price = restPrice + (i1 >= 0 ? cands_[static_cast<size_t>(i1)].price : 0) +
+                           (i2 >= 0 ? cands_[static_cast<size_t>(i2)].price : 0);
+            Nb n;
+            n.pos = pp.first;
+            n.in = i1;
+            n.pos2 = pp.second;
+            n.in2 = i2;
+            n.s = score(plan.evaluate(choice, goal_), price);
+            moves.push_back(n);
+            ++st.evaluations;
+        }
+    }
+    return accept(moves);
+}
+
+void Search::localSearch(RSet& x, RefineStats& st, const Clock::time_point* deadline)
+{
+    for (size_t moves = 0; moves < kStage2MaxMoves; ++moves)
+    {
+        if (deadline && Clock::now() >= *deadline)
+            return;
+        if (!improveOnce(x, st, opt_.refinePairs > 0))
+            return;
+    }
+}
+
+void Search::refine(Clock::time_point t0)
+{
+    Stats& stats = result_.stats;
+    buildPool();
+    const bool timed = opt_.timeBudget > 0;
+    const Clock::time_point deadline =
+        t0 + std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(timed ? opt_.timeBudget : 0));
+    const Clock::time_point* dl = timed ? &deadline : nullptr;
+    std::vector<RefineStats> rs(static_cast<size_t>(pool_->size()) + 64);
+
+    std::unordered_map<std::string, size_t> seen;
+    auto keyOfIds = [](std::vector<int> ids) {
+        std::sort(ids.begin(), ids.end());
+        return std::string(reinterpret_cast<const char*>(ids.data()), ids.size() * sizeof(int));
+    };
+    for (size_t i = 0; i < finals_.size(); ++i)
+        seen.emplace(keyOfIds(finals_[i].cands), i);
+    auto toRSet = [&](const std::vector<int>& cands) {
+        RSet x;
+        for (int c : cands)
+            x.m[static_cast<size_t>(cands_[static_cast<size_t>(c)].rack)].push_back(c);
+        for (auto& v : x.m)
+            std::sort(v.begin(), v.end());
+        return x;
+    };
+    Scored best;  // best fitting set so far
+    for (const FinalSet& f : finals_)
+        if (f.s.valid && f.s.fits && better(f.s, best))
+            best = f.s;
+    auto add = [&](const RSet& x) {
+        if (!x.s.valid)
+            return false;
+        std::vector<int> ids;
+        for (const auto& v : x.m)
+            ids.insert(ids.end(), v.begin(), v.end());
+        if (seen.emplace(keyOfIds(ids), finals_.size()).second)
+            finals_.push_back({x.s, ids, fitOf(x)});
+        if (x.s.fits && better(x.s, best))
+        {
+            best = x.s;
+            return true;
+        }
+        return false;
+    };
+
+    // Phase 1: descend from stage 2's best distinct end sets (and the empty set when
+    // none fits).
+    const size_t chains = static_cast<size_t>(opt_.refineChains > 0 ? opt_.refineChains : pool_->size());
+    std::vector<size_t> order;
+    for (size_t i = 0; i < finals_.size(); ++i)
+        if (finals_[i].s.valid)
+            order.push_back(i);
+    std::stable_sort(order.begin(), order.end(), [&](size_t a, size_t b) { return better(finals_[a].s, finals_[b].s); });
+    const size_t nStarts =
+        std::min(order.size(), opt_.refineStarts > 0 ? static_cast<size_t>(opt_.refineStarts) : std::max<size_t>(chains, 8));
+    // OPT_REFINE_FROM_EMPTY (study): start from the empty set only, not from stage 2's sets.
+    const bool fromEmpty = [] {
+        char* e = nullptr;
+        size_t n = 0;
+        bool on = _dupenv_s(&e, &n, "OPT_REFINE_FROM_EMPTY") == 0 && e;
+        free(e);
+        return on;
+    }();
+    std::vector<RSet> starts;
+    for (size_t i = 0; i < nStarts && !fromEmpty; ++i)
+        starts.push_back(toRSet(finals_[order[i]].cands));
+    if (!best.fits || fromEmpty)
+        starts.push_back(RSet{});
+    // Small requests: every combination of the choices, exactly, when there are at most
+    // Options::refineExact; its best set is a start (and an end set) too.
+    if (opt_.refineExact > 0 && !fromEmpty)
+    {
+        // Plan builds (~1-2 ms each) cost more than the evaluations beyond ~20k plans.
+        const Enumerated e = enumerate(choices_, opt_.refineExact, 20000);
+        if (e.ran)
+        {
+            logLine("refine: exact pass over " + std::to_string(e.combinations) + " combinations (" +
+                    std::to_string(e.plans) + " plans) in " + std::to_string(e.seconds) + " s, best " +
+                    (e.best.fits ? std::to_string(e.best.goal) : std::string("none")));
+            stats.refineExact = e.combinations;
+            if (e.best.fits)
+            {
+                RSet x = toRSet(e.ids);
+                canonical(x);
+                starts.insert(starts.begin(), x);
+            }
+        }
+    }
+    stats.refineStarts = starts.size();
+    pool_->run(starts.size(), 1, [&](size_t i, int w) {
+        canonical(starts[i]);
+        localSearch(starts[i], rs[static_cast<size_t>(w)], dl);
+    });
+    for (const RSet& x : starts)
+        stats.refineImproved += add(x) ? 1 : 0;
+    logLine("refine: " + std::to_string(starts.size()) + " starts descended" +
+            (best.fits ? ", best " + std::to_string(best.goal) : std::string(", none fits")) + " (" +
+            std::to_string(secondsSince(t0)) + " s)");
+
+    // Phase 2: iterated local search, one chain per thread.
+    std::vector<RSet> chain;
+    {
+        std::vector<const RSet*> locals;
+        for (const RSet& x : starts)
+            if (x.s.valid)
+                locals.push_back(&x);
+        std::stable_sort(locals.begin(), locals.end(), [&](const RSet* a, const RSet* b) { return better(a->s, b->s); });
+        for (size_t c = 0; c < chains && !locals.empty(); ++c)
+            chain.push_back(*locals[c % locals.size()]);
+    }
+    const int totalSlots = slots_[RackMid] + slots_[RackLow] + slots_[RackRig];
+    // OPT_KICK (study): percentage of rounds that start with a guided kick (default 50).
+    const int guidedPct = [] {
+        char* e = nullptr;
+        size_t n = 0;
+        int v = 50;
+        if (_dupenv_s(&e, &n, "OPT_KICK") == 0 && e)
+            v = std::atoi(e);
+        free(e);
+        return v;
+    }();
+    // OPT_ACCEPT (study): percentage of worse fitting local optima a chain moves to.
+    const int acceptPct = [] {
+        char* e = nullptr;
+        size_t n = 0;
+        int v = 0;
+        if (_dupenv_s(&e, &n, "OPT_ACCEPT") == 0 && e)
+            v = std::atoi(e);
+        free(e);
+        return v;
+    }();
+    auto perturb = [&](RSet x, std::mt19937_64& rng) {
+        int k = 1 + static_cast<int>(rng() % static_cast<uint64_t>(std::min(3, totalSlots)));
+        if (!x.kicks.empty() && static_cast<int>(rng() % 100) < guidedPct)
+        {
+            // Guided: one of the strongest non-improving one-move neighbours (an upgrade
+            // that doesn't fit, as a rule); the local search then repairs the fitting.
+            const size_t n = x.kicks.size();
+            const size_t t = static_cast<size_t>(std::min(rng() % n, rng() % n));  // biased to the strongest
+            const auto [r, out, in] = x.kicks[t];
+            RSet y = x;
+            auto& v = y.m[static_cast<size_t>(r)];
+            auto it = out >= 0 ? std::find(v.begin(), v.end(), out) : v.end();
+            if ((out < 0 || it != v.end()) && (out >= 0 || static_cast<int>(v.size()) < slots_[static_cast<size_t>(r)]))
+            {
+                if (out >= 0)
+                    v.erase(it);
+                v.insert(std::upper_bound(v.begin(), v.end(), in), in);
+                if (validSet(y))
+                {
+                    x = std::move(y);
+                    k = static_cast<int>(rng() % 2);  // plus 0 or 1 random change
+                }
+            }
+        }
+        for (int step = 0, tries = 0; step < k && tries < 50; ++tries)
+        {
+            int at = static_cast<int>(rng() % static_cast<uint64_t>(totalSlots));
+            int r = 0;
+            while (at >= slots_[static_cast<size_t>(r)])
+                at -= slots_[static_cast<size_t>(r++)];
+            const auto& pool = choices_[static_cast<size_t>(r)];
+            const size_t pick = static_cast<size_t>(rng() % (pool.size() + 1));
+            const int in = pick < pool.size() ? pool[pick] : -1;
+            RSet y = x;
+            auto& v = y.m[static_cast<size_t>(r)];
+            if (at < static_cast<int>(v.size()))
+                v.erase(v.begin() + at);
+            if (in >= 0)
+                v.push_back(in);
+            std::sort(v.begin(), v.end());
+            if (keyOf(y) == keyOf(x) || !validSet(y))
+                continue;
+            x = std::move(y);
+            ++step;
+        }
+        return x;
+    };
+    size_t rounds = 0;
+    size_t since = 0;  // chain iterations since the best set last improved
+    std::string stop = chain.empty() ? "no start" : "";
+    while (stop.empty())
+    {
+        if (opt_.refineRounds >= 0 && rounds >= static_cast<size_t>(opt_.refineRounds))
+            stop = "rounds";
+        else if (since >= static_cast<size_t>(std::max(1, opt_.refinePatience)))
+            stop = "converged";
+        else if (timed && Clock::now() >= deadline)
+            stop = "time";
+        if (!stop.empty())
+            break;
+        std::vector<RSet> trial(chain.size());
+        std::vector<int> draw(chain.size(), 100);
+        pool_->run(chain.size(), 1, [&](size_t c, int w) {
+            std::mt19937_64 rng(0x9E3779B97F4A7C15ull * (c + 1) ^ (0xD1B54A32D192ED03ull * (rounds + 1)));
+            trial[c] = perturb(chain[c], rng);
+            canonical(trial[c]);
+            localSearch(trial[c], rs[static_cast<size_t>(w)], dl);
+            draw[c] = static_cast<int>(rng() % 100);
+        });
+        bool improved = false;
+        for (size_t c = 0; c < chain.size(); ++c)
+        {
+            if (add(trial[c]))
+                improved = true, ++stats.refineImproved;
+            // Better: kept. Worse but fitting: kept with probability acceptPct %, so a
+            // chain can walk through worse local optima to another basin (the best set is
+            // kept apart in finals_).
+            if (better(trial[c].s, chain[c].s) ||
+                (trial[c].s.fits && draw[c] < acceptPct && keyOf(trial[c]) != keyOf(chain[c])))
+                chain[c] = std::move(trial[c]);
+        }
+        ++rounds;
+        since = improved ? 0 : since + chain.size();
+        if (opt_.progress)
+        {
+            double f = static_cast<double>(since) / std::max(1, opt_.refinePatience);
+            if (timed)
+                f = std::max(f, secondsSince(t0) / opt_.timeBudget);
+            if (opt_.refineRounds > 0)
+                f = std::max(f, static_cast<double>(rounds) / opt_.refineRounds);
+            char phase[96];
+            std::snprintf(phase, sizeof(phase), "refine: round %zu, best %.6g", rounds, best.fits ? best.goal : 0.0);
+            opt_.progress(0.8 + 0.2 * std::min(1.0, f), phase);
+        }
+    }
+    stats.refineRounds = rounds;
+    stats.refineStop = stop;
+    RefineStats tot;
+    for (const RefineStats& s : rs)
+    {
+        tot.sweeps += s.sweeps;
+        tot.pairChecks += s.pairChecks;
+        tot.evaluations += s.evaluations;
+        tot.canonicalEvals += s.canonicalEvals;
+        tot.plans += s.plans;
+    }
+    stats.refineEvaluations = tot.evaluations + refineEvals_.load();
+    logLine("refine: " + std::to_string(rounds) + " rounds on " + std::to_string(chain.size()) + " chains (" + stop +
+            "), " + std::to_string(tot.sweeps) + " sweeps, " + std::to_string(tot.pairChecks) + " pair tests, " +
+            std::to_string(tot.plans) + " plans, " + std::to_string(tot.evaluations) + " plan evaluations, " +
+            std::to_string(refineEvals_.load()) + " canonical; best " +
+            (best.fits ? std::to_string(best.goal) : std::string("none")));
+}
+
+// Options::memberBruteForce: every combination of every module choice of the open
+// racks (choices_), empty slots included, evaluated exactly. A rack's combinations
+// are its multisets of choices (group and type limits checked). Some racks are open
+// slots of one plan (all their slots); one more rack may give the plan one slot (its
+// last module, in choices_ order) while its shorter prefixes go to the outer loop; the
+// other racks are pinned into the plan's base, one plan per outer combination. The
+// layout with the fewest plans that stays within the plan's item limit is used.
+Search::Enumerated Search::enumerate(const std::array<std::vector<int>, RackCount>& lists, double limit,
+                                     double maxPlans)
+{
+    Enumerated mc;
+    const auto t0 = Clock::now();
+    struct Sets
+    {
+        int width = 0;  // entries per multiset (-1 padded)
+        size_t count = 0;
+        std::vector<int> flat;
+        int at(size_t set, int j) const { return flat[set * static_cast<size_t>(width) + static_cast<size_t>(j)]; }
+    };
+    constexpr size_t kMaxSets = 60'000'000;
+    auto enumerateRack = [&](int r, int maxSize, Sets& out) {
+        out = Sets{};
+        out.width = std::max(0, maxSize);
+        const auto& pool = lists[static_cast<size_t>(r)];
+        std::vector<int> cur;
+        bool over = false;
+        std::function<void(size_t)> rec = [&](size_t from) {
+            if (over)
+                return;
+            if (out.count >= kMaxSets)
+            {
+                over = true;
+                return;
+            }
+            for (int j = 0; j < out.width; ++j)
+                out.flat.push_back(j < static_cast<int>(cur.size()) ? cur[static_cast<size_t>(j)] : -1);
+            ++out.count;
+            if (static_cast<int>(cur.size()) >= maxSize)
+                return;
+            for (size_t i = from; i < pool.size(); ++i)
+            {
+                cur.push_back(pool[i]);
+                if (validIds(cur))
+                    rec(i);
+                cur.pop_back();
+            }
+        };
+        rec(0);
+        return !over;
+    };
+    {
+        // Upper bound (no limits): C(n + k, k) multisets of up to k of n choices per rack.
+        double bound = 1;
+        for (int r = 0; r < RackCount; ++r)
+        {
+            const double n = static_cast<double>(lists[static_cast<size_t>(r)].size());
+            double c = 1;
+            for (int j = 1; j <= slots_[static_cast<size_t>(r)]; ++j)
+                c = c * (n + j) / j;
+            bound *= c;
+        }
+        if (bound > 4 * limit)
+        {
+            mc.skipped = "too many combinations (at most " + std::to_string(bound) + ")";
+            return mc;
+        }
+    }
+    std::array<Sets, RackCount> full, prefix;
+    std::array<bool, RackCount> hasPrefix{};
+    double total = 1;
+    for (int r = 0; r < RackCount; ++r)
+    {
+        const size_t ri = static_cast<size_t>(r);
+        if (!enumerateRack(r, slots_[ri], full[ri]))
+        {
+            mc.skipped = std::string("too many ") + rackName(r) + " combinations";
+            return mc;
+        }
+        total *= static_cast<double>(full[ri].count);
+        hasPrefix[ri] = slots_[ri] > 0 && enumerateRack(r, slots_[ri] - 1, prefix[ri]);
+    }
+    if (total > limit)
+    {
+        mc.skipped = "too many combinations (" + std::to_string(total) + ")";
+        return mc;
+    }
+    std::array<int, RackCount> slotItems{};  // items of one slot holding all of a rack's choices
+    for (int r = 0; r < RackCount; ++r)
+        for (int c : lists[static_cast<size_t>(r)])
+            slotItems[static_cast<size_t>(r)] += itemsOf(cands_[static_cast<size_t>(c)].input);
+    unsigned inner = 0;
+    int split = -1;
+    double bestPlans = std::numeric_limits<double>::infinity();
+    for (unsigned mask = 0; mask < (1u << RackCount); ++mask)
+        for (int t = -1; t < RackCount; ++t)
+        {
+            if (t >= 0 && ((mask >> t & 1) || !hasPrefix[static_cast<size_t>(t)]))
+                continue;
+            int items = 0, pinnedSlots = 0;
+            double plans = 1;
+            for (int r = 0; r < RackCount; ++r)
+            {
+                const size_t ri = static_cast<size_t>(r);
+                if (mask >> r & 1)
+                    items += slotItems[ri] * slots_[ri];
+                else if (r == t)
+                {
+                    items += slotItems[ri];
+                    plans *= static_cast<double>(prefix[ri].count);
+                    pinnedSlots += slots_[ri] - 1;
+                }
+                else
+                {
+                    plans *= static_cast<double>(full[ri].count);
+                    pinnedSlots += slots_[ri];
+                }
+            }
+            if (items > kPlanItemBudget - 2 * (static_cast<int>(base_.modules.size()) + pinnedSlots) - 4)
+                continue;
+            if (plans < bestPlans)
+                bestPlans = plans, inner = mask, split = t;
+        }
+    if (!std::isfinite(bestPlans))
+    {
+        mc.skipped = "no plan layout fits the item limit";
+        return mc;
+    }
+    if (bestPlans > maxPlans)
+    {
+        mc.skipped = "too many plans (" + std::to_string(bestPlans) + ")";
+        return mc;
+    }
+    const uint64_t nOuter = static_cast<uint64_t>(bestPlans + 0.5);
+    const size_t lastN = split >= 0 ? lists[static_cast<size_t>(split)].size() + 1 : 1;  // + empty
+    uint64_t nInner = lastN;
+    for (int r = 0; r < RackCount; ++r)
+        if (inner >> r & 1)
+            nInner *= full[static_cast<size_t>(r)].count;
+    std::vector<int> optIndex(cands_.size(), -1);
+    for (const auto& pool : lists)
+        for (size_t i = 0; i < pool.size(); ++i)
+            optIndex[static_cast<size_t>(pool[i])] = static_cast<int>(i);
+
+    // An outer index: the set of every outer rack (and the split rack's prefix).
+    auto decodeOuter = [&](uint64_t o, std::array<size_t, RackCount>& idx) {
+        for (int r = RackCount - 1; r >= 0; --r)
+        {
+            const size_t ri = static_cast<size_t>(r);
+            if (inner >> r & 1)
+                continue;
+            const uint64_t n = r == split ? prefix[ri].count : full[ri].count;
+            idx[ri] = static_cast<size_t>(o % n);
+            o /= n;
+        }
+    };
+    // An inner index: the set of every inner rack, and the split rack's last choice.
+    auto decodeInner = [&](uint64_t i, std::array<size_t, RackCount>& idx, int& last) {
+        last = static_cast<int>(i % lastN);
+        i /= lastN;
+        for (int r = RackCount - 1; r >= 0; --r)
+        {
+            const size_t ri = static_cast<size_t>(r);
+            if (!(inner >> r & 1))
+                continue;
+            idx[ri] = static_cast<size_t>(i % full[ri].count);
+            i /= full[ri].count;
+        }
+    };
+    // The modules of a combination; false if it isn't one (the split rack's last choice
+    // must not precede its prefix, empty only after an empty prefix).
+    auto idsOf = [&](const std::array<size_t, RackCount>& idx, int last, std::vector<int>& ids) {
+        ids.clear();
+        for (int r = 0; r < RackCount; ++r)
+        {
+            const size_t ri = static_cast<size_t>(r);
+            const Sets& s = r == split ? prefix[ri] : full[ri];
+            int lastPrefix = -1;
+            for (int j = 0; j < s.width; ++j)
+                if (int c = s.at(idx[ri], j); c >= 0)
+                    ids.push_back(c), lastPrefix = c;
+            if (r != split)
+                continue;
+            const auto& pool = lists[ri];
+            if (last == static_cast<int>(pool.size()))
+            {
+                if (lastPrefix >= 0)
+                    return false;
+            }
+            else
+            {
+                if (lastPrefix >= 0 && last < optIndex[static_cast<size_t>(lastPrefix)])
+                    return false;
+                ids.push_back(pool[static_cast<size_t>(last)]);
+            }
+        }
+        return true;
+    };
+    struct Layout
+    {
+        std::array<int, RackCount> firstSlot{};
+        int slots = 0;
+    };
+    auto planFor = [&](const std::array<size_t, RackCount>& outerIdx, Layout& lay) {
+        SearchSpec spec;
+        spec.base = base_;
+        for (int r = 0; r < RackCount; ++r)
+        {
+            const size_t ri = static_cast<size_t>(r);
+            if (inner >> r & 1)
+                continue;
+            const Sets& s = r == split ? prefix[ri] : full[ri];
+            for (int j = 0; j < s.width; ++j)
+                if (int c = s.at(outerIdx[ri], j); c >= 0)
+                    spec.base.modules.push_back(cands_[static_cast<size_t>(c)].input);
+        }
+        for (int r = 0; r < RackCount; ++r)
+        {
+            const size_t ri = static_cast<size_t>(r);
+            lay.firstSlot[ri] = static_cast<int>(spec.slots.size());
+            const int n = (inner >> r & 1) ? slots_[ri] : r == split ? 1 : 0;
+            if (!n)
+                continue;
+            std::vector<ModuleInput> in;
+            for (int c : lists[ri])
+                in.push_back(cands_[static_cast<size_t>(c)].input);
+            for (int j = 0; j < n; ++j)
+                spec.slots.push_back(in);
+        }
+        lay.slots = static_cast<int>(spec.slots.size());
+        return std::make_unique<SearchPlan>(engine_, spec);
+    };
+    struct Best
+    {
+        Scored s;
+        uint64_t index = std::numeric_limits<uint64_t>::max();
+        std::vector<int> ids;
+    };
+    const size_t W = static_cast<size_t>(pool_->size());
+    std::vector<Best> bestW(W);
+    std::vector<size_t> fitW(W, 0), evalW(W, 0);
+    auto evalOne = [&](const SearchPlan& plan, const Layout& lay, const std::array<size_t, RackCount>& outerIdx,
+                       uint64_t o, uint64_t i, int w, std::vector<int>& ids, std::vector<int>& choice) {
+        std::array<size_t, RackCount> idx = outerIdx;
+        int last = 0;
+        decodeInner(i, idx, last);
+        if (!idsOf(idx, last, ids) || !validIds(ids))
+            return;
+        choice.assign(static_cast<size_t>(std::max(1, lay.slots)), -1);
+        double price = 0;
+        for (int c : ids)
+            price += cands_[static_cast<size_t>(c)].price;
+        for (int r = 0; r < RackCount; ++r)
+        {
+            const size_t ri = static_cast<size_t>(r);
+            if (inner >> r & 1)
+                for (int j = 0; j < slots_[ri]; ++j)
+                    if (int c = full[ri].at(idx[ri], j); c >= 0)
+                        choice[static_cast<size_t>(lay.firstSlot[ri] + j)] = optIndex[static_cast<size_t>(c)];
+            if (r == split && last < static_cast<int>(lists[ri].size()))
+                choice[static_cast<size_t>(lay.firstSlot[ri])] = last;
+        }
+        ++evalW[static_cast<size_t>(w)];
+        TestResult t = plan.evaluate(choice.data(), goal_);
+        if (!(t.goal > 0) || !fitsOf(t))
+            return;
+        ++fitW[static_cast<size_t>(w)];
+        Scored s;
+        s.valid = s.fits = true;
+        s.goal = t.goal;
+        s.bucket = goalBucket(t.goal);
+        s.price = price;
+        s.r = t;
+        Best& b = bestW[static_cast<size_t>(w)];
+        const uint64_t index = o * nInner + i;
+        if (better(s, b.s) || (!better(b.s, s) && index < b.index))
+            b = {s, index, ids};
+    };
+    if (nOuter >= 4 * W)
+        pool_->run(static_cast<size_t>(nOuter), 1, [&](size_t o, int w) {
+            std::array<size_t, RackCount> outerIdx{};
+            decodeOuter(o, outerIdx);
+            Layout lay;
+            auto plan = planFor(outerIdx, lay);
+            std::vector<int> ids, choice;
+            for (uint64_t i = 0; i < nInner; ++i)
+                evalOne(*plan, lay, outerIdx, o, i, w, ids, choice);
+        });
+    else
+        for (uint64_t o = 0; o < nOuter; ++o)
+        {
+            std::array<size_t, RackCount> outerIdx{};
+            decodeOuter(o, outerIdx);
+            Layout lay;
+            auto plan = planFor(outerIdx, lay);
+            pool_->run(static_cast<size_t>(nInner), 2048, [&](size_t i, int w) {
+                thread_local std::vector<int> ids, choice;
+                evalOne(*plan, lay, outerIdx, o, i, w, ids, choice);
+            });
+        }
+    Best b;
+    size_t evaluated = 0;
+    for (size_t w = 0; w < W; ++w)
+    {
+        mc.fitting += fitW[w];
+        evaluated += evalW[w];
+        if (better(bestW[w].s, b.s) || (!better(b.s, bestW[w].s) && bestW[w].index < b.index))
+            b = bestW[w];
+    }
+    mc.ran = true;
+    mc.combinations = static_cast<double>(evaluated);
+    mc.plans = static_cast<double>(nOuter);
+    mc.seconds = secondsSince(t0);
+    if (b.s.fits)
+    {
+        mc.best = b.s;
+        mc.ids = b.ids;
+    }
+    return mc;
+}
+
+void Search::memberBrute()
+{
+    MemberCheck& mc = result_.members;
+    if (allChoices_[RackMid].empty() && allChoices_[RackLow].empty() && allChoices_[RackRig].empty())
+        buildPool();
+    const Enumerated e = enumerate(allChoices_, 5e9);
+    mc.skipped = e.skipped;
+    if (!e.ran)
+        return;
+    mc.ran = true;
+    mc.combinations = e.combinations;
+    mc.fitting = e.fitting;
+    mc.seconds = e.seconds;
+    if (e.best.fits)
+    {
+        mc.best = e.best.goal;
+        mc.bestPrice = e.best.price;
+        std::map<std::string, int> names;
+        for (int c : e.ids)
+            ++names[std::string(rackName(cands_[static_cast<size_t>(c)].rack)) + " " + candName(c)];
+        for (const auto& [n, k] : names)
+            mc.bestModules += (mc.bestModules.empty() ? "" : "; ") + (k > 1 ? std::to_string(k) + "x " : std::string()) + n;
+    }
+    logLine("member brute force: " + std::to_string(e.combinations) + " combinations (" + std::to_string(e.plans) +
+            " plans), " + std::to_string(mc.fitting) + " fit; best " + std::to_string(mc.best) + " [" + mc.bestModules +
+            "] (" + std::to_string(mc.seconds) + " s)");
 }
 
 // Every combination of the stage-1 kinds, evaluated exactly: the core and resist
@@ -3748,9 +5070,6 @@ void Search::bruteForce()
             i /= n;
         }
         return idx;
-    };
-    auto fitsOf = [](const TestResult& t) {
-        return t.cpuUsed <= t.cpuOutput && t.powerUsed <= t.powerOutput && t.calibrationUsed <= t.calibrationOutput;
     };
     pool_->run(static_cast<size_t>(total), 256, [&](size_t i, int worker) {
         const auto idx = decode(i);
@@ -3890,6 +5209,275 @@ void Search::bruteForce()
         logLine("  best: " + names(bruteKinds(all.front().index)));
 }
 
+// ---- infeasibility
+// Only the pinned part can make every option unfittable: an open slot may stay
+// empty, so when the pinned part alone fits, the empty choice fits. When it is over
+// on some resource, three checks follow, each before the more expensive work:
+// calibration (before candidates), the output and cost bounds (after measuring the
+// candidates), and the search itself.
+
+bool Search::pinnedOver() const
+{
+    for (size_t k = 0; k < 3; ++k)
+        if (pinnedUsed_[k] > pinnedOutput_[k])
+            return true;
+    return false;
+}
+
+std::string Search::fmt(double v) const
+{
+    char buf[64];
+    std::snprintf(buf, sizeof buf, "%.1f", v);
+    return buf;
+}
+
+std::string Search::selectionNote() const
+{
+    std::string n;
+    if (opt_.priceCap > 0)
+        n += " (with the price cap of " + fmt(opt_.priceCap / 1e6) + "M ISK per module)";
+    return n;
+}
+
+// Calibration: no module raises calibration output and nothing lowers a rig's
+// calibration cost, and open rig slots only add rigs. So if the pinned rigs alone
+// are over, nothing in the open slots can help: the user has to change a pinned rig.
+bool Search::diagnoseCalibration()
+{
+    const double used = pinnedUsed_[ResCalibration], out = pinnedOutput_[ResCalibration];
+    if (!(used > out))
+        return false;
+    Infeasibility& inf = result_.infeasible;
+    inf = {};
+    inf.infeasible = true;
+    inf.reason = "calibration";
+    const double excess = used - out;
+    // Each pinned rig's calibration: the fit's use without it.
+    std::vector<std::pair<int, double>> rigs;  // (base_ index, calibration)
+    for (size_t j = 0; j < base_.modules.size(); ++j)
+    {
+        auto rack = rackOf(gd_, base_.modules[j].typeID);
+        if (!rack || *rack != RackRig)
+            continue;
+        FitInput without = base_;
+        without.modules.erase(without.modules.begin() + static_cast<ptrdiff_t>(j));
+        const double cal = used - static_cast<double>(toTestResult(engine_.evaluate(without), goal_).calibrationUsed);
+        if (cal > 0)
+            rigs.emplace_back(static_cast<int>(j), cal);
+    }
+    // The rigs whose removal alone fixes it; if none does, all of them.
+    std::vector<std::pair<int, double>> named;
+    for (const auto& r : rigs)
+        if (r.second >= excess)
+            named.push_back(r);
+    const bool single = !named.empty();
+    if (!single)
+        named = rigs;
+    // Listed once per (type, cost): "2x Name (150.0 each)".
+    std::vector<std::pair<std::pair<int, double>, int>> groups;  // ((typeID, cost), count)
+    for (const auto& [j, cal] : named)
+    {
+        inf.modules.push_back(pinnedIndex_[static_cast<size_t>(j)]);
+        inf.moduleCost.push_back(cal);
+        const int type = base_.modules[static_cast<size_t>(j)].typeID;
+        auto it = std::find_if(groups.begin(), groups.end(), [&](const auto& g) {
+            return g.first.first == type && std::abs(g.first.second - cal) < 1e-6;
+        });
+        if (it == groups.end())
+            groups.push_back({{type, cal}, 1});
+        else
+            ++it->second;
+    }
+    std::string list;
+    for (const auto& [key, n] : groups)
+    {
+        const Type* t = gd_.type(key.first);
+        list += std::string(list.empty() ? "" : ", ") + (n > 1 ? std::to_string(n) + "x " : std::string()) +
+                (t ? t->name : std::string("rig")) + " (" + fmt(key.second) + (n > 1 ? " each)" : ")");
+    }
+    Shortfall sh;
+    sh.resource = ResCalibration;
+    sh.pinnedUsed = used;
+    sh.output = out;
+    sh.bestPinnedUsed = used;
+    sh.bestOutput = out;
+    sh.shortfall = excess;
+    sh.message = "The rigs outside the selection use " + fmt(used) + " calibration of " + fmt(out) + " (" + fmt(excess) +
+                 " over). No module raises calibration or lowers a rig's calibration cost, so no choice for the "
+                 "selected slots can fix this. ";
+    if (list.empty())
+        sh.message += "Change the pinned modules.";
+    else if (single)
+        sh.message += "To fix it, select one of these rigs (to replace it) or remove it: " + list + ".";
+    else
+        sh.message += "To fix it, select or remove rigs worth at least " + fmt(excess) + " calibration: " + list + ".";
+    inf.message = sh.message;
+    inf.resources.push_back(std::move(sh));
+    logLine("infeasible (calibration): " + inf.message);
+    return true;
+}
+
+// CPU / power: necessary conditions, after measuring every candidate alone on the
+// pinned fit. Per open slot, the strongest allowed output gain (compounded as a
+// multiplier: stacking penalties only lower it) and, separately, the largest drop of
+// the pinned modules' needs (added up: several reductions of one module compound to
+// less than their sum). Open modules' own costs are >= 0. If even these bounds leave
+// the pinned modules over, no set fits. Calibration: no output gain, no reduction.
+bool Search::diagnoseOutputs()
+{
+    if (result_.infeasible.infeasible)
+        return true;  // calibration (bruteForce runs on)
+    if (!pinnedOver())
+        return false;
+    std::vector<Shortfall> list;
+    bool impossible = false;
+    static const char* label[3] = {"CPU", "powergrid", "calibration"};
+    static const char* unit[3] = {" tf", " MW", ""};
+    static const char* help[3] = {"co-processors or CPU rigs", "power diagnostic systems, reactor control units or "
+                                                               "power rigs", ""};
+    for (size_t k = 0; k < 3; ++k)
+    {
+        if (!(pinnedUsed_[k] > pinnedOutput_[k]))
+            continue;
+        Shortfall sh;
+        sh.resource = static_cast<int>(k);
+        sh.pinnedUsed = pinnedUsed_[k];
+        sh.output = pinnedOutput_[k];
+        double out = pinnedOutput_[k], used = pinnedUsed_[k];
+        bool raises = false;
+        if (k != ResCalibration)
+            for (int r = 0; r < RackCount; ++r)
+            {
+                std::vector<double> gain, drop;
+                for (const Candidate& c : cands_)
+                    if (c.rack == r)
+                    {
+                        gain.push_back(std::max(0.0, c.outputDelta[k]));
+                        drop.push_back(c.pinnedDrop[k]);
+                    }
+                std::sort(gain.begin(), gain.end(), std::greater<>());
+                std::sort(drop.begin(), drop.end(), std::greater<>());
+                const size_t n = static_cast<size_t>(slots_[static_cast<size_t>(r)]);
+                for (size_t i = 0; i < n && i < gain.size(); ++i)
+                {
+                    if (gain[i] > 0 && pinnedOutput_[k] > 0)
+                        out *= 1 + gain[i] / pinnedOutput_[k], raises = true;
+                    used -= drop[i];
+                    raises |= drop[i] > 0;
+                }
+            }
+        used = std::max(0.0, used);
+        sh.bestPinnedUsed = used;
+        sh.bestOutput = out;
+        sh.shortfall = std::max(0.0, used - out);
+        // Pad against float noise: only a clear shortfall counts.
+        const bool over = used > out * (1 + 1e-6) + 0.01;
+        impossible |= over;
+        const std::string head = "The modules outside the selection need " + fmt(sh.pinnedUsed) + unit[k] + " " +
+                                 label[k] + " of " + fmt(sh.output) + unit[k] + ".";
+        if (!over)
+            sh.message = head + " Modules in the selected slots may make up for it.";
+        else if (!raises)
+            sh.message = head + " No module allowed in the selected slots" + selectionNote() + " raises " + label[k] +
+                         " or lowers the other modules' " + label[k] + " needs. Select slots for " + help[k] +
+                         ", or remove a module outside the selection.";
+        else
+            sh.message = head + " With the selected slots" + selectionNote() + ", " + label[k] + " can reach at most " +
+                         fmt(out) + unit[k] + " and the other modules need at least " + fmt(used) + unit[k] + " (" +
+                         fmt(used - out) + " short). Select more slots for " + help[k] +
+                         ", or remove a module outside the selection.";
+        list.push_back(std::move(sh));
+    }
+    bounds_ = list;
+    if (!impossible)
+        return false;
+    Infeasibility& inf = result_.infeasible;
+    inf = {};
+    inf.infeasible = true;
+    inf.reason = "outputs";
+    for (const Shortfall& sh : list)
+        if (sh.shortfall > 0)
+            inf.message += (inf.message.empty() ? "" : " ") + sh.message;
+    inf.resources = std::move(list);
+    logLine("infeasible (outputs): " + inf.message);
+    return true;
+}
+
+// After the search: no set fits (found = false). If the pinned part is over and no
+// fitting-module fill alone makes it fit, report it. (If the pinned part fits, or a
+// fill does, a fitting choice exists; then nothing reached a goal above 0.)
+void Search::diagnoseSearch(bool found)
+{
+    if (result_.infeasible.infeasible)
+    {
+        result_.fits.clear();
+        return;
+    }
+    if (found)
+        return;
+    if (!pinnedOver())
+    {
+        noGoalWarning();
+        return;
+    }
+    if (!fitSets_.empty())
+    {
+        // The pinned modules' costs (as stage 1 counts them) plus a fitting-module fill.
+        std::vector<uint8_t> none(kinds_.size(), 0);
+        CoreEval ce;
+        assemble(none.data(), ce);
+        if (findFitting(none.data(), slots_, ce.cpu, ce.power, ce.calibration) >= 0)
+        {
+            noGoalWarning();
+            return;
+        }
+    }
+    Infeasibility& inf = result_.infeasible;
+    inf = {};
+    inf.infeasible = true;
+    inf.reason = "search";
+    static const char* label[3] = {"CPU", "powergrid", "calibration"};
+    static const char* unit[3] = {" tf", " MW", ""};
+    std::string head;
+    for (size_t k = 0; k < 3; ++k)
+    {
+        if (!(pinnedUsed_[k] > pinnedOutput_[k]))
+            continue;
+        Shortfall sh;
+        sh.resource = static_cast<int>(k);
+        sh.pinnedUsed = pinnedUsed_[k];
+        sh.output = pinnedOutput_[k];
+        sh.bestPinnedUsed = sh.pinnedUsed;
+        sh.bestOutput = sh.output;
+        for (const Shortfall& b : bounds_)
+            if (b.resource == sh.resource)
+                sh.bestPinnedUsed = b.bestPinnedUsed, sh.bestOutput = b.bestOutput;
+        sh.shortfall = 0;  // the bounds allow it: the search decided
+        sh.message = "The modules outside the selection need " + fmt(sh.pinnedUsed) + unit[k] + " " + label[k] + " of " +
+                     fmt(sh.output) + unit[k] + ".";
+        if (sh.bestOutput > sh.output || sh.bestPinnedUsed < sh.pinnedUsed)
+            sh.message += " The selected slots can raise it to at most " + fmt(sh.bestOutput) + unit[k] +
+                          " and lower the need to at least " + fmt(sh.bestPinnedUsed) + unit[k] +
+                          " (bounds), but no combination fits once the modules' own costs are counted.";
+        head += (head.empty() ? "" : " ") + sh.message;
+        inf.resources.push_back(std::move(sh));
+    }
+    inf.message = head + " No combination of modules allowed in the selected slots" + selectionNote() +
+                  " makes the fit fit. Select more slots for fitting modules, or remove a module outside the selection.";
+    logLine("infeasible (search): " + inf.message);
+}
+
+// Some choice fits, but none reaches a goal above 0 (e.g. nothing pinned or allowed
+// in the selected slots repairs the goal's layer, or what would doesn't fit).
+void Search::noGoalWarning()
+{
+    std::string w = "no choice for the selected slots that fits gives a goal above 0";
+    w += " (free with the selected slots empty: " + fmt(pinnedOutput_[ResCpu] - pinnedUsed_[ResCpu]) + " tf CPU, " +
+         fmt(pinnedOutput_[ResPower] - pinnedUsed_[ResPower]) + " MW powergrid, " +
+         fmt(pinnedOutput_[ResCalibration] - pinnedUsed_[ResCalibration]) + " calibration)";
+    result_.warnings.push_back(w);
+}
+
 Result Search::run()
 {
     auto t0 = Clock::now();
@@ -3901,23 +5489,47 @@ Result Search::run()
         if (opt_.progress)
             opt_.progress(f, phase);
     };
+    auto finish = [&] {
+        progress(1, "done");
+        result_.stats.seconds[4] = secondsSince(t0);
+        result_.stats.engineCalls = calls_.load();
+        return std::move(result_);
+    };
     progress(0, "setup");
     setup();
+    // Fast exits when no option can fit. With bruteForce the search still runs, so
+    // the validation can confirm the diagnosis (no feasible combination).
+    if (diagnoseCalibration() && !opt_.bruteForce)
+        return finish();
     if (slots_[RackMid] + slots_[RackLow] + slots_[RackRig] == 0)
     {
         result_.warnings.push_back("no open slots");
-        result_.stats.seconds[4] = secondsSince(t0);
-        progress(1, "done");
-        return std::move(result_);
+        diagnoseOutputs();  // no candidates: the pinned part as it is
+        return finish();
     }
     progress(0.02, "candidates");
     gatherCandidates();
     progress(0.05, "measuring candidates");
     measure();
+    if (diagnoseOutputs() && !opt_.bruteForce)
+        return finish();
     progress(0.10, "interactions");
     interactions();
     classify();
-    buildKinds();
+    // Stage 1's model has size limits (ModelLimit). When one is hit, stages 1 and 2 are
+    // skipped and refine searches alone (from the empty set); it needs no model.
+    bool model = true;
+    try
+    {
+        buildKinds();
+    }
+    catch (const ModelLimit& e)
+    {
+        if (opt_.bruteForce || !opt_.refine || opt_.dumpKinds)
+            throw;
+        model = false;
+        result_.stats.modelSkipped = e.what();
+    }
     logLine(std::to_string(result_.stats.candidates) + " useful candidates in " + std::to_string(kinds_.size()) +
             " subgroups (" + std::to_string(result_.stats.coreKinds) + " core, " +
             std::to_string(result_.stats.resistKinds) + " resist, " + std::to_string(result_.stats.fittingKinds) +
@@ -3925,32 +5537,61 @@ Result Search::run()
     result_.stats.seconds[0] = secondsSince(t0);
     if (opt_.dumpKinds)
         return std::move(result_);  // diagnostics only
-    auto t1 = Clock::now();
-    progress(0.15, "model");
-    buildCorePlan();
-    buildResistSets();
-    result_.stats.seconds[1] = secondsSince(t1);
-    auto t2 = Clock::now();
-    progress(0.25, "stage 1");
-    stage1();
-    result_.stats.seconds[2] = secondsSince(t2);
-    if (opt_.bruteForce)
+    try
     {
-        progress(0.7, "brute force");
-        bruteForce();
-        progress(1, "done");
+        if (!model)
+            throw ModelLimit(result_.stats.modelSkipped);
+        auto t1 = Clock::now();
+        progress(0.15, "model");
+        buildCorePlan();
+        buildResistSets();
+        result_.stats.seconds[1] = secondsSince(t1);
+        auto t2 = Clock::now();
+        progress(0.25, "stage 1");
+        stage1();
+        result_.stats.seconds[2] = secondsSince(t2);
+        if (opt_.bruteForce)
+        {
+            progress(0.7, "brute force");
+            bruteForce();
+            diagnoseSearch(!top_.empty());
+            return finish();
+        }
+        auto t3 = Clock::now();
+        progress(0.7, "stage 2");
+        stage2();
+        result_.stats.seconds[3] = secondsSince(t3);
+    }
+    catch (const ModelLimit& e)
+    {
+        if (opt_.bruteForce || !opt_.refine)
+            throw;
+        result_.stats.modelSkipped = e.what();
+        logLine(std::string("stage 1 model limit (") + e.what() + "): stages 1 and 2 skipped, refine only");
+        top_.clear();
+        finals_.clear();
+    }
+    if (opt_.refine)
+    {
+        auto t4 = Clock::now();
+        progress(0.8, "refine");
+        refine(t0);
+        result_.stats.seconds[5] = secondsSince(t4);
+    }
+    else
+        result_.stats.refineStop = "off";
+    report();
+    diagnoseSearch(!result_.fits.empty());
+    if (opt_.memberBruteForce)
+    {
         result_.stats.seconds[4] = secondsSince(t0);
+        progress(0.95, "member brute force");
+        memberBrute();
+        progress(1, "done");
         result_.stats.engineCalls = calls_.load();
         return std::move(result_);
     }
-    auto t3 = Clock::now();
-    progress(0.7, "stage 2");
-    stage2();
-    result_.stats.seconds[3] = secondsSince(t3);
-    progress(1, "done");
-    result_.stats.seconds[4] = secondsSince(t0);
-    result_.stats.engineCalls = calls_.load();
-    return std::move(result_);
+    return finish();
 }
 }  // namespace
 

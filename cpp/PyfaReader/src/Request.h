@@ -43,6 +43,7 @@ struct Request
     bool allowOfficer = false;
     int results = 10;
     int threads = 0;
+    double timeBudget = 60;  // seconds (Options::timeBudget); 0 = no limit
     std::optional<std::unordered_map<int, double>> prices;
 };
 
@@ -56,6 +57,11 @@ struct RunOptions
     std::function<void(double, const std::string&)> progress;
     std::optional<fitengine::Goal> goal;  // overrides the request's goal
     std::optional<std::array<int, fitengine::opt::RackCount>> maxSlots;
+    bool members = false;  // Options::memberBruteForce (response "members")
+    // Test overrides of the refine options (Options::refine...); unset = request / defaults.
+    std::optional<bool> refine;
+    std::optional<double> timeBudget, refineExact;
+    std::optional<int> refineRounds, refinePatience, refinePairs, refineChains, refineStarts;
 };
 
 // Runs the optimizer; the response document. `fallbackPrices` (e.g. pyfa's prices

@@ -84,6 +84,8 @@ double num(float f)
     std::from_chars(buf, end, d);
     return d;
 }
+// Derived quantities (sums, bounds): 4 decimals.
+double round4(double v) { return std::round(v * 1e4) / 1e4; }
 const std::pair<const char*, Goal> kGoals[] = {{"shieldPassive", Goal::ShieldPassive},
                                                {"armorPassive", Goal::ArmorPassive},
                                                {"hullPassive", Goal::HullPassive},
@@ -408,6 +410,9 @@ Request parse(const json::Value& doc, const GameData& gd)
     if (req.results < 1)
         throw std::runtime_error("request.results must be at least 1");
     req.threads = getInt(doc, "threads", 0, "request");
+    req.timeBudget = getNumber(doc, "timeBudget", 60, "request");
+    if (!(req.timeBudget >= 0))
+        throw std::runtime_error("request.timeBudget must be >= 0 (seconds, 0 = no limit)");
     if (const json::Value* p = get(doc, "prices"); p && !p->is_null())
     {
         req.prices.emplace();
@@ -459,6 +464,15 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
     o.bruteForce = ro.check;
     if (ro.maxSlots)
         o.maxSlots = *ro.maxSlots;
+    o.timeBudget = ro.timeBudget.value_or(req.timeBudget);
+    o.refine = ro.refine.value_or(o.refine);
+    o.refineRounds = ro.refineRounds.value_or(o.refineRounds);
+    o.refinePatience = ro.refinePatience.value_or(o.refinePatience);
+    o.refinePairs = ro.refinePairs.value_or(o.refinePairs);
+    o.refineChains = ro.refineChains.value_or(o.refineChains);
+    o.refineStarts = ro.refineStarts.value_or(o.refineStarts);
+    o.refineExact = ro.refineExact.value_or(o.refineExact);
+    o.memberBruteForce = ro.members;
     o.partial = true;
     o.openModules.assign(req.fit.modules.size(), uint8_t{0});
 
@@ -522,9 +536,48 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
 
     json::Value out = json::Value::object();
     out["version"] = kVersion;
-    out["status"] = "ok";
-    out["message"] = "";
+    out["status"] = res.infeasible.infeasible ? "infeasible" : "ok";
+    out["message"] = res.infeasible.infeasible ? res.infeasible.message : std::string();
     out["goal"] = goalName(o.goal);
+    if (res.infeasible.infeasible)
+    {
+        // Why no option can fit: the pinned part's resources (see OPTIMIZER_CLI.md).
+        const opt::Infeasibility& inf = res.infeasible;
+        json::Value ij = json::Value::object();
+        ij["reason"] = inf.reason;
+        ij["message"] = inf.message;
+        json::Value rs = json::Value::array();
+        for (const opt::Shortfall& sh : inf.resources)
+        {
+            json::Value r = json::Value::object();
+            r["resource"] = opt::resourceName(sh.resource);
+            r["pinnedUsed"] = round4(sh.pinnedUsed);
+            r["output"] = round4(sh.output);
+            r["bestPinnedUsed"] = round4(sh.bestPinnedUsed);
+            r["bestOutput"] = round4(sh.bestOutput);
+            r["shortfall"] = round4(sh.shortfall);
+            r["message"] = sh.message;
+            rs.push_back(std::move(r));
+        }
+        ij["resources"] = std::move(rs);
+        json::Value mods = json::Value::array();
+        for (size_t m = 0; m < inf.modules.size(); ++m)
+            for (size_t i = 0; i < req.entries.size(); ++i)
+                if (req.fitIndex[i] == static_cast<size_t>(inf.modules[m]))
+                {
+                    const ModuleEntry& e = req.entries[i];
+                    const Type* t = gd.type(e.input.typeID);
+                    json::Value mj = json::Value::object();
+                    mj["position"] = e.position;
+                    mj["slot"] = slotName(e.slot);
+                    mj["typeID"] = e.input.typeID;
+                    mj["name"] = t ? t->name : std::string();
+                    mj["cost"] = round4(m < inf.moduleCost.size() ? inf.moduleCost[m] : 0.0);
+                    mods.push_back(std::move(mj));
+                }
+        ij["modules"] = std::move(mods);
+        out["infeasible"] = std::move(ij);
+    }
     {
         json::Value open = json::Value::object();
         open["med"] = res.openSlots[opt::RackMid];
@@ -661,7 +714,36 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
     st["kinds"] = res.stats.kinds;
     st["engineCalls"] = res.stats.engineCalls;
     st["stage2Starts"] = res.stats.stage2Starts;
+    st["secondsStage1"] = res.stats.seconds[2];
+    st["secondsStage2"] = res.stats.seconds[3];
+    st["secondsRefine"] = res.stats.seconds[5];
+    st["stage2Best"] = res.stats.stage2Best;
+    st["refineStarts"] = res.stats.refineStarts;
+    st["refineRounds"] = res.stats.refineRounds;
+    st["refineEvaluations"] = res.stats.refineEvaluations;
+    st["refineImproved"] = res.stats.refineImproved;
+    st["refineExact"] = res.stats.refineExact;
+    st["refineStop"] = res.stats.refineStop;
+    if (!res.stats.modelSkipped.empty())
+        st["modelSkipped"] = res.stats.modelSkipped;
     out["stats"] = std::move(st);
+
+    if (ro.members)
+    {
+        const opt::MemberCheck& m = res.members;
+        json::Value mj = json::Value::object();
+        mj["ran"] = m.ran;
+        mj["skipped"] = m.skipped;
+        mj["combinations"] = m.combinations;
+        mj["fitting"] = m.fitting;
+        mj["best"] = m.best;
+        mj["bestPrice"] = m.bestPrice;
+        mj["bestModules"] = m.bestModules;
+        mj["seconds"] = m.seconds;
+        mj["found"] = res.fits.empty() ? 0.0 : static_cast<double>(res.fits.front().exact.goal);
+        mj["foundPrice"] = res.fits.empty() ? 0.0 : res.fits.front().price;
+        out["members"] = std::move(mj);
+    }
 
     if (ro.check)
     {

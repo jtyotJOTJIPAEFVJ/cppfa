@@ -9,6 +9,8 @@ JSON is read and written with nlohmann/json 3.11.3 (single header, MIT license, 
 ```
 PyfaReader.exe [--game <eve.db>] [--save <saveddata.db>] --optimize-request <request.json | -> [--out <response.json | ->]
                [--threads N] [--goal G] [--check] [--slots m,l,r] [--verbose]
+               [--time-budget S] [--members] [--no-refine] [--refine-rounds N] [--refine-patience N]
+               [--refine-pairs N] [--refine-chains N] [--refine-starts N] [--refine-exact N]
 PyfaReader.exe [--game ...] [--save ...] --make-request <fitID> [--open all | "mid:0,1;low:2;rig:*"] [--goal G] [--out <request.json>]
 ```
 
@@ -16,9 +18,11 @@ PyfaReader.exe [--game ...] [--save ...] --make-request <fitID> [--open all | "m
 - `--game`: if it is omitted, eve.db is searched for next to the exe and then in the working directory, as for every other mode. `effect_modifiers.tsv` must be next to the exe; the build copies it there.
 - `--save` is optional for requests. It is used only for pyfa's `prices` table, and only when the request has no `prices`. If it is omitted, the default pyfa save path is tried, and no prices are used if it isn't found.
 - `--threads N` overrides the request's `threads`. pyfa may want to leave a core free.
+- `--time-budget S` overrides the request's `timeBudget`.
 - `--goal`, `--check` and `--slots` are for testing. `--goal` overrides the request's goal. `--check` runs the brute-force validation (`Options::bruteForce`) on the request's open slots instead of stage 2: the response then has `check` and an empty `options`. `--slots m,l,r` caps the open slots per rack (`Options::maxSlots`). `--verbose` writes the optimizer log to stderr.
-- **Exit code**: 0 = ok. 1 = `--check` found a mismatch. 2 = error; a response with `"status": "error"` is still written.
-- **Progress** (stderr): lines of the form `progress <fraction> <phase>`, where fraction is 0.000-1.000. Phases: `setup`, `candidates`, `measuring candidates`, `interactions`, `model`, `stage 1` (0.25), `stage 2` (0.70, then steps per batch of starting sets), `done` (1.000). Stage 1 reports no steps of its own, so the bar sits at 0.25 until stage 1 ends (0.1-2 s on the test fits with 16 threads). Every other stderr line is free-form log text; ignore it. To cancel, kill the process.
+- Refine tests (see `OPTIMIZER_STATUS.md`, refine and the improvement study): `--members` also runs the member-level brute force after the search (every combination of every module choice of the open slots, exact; small requests only) and adds `members` to the response. `--no-refine` skips refine (stage 2's result, the pipeline before refine). `--refine-rounds N` caps the iterated-search rounds: with it (or when refine converges first) the result doesn't depend on timing. `--refine-patience N` (chain iterations without a better best set, default 96), `--refine-pairs N` (pair moves verified per local-optimum test, default 256, 0 = single moves only), `--refine-chains N` (default 16; 0 = one per thread), `--refine-starts N` (stage 2 end sets descended first; default 16), `--refine-exact N` (refine's exact pass runs when the open slots have at most N combinations of its choices; default 3e7, 0 = off). Study-only environment switches: `OPT_KICK` (percent of guided kicks, default 50), `OPT_ACCEPT` (percent of worse local optima a chain moves to, default 0), `OPT_NO_PRUNE`, `OPT_NO_CHARGE_ALTS`, `OPT_REFINE_FROM_EMPTY`. The same flags work with `--optimize`.
+- **Exit code**: 0 = ok, also for `"status": "infeasible"` (a valid answer). 1 = `--check` found a mismatch. 2 = error; a response with `"status": "error"` is still written.
+- **Progress** (stderr): lines of the form `progress <fraction> <phase>`, where fraction is 0.000-1.000. Phases: `setup`, `candidates`, `measuring candidates`, `interactions`, `model`, `stage 1` (0.25), `stage 2` (0.70, then steps per batch of starting sets, up to 0.80), `refine` (0.80), then once per refine round `refine: round N, best G` (0.80-1.00: the larger of the elapsed share of the time budget and the share of the convergence patience used), `done` (1.000). Stage 1 reports no steps of its own, so the bar sits at 0.25 until stage 1 ends (0.1-2 s on the test fits with 16 threads). Every other stderr line is free-form log text; ignore it. To cancel, kill the process.
 - `--make-request` writes a request for a saved fit, mainly for tests. `--open all` (the default) requests every mid, low and rig slot. The racks are padded with empty entries up to their slot counts, so the result equals `--optimize <fitID>`. `--open "mid:0,2;low:1"` uses indices within each rack, counting empty slots and following position order; `rig:*` requests a whole rack.
 
 ## Request
@@ -44,6 +48,7 @@ PyfaReader.exe [--game ...] [--save ...] --make-request <fitID> [--open all | "m
   "allowOfficer": false,
   "results": 10,
   "threads": 0,
+  "timeBudget": 60,
   "prices": {"2048": 1250000.0, "3841": 3400000.0}
 }
 ```
@@ -62,6 +67,7 @@ PyfaReader.exe [--game ...] [--save ...] --make-request <fitID> [--open all | "m
 | `allowOfficer` | bool | no (false) | Allow officer modules (metaGroup 5). |
 | `results` | int | no (10) | How many distinct options to return at most. |
 | `threads` | int | no (0) | Worker threads. 0 = all hardware threads. |
+| `timeBudget` | number | no (60) | Seconds for the whole run. Refine, the last phase, stops when the budget is used up, or earlier when its best set stops improving (simple requests finish in well under a second). 0 = no time limit (refine runs until it converges). The search before refine is not cut by the budget. pyfa's run timeout should be above it. |
 | `prices` | object | no | `{"<typeID>": ISK}`. If it is given, saveddata's prices table isn't read. JSON keys are strings; Python's `json.dumps` writes int dict keys that way. |
 
 Module entries:
@@ -129,12 +135,13 @@ The numbers above are illustrative.
 
 | Field | Meaning |
 |---|---|
-| `status`, `message` | `"ok"` with an empty message, or `"error"` with the reason. An error response has only `version`, `status` and `message`. |
+| `status`, `message` | `"ok"` with an empty message; `"infeasible"` when no choice for the requested slots can fit, with the reason in `message` (also in `infeasible.message`) and empty `options`, see below; or `"error"` with the reason. An error response has only `version`, `status` and `message`. |
+| `infeasible` | Only with `"status": "infeasible"`: why nothing fits, see below. |
 | `goal` | The goal that was used (after `--goal`). |
 | `openSlots` | The open slots per rack that were searched. |
 | `start` | The input fit, as requested, with the module rules applied. `price` is the price of the modules and charges currently in the requested slots. |
 | `clampedModules` | Pinned modules evaluated with a lower state than requested: `{position, slot, typeID, name, state (as requested), evaluatedState}`. |
-| `options` | Best first. Fitting options come first, ordered by goal; then, at an equal goal, cheaper ones; non-fitting options last. There are at most `results`, and they are pairwise distinct as module multisets. The list can be empty, e.g. when nothing reaches a goal above 0. |
+| `options` | Best first: by goal, then, at an equal goal (within ~1e-7 relative), cheaper. Only options that fit (CPU, power and calibration) are returned; `fits` is always true. There are at most `results`, and they are pairwise distinct as module multisets. The list is empty with `"status": "infeasible"`, and with `"ok"` when no choice that fits reaches a goal above 0 (then `warnings` says so, with the free CPU / power / calibration). |
 | `options[].goal`, `gain` | Goal value (EHP, or EHP/s for active goals) and gain over `start.goal`. |
 | `options[].fits` | CPU, power and calibration within their outputs. |
 | `options[].price`, `priceDelta` | ISK of the modules and charges in the requested slots, and the difference from `start.price`. Unknown prices count as 0. |
@@ -143,7 +150,50 @@ The numbers above are illustrative.
 | `options[].slots` | One entry per requested slot (med/low/rig), in position order: `position`, `slot`, `typeID` (0 = leave empty), `chargeID`, `state` (null if empty), `name`, `chargeName`, `unchanged`. |
 | `warnings` | Strings to show the user (slots that can't be opened, the free-slot cap, clamped modules, optimizer warnings). |
 | `stats` | Run statistics, informational. |
+| `stats` (refine) | `stage2Best` (best goal before refine), `secondsStage1`, `secondsStage2`, `secondsRefine`, `refineStarts`, `refineRounds`, `refineEvaluations`, `refineImproved` (times refine found a better best set), `refineExact` (combinations refine's exact pass evaluated; 0 when it didn't run), `refineStop` (`converged`, `time`, `rounds`, `off`, `no start`), `modelSkipped` (only when a stage-1 model size limit was hit: stages 1 and 2 were skipped and refine searched alone). Informational. |
+| `members` | Only with `--members`: `{ran, skipped, combinations, fitting, best, bestPrice, bestModules, seconds, found, foundPrice}`: the exhaustive best over every module choice vs the optimizer's first option (`found`). Prices here count modules and charges as the optimizer compares them. |
 | `check` | Only with `--check`: `{ran, combinations, feasible, compared, mismatches, fittingGoalChanges, bruteBest, stage1Best, maxError}`. |
+
+### Infeasible requests
+
+An open slot may stay empty, so a request is infeasible only when the pinned part (every module outside the selection, the selected slots empty) is over on CPU, power or calibration and the selected slots can't fix it. The user chose the selection, so the optimizer never touches other slots: it reports why instead.
+
+```json
+{
+  "version": 1,
+  "status": "infeasible",
+  "message": "The rigs outside the selection use 450.0 calibration of 400.0 (50.0 over). No module raises calibration or lowers a rig's calibration cost, so no choice for the selected slots can fix this. To fix it, select one of these rigs (to replace it) or remove it: 3x Medium Command Processor I (150.0 each).",
+  "goal": "armorActive",
+  "infeasible": {
+    "reason": "calibration",
+    "message": "(same as the top-level message)",
+    "resources": [
+      {"resource": "calibration", "pinnedUsed": 450.0, "output": 400.0, "bestPinnedUsed": 450.0, "bestOutput": 400.0,
+       "shortfall": 50.0, "message": "The rigs outside the selection use 450.0 calibration of 400.0 ..."}
+    ],
+    "modules": [
+      {"position": 16, "slot": "rig", "typeID": 43896, "name": "Medium Command Processor I", "cost": 150.0},
+      {"position": 17, "slot": "rig", "typeID": 43896, "name": "Medium Command Processor I", "cost": 150.0},
+      {"position": 18, "slot": "rig", "typeID": 43896, "name": "Medium Command Processor I", "cost": 150.0}
+    ]
+  },
+  "openSlots": {"med": 1, "low": 1, "rig": 0},
+  "start": {"...": "as usual"},
+  "clampedModules": [],
+  "options": [],
+  "warnings": [],
+  "stats": {"seconds": 0.005, "candidates": 0, "kinds": 0, "engineCalls": 0, "stage2Starts": 0}
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `reason` | `"calibration"`: the pinned rigs alone are over. Nothing raises calibration output or lowers a rig's calibration cost, so this is decided before any search (a few ms). `"outputs"`: CPU or power is over even with the strongest output modules and cost reductions the selected slots allow (bounds, decided after measuring the candidates, before the search; ~0.1 s). `"search"`: the bounds allow it, but the search found no combination that fits. |
+| `message` | For the user; says what to change (select or remove a pinned module, select slots for fitting modules). |
+| `resources[]` | One entry per resource the pinned part is over on: `resource` (`cpu`, `power`, `calibration`), `pinnedUsed` / `output` (the pinned part, selected slots empty), `bestPinnedUsed` / `bestOutput` (bounds: the least the pinned modules can need and the most output the selected slots can reach; equal to the pinned values for calibration), `shortfall` (`max(0, bestPinnedUsed - bestOutput)`; 0 for `"search"`, where the bounds didn't decide), `message`. |
+| `modules[]` | Pinned modules the message names (for `"calibration"`: the pinned rigs whose removal alone fixes it, else all pinned rigs): `position`, `slot`, `typeID`, `name`, `cost` (calibration). |
+
+With `--check`, the fast exits are skipped so the brute force can confirm the diagnosis; the response has the same `status` and `infeasible`, plus `check` (with `feasible` 0).
 
 How options map to positions, deterministically, per rack:
 1. A found module with the same type and charge as a requested slot's current module stays in that slot. A second pass matches on the type only, so the module stays and its charge changes. Mutated current modules are never matched.
@@ -160,4 +210,4 @@ For each `slots[]` entry: `typeID` 0 → `fit.modules.free(position)`. Otherwise
 
 ## In pyfa
 
-pyfa uses this through **Optimize Modules...** in the fitting view's context menu (select mid/low/rig slots, empty ones too). The client is `service/moduleOptimizer.py` (request, runner, parser) and `gui/moduleOptimizerDialog.py`; see `OPTIMIZER_STATUS.md`, Phase C. pyfa runs `PyfaReader.exe --game <eve.db> --optimize-request - --out -` and always sends `prices` (from its price cache), so `--save` isn't needed. The exe path is a pyfa setting (default `<pyfa root>/cpp/bin/Release/PyfaReader.exe`, changed with the window's "Optimizer path..." button).
+pyfa uses this through **Optimize Modules...** in the fitting view's context menu (select mid/low/rig slots, empty ones too). The client is `service/moduleOptimizer.py` (request, runner, parser) and `gui/moduleOptimizerDialog.py`; see `OPTIMIZER_STATUS.md`, Phase C. pyfa runs `PyfaReader.exe --game <eve.db> --optimize-request - --out -` and always sends `prices` (from its price cache), so `--save` isn't needed. `parseResponse` accepts `ok` and `infeasible`; for `infeasible`, `OptimizerResult.infeasible` (`reason`, `message`, `resources`, `modules`) is set and the window shows "No option can fit." plus the message instead of an empty table. The window's **Max time (s)** field is the request's `timeBudget` (setting `timeBudget`, default 60; 0 = no limit), and the run timeout (setting `timeout`, default 300 s) is raised to at least the budget + 120 s (none with no limit). The exe path is a pyfa setting (default `<pyfa root>/cpp/bin/Release/PyfaReader.exe`, changed with the window's "Optimizer path..." button).
