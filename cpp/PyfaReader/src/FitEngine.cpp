@@ -22,7 +22,7 @@ constexpr int widestLayout()
 }
 constexpr int kMaxFields = widestLayout();  // from the generated layouts
 static_assert(kMaxFields <= 64, "field bit masks are 64-bit");
-constexpr int kMaxItems = 160;     // ship + mode + modules + their charges
+constexpr int kMaxItems = 512;     // ship + mode + modules + their charges (search plans: every option)
 constexpr int kMaxPenalties = 4096;
 constexpr int kMaxDepth = 12;      // guards recursive reads (caps, chained amounts)
 constexpr float kUniformShare = 0.25f;  // uniform damage profile: 25% of each type
@@ -227,7 +227,7 @@ struct Item
     bool constFitting = false;
     float cpu = 0, power = 0, calibration = 0;
 
-    uint32_t repEffects = 0;   // which repairer effects ran (bit per kRep*)
+    uint32_t repEffects = 0;   // which repairer effects ran (RepEffect bits)
     bool ancillaryShield = false;  // module group (Remote) Ancillary Shield Booster
     bool isPaste = false;          // charge is Nanite Repair Paste
 };
@@ -239,14 +239,6 @@ struct Penalty
     uint8_t group;
     float value;
     int next;  // older penalty of the same item, -1 = none
-};
-
-enum : uint32_t
-{
-    kRepShield = 1,
-    kRepArmor = 2,
-    kRepArmorFueled = 4,
-    kRepHull = 8,
 };
 
 // pyfa Fit.commandBonuses entry
@@ -283,6 +275,7 @@ struct Scratch
     int mode = -1;
     std::array<int, kMaxItems> modules;
     int moduleCount = 0;
+    std::array<ModuleStats, kMaxItems> moduleStats;  // totals(): per s.modules entry
     std::array<int, 32> implants;
     int implantCount = 0;
     std::array<int, 16> boosters;
@@ -755,6 +748,48 @@ struct Engine::Impl
         return val;
     }
 
+    // The pieces value() combines (see AttrParts); reads only.
+    void attrParts(Scratch& s, int item, int field, AttrParts& out) const
+    {
+        out = AttrParts{};
+        if (field < 0)
+            return;
+        out.value = value(s, item, field, 0);
+        const Item& it = s.items[item];
+        if (!(it.touched >> field & 1))
+        {
+            out.base = (it.hasIntermediary >> field & 1) ? it.intermediary()[field] : it.base()[field];
+            return;
+        }
+        if (it.hasForce >> field & 1)
+        {
+            out.forced = true;
+            return;
+        }
+        out.base = (it.hasIntermediary >> field & 1) ? it.intermediary()[field]
+                   : (it.hasPreAssign >> field & 1)  ? it.preAssign()[field]
+                                                      : it.base()[field];
+        out.preInc = it.preInc()[field];
+        out.mult = it.mult()[field];
+        out.post = it.postInc()[field];
+        if (it.penalized >> field & 1)
+        {
+            for (int p = it.penHead; p >= 0; p = s.pens[p].next)
+                if (s.pens[p].field == field)
+                {
+                    if (out.penCount == AttrParts::kMaxPens)
+                    {
+                        out.truncated = true;
+                        break;
+                    }
+                    out.pens[static_cast<size_t>(out.penCount)] = s.pens[p].value;
+                    out.groups[static_cast<size_t>(out.penCount++)] = s.pens[p].group;
+                }
+            std::reverse(out.pens.begin(), out.pens.begin() + out.penCount);
+            std::reverse(out.groups.begin(), out.groups.begin() + out.penCount);
+        }
+    }
+
     // Stacking penalties: each group separately, bonuses and maluses separately,
     // strongest first: 1 + (m - 1) * exp(-i^2 / 7.1289).
     float applyPenalties(const Scratch& s, int item, int field, float val) const
@@ -1074,16 +1109,16 @@ struct Engine::Impl
             break;
         case kEffShieldBoosting:
         case kEffFueledShieldBoosting:
-            it.repEffects |= kRepShield;
+            it.repEffects |= RepShield;
             break;
         case kEffArmorRepair:
-            it.repEffects |= kRepArmor;
+            it.repEffects |= RepArmor;
             break;
         case kEffFueledArmorRepair:
-            it.repEffects |= kRepArmorFueled;
+            it.repEffects |= RepArmorFueled;
             break;
         case kEffStructureRepair:
-            it.repEffects |= kRepHull;
+            it.repEffects |= RepHull;
             break;
         case kEffRAH:
             reactiveArmorHardener(s, module);
@@ -1444,7 +1479,8 @@ struct Engine::Impl
         float cpu = 0, power = 0, calibration = 0;
         float cpuOutput = 0, powerOutput = 0, calibrationOutput = 0;
         float capPeak = 0, capRecharge = 0, capUsed = 0;
-        std::array<float, LayerCount> hp{}, ehp{}, repair{}, effRepair{};
+        CapSums cap;
+        std::array<float, LayerCount> hp{}, ehp{}, divider{}, repair{}, effRepair{};
     };
 
     float shipValue(Scratch& s, Attr a) const
@@ -1511,30 +1547,67 @@ struct Engine::Impl
         return c;
     }
 
-    // Everything derived from the final attributes. cycles[i] belongs to s.modules[i].
-    void totals(Scratch& s, Cycle* cycles, Totals& t, bool withRepair) const
+    // A module's inputs to the totals, from its final attributes.
+    void moduleStats(Scratch& s, int mod, ModuleStats& m) const
     {
-        t = Totals{};
-        for (int i = 0; i < s.moduleCount; ++i)
+        const Item& it = s.items[mod];
+        Cycle computed;
+        if (!it.constCycle)
+            computed = cycleOf(s, mod);
+        const Cycle& c = it.constCycle ? it.cycle : computed;
+        m.state = it.state;
+        m.rawCycle = c.raw;
+        m.reactivation = c.reactivation;
+        m.reload = c.reload;
+        m.averageCycle = c.average;
+        m.capNeed = c.capNeed;
+        m.capUse = c.capUse;
+        m.numShots = c.numShots;
+        m.cpu = m.power = m.calibration = 0;
+        m.repEffects = 0;
+        if (it.state >= State::Online)
         {
-            int mod = s.modules[i];
-            const Item& it = s.items[mod];
-            cycles[i] = it.constCycle ? it.cycle : cycleOf(s, mod);
-            if (it.state < State::Online)
-                continue;
             // pyfa getItemAttrOnlineSum
             if (it.constFitting)
             {
-                t.cpu += it.cpu;
-                t.power += it.power;
-                t.calibration += it.calibration;
+                m.cpu = it.cpu;
+                m.power = it.power;
+                m.calibration = it.calibration;
             }
             else
             {
-                t.cpu += readHot(s, mod, HotCpu);
-                t.power += readHot(s, mod, HotPower);
-                t.calibration += readHot(s, mod, HotUpgradeCost);
+                m.cpu = readHot(s, mod, HotCpu);
+                m.power = readHot(s, mod, HotPower);
+                m.calibration = readHot(s, mod, HotUpgradeCost);
             }
+        }
+        if (it.repEffects)
+        {
+            m.repEffects = static_cast<uint8_t>(it.repEffects);
+            m.ancillaryShield = it.ancillaryShield;
+            m.hasCharge = it.charge >= 0;
+            m.pasteCharge = it.charge >= 0 && s.items[it.charge].isPaste;
+            m.duration = readHot(s, mod, HotDuration);
+            m.shieldBonus = (it.repEffects & RepShield) ? readHot(s, mod, HotShieldBonus) : 0.0f;
+            m.armorDamage = (it.repEffects & (RepArmor | RepArmorFueled)) ? readHot(s, mod, HotArmorDamage) : 0.0f;
+            m.structureDamage = (it.repEffects & RepHull) ? readHot(s, mod, HotStructureDamage) : 0.0f;
+            m.chargedArmorMult = readHot(s, mod, HotChargedArmorMult);
+        }
+    }
+
+    // Everything derived from the final attributes. s.moduleStats[i] belongs to s.modules[i].
+    void totals(Scratch& s, Totals& t, bool withRepair) const
+    {
+        t = Totals{};
+        ModuleStats* stats = s.moduleStats.data();
+        for (int i = 0; i < s.moduleCount; ++i)
+        {
+            moduleStats(s, s.modules[i], stats[i]);
+            if (stats[i].state < State::Online)
+                continue;
+            t.cpu += stats[i].cpu;
+            t.power += stats[i].power;
+            t.calibration += stats[i].calibration;
         }
         t.cpu = pymath::round(t.cpu, 2);
         t.power = pymath::round(t.power, 2);
@@ -1543,21 +1616,10 @@ struct Engine::Impl
         t.calibrationOutput = shipValue(s, Attr::upgradeCapacity);
 
         // pyfa __generateDrain + calculateCapRecharge
-        float capacity = shipValue(s, Attr::capacitorCapacity);
-        float rechargeSeconds = shipValue(s, Attr::rechargeRate) / 1000.0f;
-        t.capPeak = 10.0f / rechargeSeconds * std::sqrt(0.25f) * (1 - std::sqrt(0.25f)) * capacity;
-        float capAdded = 0;
-        for (int i = 0; i < s.moduleCount; ++i)
-        {
-            const Cycle& c = cycles[i];
-            if (s.items[s.modules[i]].state < State::Active || c.capNeed == 0 || c.raw + c.reactivation <= 0)
-                continue;
-            if (c.capUse > 0)
-                t.capUsed += c.capUse;
-            else
-                capAdded -= c.capUse;
-        }
-        t.capRecharge = capAdded + t.capPeak;
+        t.capPeak = capPeakRecharge(shipValue(s, Attr::capacitorCapacity), shipValue(s, Attr::rechargeRate));
+        t.cap = capSums(stats, s.moduleCount);
+        t.capUsed = t.cap.used;
+        t.capRecharge = t.cap.added + t.capPeak;
 
         static const Attr hpAttr[LayerCount] = {Attr::shieldCapacity, Attr::armorHP, Attr::hp};
         static const Attr resAttr[LayerCount][4] = {
@@ -1567,141 +1629,23 @@ struct Engine::Impl
              Attr::armorExplosiveDamageResonance},
             {Attr::emDamageResonance, Attr::thermalDamageResonance, Attr::kineticDamageResonance,
              Attr::explosiveDamageResonance}};
-        std::array<float, LayerCount> divider{};
         for (int l = 0; l < LayerCount; ++l)
         {
+            float divider = 0;
             for (Attr a : resAttr[l])
-                divider[l] += kUniformShare * shipValue(s, a);
-            if (divider[l] == 0)
-                divider[l] = 1;
+                divider += kUniformShare * shipValue(s, a);
+            if (divider == 0)
+                divider = 1;
+            t.divider[l] = divider;
             t.hp[l] = shipValue(s, hpAttr[l]);
-            t.ehp[l] = t.hp[l] / divider[l];
+            t.ehp[l] = t.hp[l] / divider;
         }
         if (withRepair)
         {
-            sustainableTank(s, cycles, t);
+            t.repair = makeRepProfile(stats, s.moduleCount, t.capUsed, t.capRecharge).repairAll();
             for (int l = 0; l < LayerCount; ++l)
-                t.effRepair[l] = t.repair[l] / divider[l];
+                t.effRepair[l] = t.repair[l] / t.divider[l];
         }
-    }
-
-    // Port of pyfa Fit.calculateSustainableTank (local repairers only, reload factored).
-    void sustainableTank(Scratch& s, const Cycle* cycles, Totals& t) const
-    {
-        struct Rep
-        {
-            int module;  // index into s.modules / cycles
-            int layer;
-            double amount;
-        };
-        // In double: the adjustment subtracts and re-adds large, nearly equal terms.
-        std::array<double, LayerCount> extra{}, adjust{};
-        Rep contributors[LayerCount][kMaxItems];
-        int contributorCount[LayerCount] = {};
-        for (int i = 0; i < s.moduleCount; ++i)
-        {
-            int mod = s.modules[i];
-            const Item& it = s.items[mod];
-            if (!it.repEffects)
-                continue;
-            double speed = readHot(s, mod, HotDuration) / 1000.0;
-            if (it.repEffects & kRepShield)
-            {
-                double amount = readHot(s, mod, HotShieldBonus);
-                extra[Shield] += amount / speed;
-                if (amount / speed != 0)
-                    contributors[Shield][contributorCount[Shield]++] = {i, Shield, amount};
-            }
-            if (it.repEffects & (kRepArmor | kRepArmorFueled))
-            {
-                bool paste = (it.repEffects & kRepArmorFueled) && it.charge >= 0 && s.items[it.charge].isPaste;
-                double amount = readHot(s, mod, HotArmorDamage);
-                double rps = amount * (paste ? 3 : 1) / speed;
-                extra[Armor] += rps;
-                if (rps != 0)
-                    contributors[Armor][contributorCount[Armor]++] = {i, Armor, amount};
-            }
-            if (it.repEffects & kRepHull)
-            {
-                double amount = readHot(s, mod, HotStructureDamage);
-                extra[Hull] += amount / speed;
-                if (amount / speed != 0)
-                    contributors[Hull][contributorCount[Hull]++] = {i, Hull, amount};
-            }
-        }
-
-        auto pasteMultiplier = [&](int i) {
-            int mod = s.modules[i];
-            int charge = s.items[mod].charge;
-            if (charge < 0 || !s.items[charge].isPaste)
-                return 1.0;
-            double m = readHot(s, mod, HotChargedArmorMult);
-            return m ? m : 1.0;
-        };
-
-        double capUsed = t.capUsed;
-        Rep repairers[LayerCount * kMaxItems];
-        double efficiency[LayerCount * kMaxItems];
-        int repairerCount = 0;
-        for (int layer = 0; layer < LayerCount; ++layer)
-        {
-            for (int k = 0; k < contributorCount[layer]; ++k)
-            {
-                const Rep& rep = contributors[layer][k];
-                const Cycle& c = cycles[rep.module];
-                bool hasCharge = s.items[s.modules[rep.module]].charge >= 0;
-                double cycle = c.raw / 1000.0;
-                bool usesCap = c.capUse != 0;
-                if (usesCap)
-                    capUsed -= c.capUse;
-                if (usesCap)
-                {
-                    adjust[layer] -= rep.amount * (hasCharge ? pasteMultiplier(rep.module) : 1.0) / cycle;
-                    repairers[repairerCount++] = rep;
-                }
-                else if (s.items[s.modules[rep.module]].ancillaryShield)
-                {
-                    double reload = hasCharge ? c.reload : 0.0;
-                    double offDuty = reload / (std::max(c.numShots, 1) * static_cast<double>(c.raw) + reload);
-                    adjust[layer] -= rep.amount * offDuty / cycle;
-                }
-            }
-        }
-
-        // Most cap-efficient first (Python sort is stable, also with reverse=True).
-        int order[LayerCount * kMaxItems];
-        for (int r = 0; r < repairerCount; ++r)
-        {
-            int mod = s.modules[repairers[r].module];
-            double mult = readHot(s, mod, HotChargedArmorMult);
-            efficiency[r] = repairers[r].amount * (mult ? mult : 1.0) / readHot(s, mod, HotCapNeed);
-            order[r] = r;
-        }
-        std::stable_sort(order, order + repairerCount, [&](int a, int b) { return efficiency[a] > efficiency[b]; });
-
-        double peak = t.capRecharge;
-        for (int k = 0; k < repairerCount; ++k)
-        {
-            if (capUsed > peak)
-                break;
-            const Rep& rep = repairers[order[k]];
-            const Cycle& c = cycles[rep.module];
-            bool hasCharge = s.items[s.modules[rep.module]].charge >= 0;
-            double reload = hasCharge ? c.reload : 0.0;
-            double sustainability = std::min(1.0, (peak - capUsed) / c.capUse);
-            if (!hasCharge)
-                adjust[rep.layer] += sustainability * rep.amount / (c.raw / 1000.0);
-            else
-            {
-                double shots = std::max(c.numShots, 1) * static_cast<double>(c.raw);
-                double onDuty = shots / (shots + reload);
-                adjust[rep.layer] +=
-                    sustainability * rep.amount * onDuty * pasteMultiplier(rep.module) / (c.raw / 1000.0);
-            }
-            capUsed += c.capUse;
-        }
-        for (int l = 0; l < LayerCount; ++l)
-            t.repair[l] = static_cast<float>(extra[l] + adjust[l]);
     }
 
     // ------------------------------------------------------------ full evaluation
@@ -1729,9 +1673,8 @@ struct Engine::Impl
         for (int f = 0; f < shipLayout.count; ++f)
             out.ship[static_cast<size_t>(f)] = value(s, s.ship, f, 0);
 
-        Cycle cycles[kMaxItems];
         Totals t;
-        totals(s, cycles, t, true);
+        totals(s, t, true);
 
         out.modules.resize(static_cast<size_t>(s.moduleCount));
         for (int i = 0; i < s.moduleCount; ++i)
@@ -1744,12 +1687,13 @@ struct Engine::Impl
             r.state = it.state;
             for (int f = 0; f < it.layout->count; ++f)
                 r.attrs.emplace_back(it.layout->fields[f], value(s, mod, f, 0));
-            r.rawCycleTime = cycles[i].raw;
-            r.reactivationDelay = cycles[i].reactivation;
-            r.reloadTime = cycles[i].reload;
-            r.averageCycleTime = cycles[i].average;
-            r.capUse = cycles[i].capUse;
-            r.numShots = cycles[i].numShots;
+            const ModuleStats& ms = s.moduleStats[static_cast<size_t>(i)];
+            r.rawCycleTime = ms.rawCycle;
+            r.reactivationDelay = ms.reactivation;
+            r.reloadTime = ms.reload;
+            r.averageCycleTime = ms.averageCycle;
+            r.capUse = ms.capUse;
+            r.numShots = ms.numShots;
         }
         out.cpuUsed = t.cpu;
         out.powerUsed = t.power;
@@ -1778,6 +1722,36 @@ size_t Engine::compiledModifierCount() const
     return impl_->compiled;
 }
 
+Engine::Reach Engine::reach(int typeID, bool asCharge) const
+{
+    Reach r;
+    const Type* t = impl_->gd.type(typeID);
+    if (!t)
+        return r;
+    for (int eid : t->effects)
+    {
+        const EffectInfo* e = impl_->effect(eid);
+        if (!e)
+            continue;
+        r.activatable |= e->active;
+        bool code = eid == kEffShieldBoosting || eid == kEffCapBooster || eid == kEffStructureRepair ||
+                    eid == kEffArmorRepair || eid == kEffRAH || eid == kEffFueledShieldBoosting ||
+                    eid == kEffFueledArmorRepair || (eid >= kEffWarfareLinkFirst && eid <= kEffWarfareLinkLast);
+        r.special |= code;
+        for (const Mod& m : e->mods[asCharge ? CtxModuleCharge : CtxModule])
+        {
+            switch (m.target)
+            {
+            case TargetSel::Ship: r.ship = true; break;
+            case TargetSel::Self:
+            case TargetSel::SelfCharge: r.self = true; break;
+            default: r.others = true; break;
+            }
+        }
+    }
+    return r;
+}
+
 TestResult toTestResult(const FitResult& r, Goal goal)
 {
     TestResult t;
@@ -1798,6 +1772,166 @@ TestResult toTestResult(const FitResult& r, Goal goal)
     t.capUsed = r.capUsed;
     t.capRecharge = r.capRecharge;
     return t;
+}
+
+// ==================================================================== shared totals
+
+CapSums capSums(const ModuleStats* modules, int count)
+{
+    CapSums out;
+    for (int i = 0; i < count; ++i)
+    {
+        const ModuleStats& m = modules[i];
+        if (m.state < State::Active || m.capNeed == 0 || m.rawCycle + m.reactivation <= 0)
+            continue;
+        if (m.capUse > 0)
+            out.used += m.capUse;
+        else
+            out.added -= m.capUse;
+    }
+    return out;
+}
+
+float capPeakRecharge(float capacity, float rechargeRateMs)
+{
+    float rechargeSeconds = rechargeRateMs / 1000.0f;
+    return 10.0f / rechargeSeconds * std::sqrt(0.25f) * (1 - std::sqrt(0.25f)) * capacity;
+}
+
+// Port of pyfa Fit.calculateSustainableTank (local repairers only, reload factored),
+// up to the loop that shares the capacitor between repairers (RepProfile::repair).
+// In double: the adjustment subtracts and re-adds large, nearly equal terms.
+RepProfile makeRepProfile(const ModuleStats* modules, int count, float capUsed, float capRecharge)
+{
+    RepProfile p;
+    p.capRecharge = capRecharge;
+    auto pasteMultiplier = [](const ModuleStats& m) {
+        if (!m.pasteCharge)
+            return 1.0;
+        double mult = m.chargedArmorMult;
+        return mult ? mult : 1.0;
+    };
+    // Amount of a repairer for a layer, 0 if it doesn't repair it (pyfa's contributors).
+    auto amountFor = [](const ModuleStats& m, int layer, double& rps) {
+        double speed = m.duration / 1000.0;
+        double amount = 0;
+        rps = 0;
+        if (layer == Shield && (m.repEffects & RepShield))
+        {
+            amount = m.shieldBonus;
+            rps = amount / speed;
+        }
+        else if (layer == Armor && (m.repEffects & (RepArmor | RepArmorFueled)))
+        {
+            bool paste = (m.repEffects & RepArmorFueled) && m.pasteCharge;
+            amount = m.armorDamage;
+            rps = amount * (paste ? 3 : 1) / speed;
+        }
+        else if (layer == Hull && (m.repEffects & RepHull))
+        {
+            amount = m.structureDamage;
+            rps = amount / speed;
+        }
+        return amount;
+    };
+
+    struct Candidate
+    {
+        int module;
+        uint8_t layer;
+        double amount;
+    };
+    Candidate repairers[RepProfile::kMaxReps];
+    double efficiency[RepProfile::kMaxReps];
+    int repairerCount = 0;
+    double used = capUsed;
+    for (int layer = 0; layer < LayerCount; ++layer)
+    {
+        for (int i = 0; i < count; ++i)
+        {
+            const ModuleStats& m = modules[i];
+            if (!m.repEffects)
+                continue;
+            double rps;
+            double amount = amountFor(m, layer, rps);
+            p.extra[static_cast<size_t>(layer)] += rps;
+            if (rps == 0)
+                continue;
+            double cycle = m.rawCycle / 1000.0;
+            bool usesCap = m.capUse != 0;
+            if (usesCap)
+                used -= m.capUse;
+            if (usesCap)
+            {
+                p.adjust[static_cast<size_t>(layer)] -= amount * (m.hasCharge ? pasteMultiplier(m) : 1.0) / cycle;
+                if (repairerCount >= RepProfile::kMaxReps)
+                    throw std::runtime_error("too many repairers");
+                double mult = m.chargedArmorMult;
+                efficiency[repairerCount] = amount * (mult ? mult : 1.0) / m.capNeed;
+                repairers[repairerCount++] = {i, static_cast<uint8_t>(layer), amount};
+            }
+            else if (m.ancillaryShield)
+            {
+                double reload = m.hasCharge ? m.reload : 0.0;
+                double offDuty = reload / (std::max(m.numShots, 1) * static_cast<double>(m.rawCycle) + reload);
+                p.adjust[static_cast<size_t>(layer)] -= amount * offDuty / cycle;
+            }
+        }
+    }
+    p.capUsed = used;
+
+    // Most cap-efficient first (Python sort is stable, also with reverse=True).
+    int order[RepProfile::kMaxReps];
+    for (int r = 0; r < repairerCount; ++r)
+        order[r] = r;
+    std::stable_sort(order, order + repairerCount, [&](int a, int b) { return efficiency[a] > efficiency[b]; });
+    for (int k = 0; k < repairerCount; ++k)
+    {
+        const Candidate& c = repairers[order[k]];
+        const ModuleStats& m = modules[c.module];
+        RepProfile::Rep& r = p.reps[static_cast<size_t>(k)];
+        r.capUse = m.capUse;
+        r.amount = c.amount;
+        r.layer = c.layer;
+        r.hasCharge = m.hasCharge;
+        r.cycleSeconds = m.rawCycle / 1000.0;
+        double reload = m.hasCharge ? m.reload : 0.0;
+        double shots = std::max(m.numShots, 1) * static_cast<double>(m.rawCycle);
+        r.onDuty = shots / (shots + reload);
+        r.paste = pasteMultiplier(m);
+    }
+    p.repCount = repairerCount;
+    return p;
+}
+
+float RepProfile::repair(int layer, double extraCapUse) const
+{
+    double used = capUsed + extraCapUse;
+    double adj = adjust[static_cast<size_t>(layer)];
+    for (int k = 0; k < repCount; ++k)
+    {
+        if (used > capRecharge)
+            break;
+        const Rep& r = reps[static_cast<size_t>(k)];
+        if (r.layer == layer)
+        {
+            double sustainability = std::min(1.0, (capRecharge - used) / r.capUse);
+            if (!r.hasCharge)
+                adj += sustainability * r.amount / r.cycleSeconds;
+            else
+                adj += sustainability * r.amount * r.onDuty * r.paste / r.cycleSeconds;
+        }
+        used += r.capUse;
+    }
+    return static_cast<float>(extra[static_cast<size_t>(layer)] + adj);
+}
+
+std::array<float, LayerCount> RepProfile::repairAll(double extraCapUse) const
+{
+    std::array<float, LayerCount> out{};
+    for (int l = 0; l < LayerCount; ++l)
+        out[static_cast<size_t>(l)] = repair(l, extraCapUse);
+    return out;
 }
 
 // ==================================================================== SearchPlan
@@ -1842,6 +1976,7 @@ struct SearchPlan::Data
     std::vector<bool> dynItem;      // superset item -> some replayed instruction writes to it
     int staticModuleCount = 0;      // s.modules[0..n) are the pinned modules
     std::vector<Instr> instrs;      // dynamic ones only, after construction
+    std::vector<Instr> graph;       // every recorded instruction with reads/writes (keepInfluence)
     Stats stats;
 
     Data(const Impl& impl, const SearchSpec& sp) : e(impl), spec(sp) {}
@@ -2164,6 +2299,8 @@ SearchPlan::SearchPlan(const Engine& engine, const SearchSpec& spec)
         }
     }
 
+    if (d.spec.keepInfluence)
+        d.graph = all;
     for (Instr& in : all)
         if (in.dynamic)
         {
@@ -2250,7 +2387,7 @@ FitInput SearchPlan::fitFor(const int* choice) const
     return fit;
 }
 
-TestResult SearchPlan::evaluate(const int* choice, Goal goal) const
+TestResult SearchPlan::evaluate(const int* choice, Goal goal, TestDetail* detail) const
 {
     const Impl& e = d_->e;
     const Data& d = *d_;
@@ -2344,10 +2481,9 @@ TestResult SearchPlan::evaluate(const int* choice, Goal goal) const
         }
     }
 
-    Impl::Cycle cycles[kMaxItems];
     Impl::Totals t;
     bool active = goal == Goal::ShieldActive || goal == Goal::ArmorActive;
-    e.totals(s, cycles, t, active);
+    e.totals(s, t, active);
 
     TestResult r;
     switch (goal)
@@ -2366,6 +2502,131 @@ TestResult SearchPlan::evaluate(const int* choice, Goal goal) const
     r.calibrationOutput = t.calibrationOutput;
     r.capUsed = t.capUsed;
     r.capRecharge = t.capRecharge;
+
+    if (detail)
+    {
+        if (s.moduleCount > TestDetail::kMaxModules)
+            throw std::runtime_error("too many modules for TestDetail");
+        for (int f = 0; f < e.shipLayout.count; ++f)
+            detail->ship[static_cast<size_t>(f)] = e.value(s, s.ship, f, 0);
+        detail->hp = t.hp;
+        detail->divider = t.divider;
+        detail->capPeak = t.capPeak;
+        detail->cap = t.cap;
+        detail->moduleCount = s.moduleCount;
+        for (int i = 0; i < s.moduleCount; ++i)
+        {
+            int mod = s.modules[i];
+            detail->modules[static_cast<size_t>(i)] = s.moduleStats[static_cast<size_t>(i)];
+            int option = d.itemOption[static_cast<size_t>(mod)];
+            detail->moduleOption[static_cast<size_t>(i)] = option >= 0 ? option : -1 - s.items[mod].input;
+        }
+        if (detail->wantResonanceParts)
+        {
+            static const Attr resAttr[LayerCount][4] = {
+                {Attr::shieldEmDamageResonance, Attr::shieldThermalDamageResonance, Attr::shieldKineticDamageResonance,
+                 Attr::shieldExplosiveDamageResonance},
+                {Attr::armorEmDamageResonance, Attr::armorThermalDamageResonance, Attr::armorKineticDamageResonance,
+                 Attr::armorExplosiveDamageResonance},
+                {Attr::emDamageResonance, Attr::thermalDamageResonance, Attr::kineticDamageResonance,
+                 Attr::explosiveDamageResonance}};
+            for (int l = 0; l < LayerCount; ++l)
+                for (int k = 0; k < 4; ++k)
+                    e.attrParts(s, s.ship, e.shipLayout.fieldOf[static_cast<size_t>(resAttr[l][k])],
+                                detail->resonanceParts[static_cast<size_t>(l)][static_cast<size_t>(k)]);
+        }
+    }
     return r;
+}
+
+int SearchPlan::optionIndex(int slot, int option) const
+{
+    return d_->slotFirstOption[static_cast<size_t>(slot)] + option;
+}
+
+int SearchPlan::optionCount() const
+{
+    return static_cast<int>(d_->optionModule.size());
+}
+
+Influence SearchPlan::influence(int slot, int option) const
+{
+    const Data& d = *d_;
+    if (!d.spec.keepInfluence)
+        throw std::logic_error("SearchPlan::influence needs SearchSpec::keepInfluence");
+    const Scratch& s = *d.base;
+    const int o = optionIndex(slot, option);
+
+    // Same fixed point as the dynamic classification, seeded with this option only.
+    std::vector<uint64_t> written(static_cast<size_t>(s.count), 0);
+    std::vector<char> hit(d.graph.size(), 0);
+    for (bool changed = true; changed;)
+    {
+        changed = false;
+        bool burstHit = false;
+        for (size_t k = 0; k < d.graph.size(); ++k)
+            burstHit |= d.graph[k].burst && hit[k];
+        for (size_t k = 0; k < d.graph.size(); ++k)
+        {
+            const Instr& in = d.graph[k];
+            if (!hit[k])
+            {
+                bool h = in.option == o || (in.kind == Instr::Boosts && burstHit);
+                for (size_t r = 0; !h && r < in.reads.size(); ++r)
+                    h = written[static_cast<size_t>(in.reads[r].first)] >> in.reads[r].second & 1;
+                if (!h)
+                    continue;
+                hit[k] = 1;
+                changed = true;
+            }
+            for (const auto& [item, f] : in.writes)
+                if (!(written[static_cast<size_t>(item)] >> f & 1))
+                {
+                    written[static_cast<size_t>(item)] |= uint64_t{1} << f;
+                    changed = true;
+                }
+        }
+    }
+
+    Influence out;
+    for (int item = 0; item < s.count; ++item)
+    {
+        uint64_t bits = written[static_cast<size_t>(item)];
+        if (!bits)
+            continue;
+        const Item& it = s.items[static_cast<size_t>(item)];
+        if (item == s.ship)
+        {
+            out.shipFields = bits;
+            continue;
+        }
+        int itemOpt = d.itemOption[static_cast<size_t>(item)];
+        int pinned = -1;
+        if (itemOpt < 0)
+        {
+            int mod = it.kind == ItemKind::Charge ? it.owner : it.kind == ItemKind::Module ? item : -1;
+            if (mod < 0)
+                continue;  // implants, boosters, mode
+            pinned = s.items[static_cast<size_t>(mod)].input;
+        }
+        else if (itemOpt == o)
+            continue;
+        for (int f = 0; f < it.stride; ++f)
+            if (bits >> f & 1)
+            {
+                Attr a = it.layout->fields[f];
+                if (itemOpt >= 0)
+                    out.optionFields.emplace_back(itemOpt, a);
+                else
+                    out.pinnedFields.emplace_back(pinned, a);
+            }
+    }
+    auto tidy = [](std::vector<std::pair<int, Attr>>& v) {
+        std::sort(v.begin(), v.end());
+        v.erase(std::unique(v.begin(), v.end()), v.end());
+    };
+    tidy(out.optionFields);
+    tidy(out.pinnedFields);
+    return out;
 }
 }

@@ -560,6 +560,39 @@ class GraphSettings:
         self.settings[type] = value
 
 
+class ModuleOptimizerSettings:
+    """Options of the module optimizer (Optimize modules... in the fitting view)."""
+
+    _instance = None
+
+    @classmethod
+    def getInstance(cls):
+        if cls._instance is None:
+            cls._instance = ModuleOptimizerSettings()
+        return cls._instance
+
+    def __init__(self):
+        defaults = {
+            # Path to PyfaReader.exe; empty means <pyfa root>/cpp/bin/Release/PyfaReader.exe
+            'exePath': '',
+            'goal': 'shieldPassive',
+            # ISK per module, 0 for no limit
+            'priceCap': 0.0,
+            'allowOfficer': False,
+            'results': 10,
+            # 0 for all hardware threads
+            'threads': 0,
+            # Seconds before the optimizer is stopped
+            'timeout': 300}
+        self.settings = SettingsProvider.getInstance().getSettings('pyfaModuleOptimizerSettings', defaults)
+
+    def get(self, type):
+        return self.settings[type]
+
+    def set(self, type, value):
+        self.settings[type] = value
+
+
 class LocaleSettings:
     _instance = None
     DEFAULT = "en_US"

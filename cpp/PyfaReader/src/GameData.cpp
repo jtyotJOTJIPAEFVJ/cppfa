@@ -91,7 +91,7 @@ GameData GameData::load(const std::filesystem::path& eveDb, const std::filesyste
         }
     }
     {
-        auto st = db.prepare("SELECT typeID, typeName, groupID, marketGroupID, IFNULL(published, 0) FROM invtypes");
+        auto st = db.prepare("SELECT typeID, typeName, groupID, marketGroupID, IFNULL(published, 0), IFNULL(metaGroupID, 0) FROM invtypes");
         gd.types_.reserve(32768);
         while (st.step())
         {
@@ -101,6 +101,7 @@ GameData GameData::load(const std::filesystem::path& eveDb, const std::filesyste
             t.groupID = static_cast<int>(st.getInt(2));
             t.marketGroupID = optInt(st, 3);
             t.published = st.getInt(4) != 0;
+            t.metaGroupID = static_cast<int>(st.getInt(5));
             gd.types_.emplace(t.id, std::move(t));
         }
     }
@@ -167,6 +168,16 @@ std::optional<Slot> GameData::moduleSlot(const Type& type) const
             return slot;
     }
     return std::nullopt;
+}
+
+std::vector<int> GameData::moduleTypeIDs(Slot slot, bool publishedOnly) const
+{
+    std::vector<int> out;
+    for (const auto& [id, t] : types_)
+        if ((t.published || !publishedOnly) && moduleSlot(t) == slot)
+            out.push_back(id);
+    std::sort(out.begin(), out.end());
+    return out;
 }
 
 std::optional<Module> GameData::loadModule(const std::string& name, const std::vector<std::string>& attributeNames) const

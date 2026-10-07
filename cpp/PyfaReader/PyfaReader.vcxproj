@@ -48,7 +48,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(ProjectDir)third_party\sqlite;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\sqlite;$(ProjectDir)third_party;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -78,7 +78,9 @@
     <ClCompile Include="src\Fit.cpp" />
     <ClCompile Include="src\FitEngine.cpp" />
     <ClCompile Include="src\GameData.cpp" />
+    <ClCompile Include="src\Request.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Optimizer.cpp" />
     <ClCompile Include="src\PyfaPaths.cpp" />
     <ClCompile Include="src\Sqlite.cpp" />
     <ClCompile Include="third_party\sqlite\sqlite3.c">
@@ -94,11 +96,15 @@
     <ClInclude Include="src\Eft.h" />
     <ClInclude Include="src\Fit.h" />
     <ClInclude Include="src\FitEngine.h" />
+    <ClInclude Include="src\Json.h" />
+    <ClInclude Include="src\Optimizer.h" />
+    <ClInclude Include="src\Request.h" />
     <ClInclude Include="src\PyMath.h" />
     <ClInclude Include="src\generated\FitSchema.generated.h" />
     <ClInclude Include="src\GameData.h" />
     <ClInclude Include="src\PyfaPaths.h" />
     <ClInclude Include="src\Sqlite.h" />
+    <ClInclude Include="third_party\nlohmann\json.hpp" />
     <ClInclude Include="third_party\sqlite\sqlite3.h" />
   </ItemGroup>
   <ItemGroup>
