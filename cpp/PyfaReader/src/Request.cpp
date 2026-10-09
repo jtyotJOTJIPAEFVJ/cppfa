@@ -642,14 +642,18 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
             for (const ModuleInput& m : f.modules[r])
                 left.push_back(&m);
             std::vector<bool> taken(slotsIn.size(), false);
+            // A mutated module is the same item only with the same base type and mutations.
+            auto sameItem = [](const ModuleInput& a, const ModuleInput& b) {
+                return a.typeID == b.typeID && a.baseTypeID == b.baseTypeID && a.mutators == b.mutators;
+            };
             for (int pass = 0; pass < 2; ++pass)
                 for (size_t s = 0; s < slotsIn.size(); ++s)
                 {
                     const ModuleInput& cur = req.entries[slotsIn[s]].input;
-                    if (taken[s] || !cur.typeID || cur.baseTypeID)
+                    if (taken[s] || !cur.typeID)
                         continue;
                     for (size_t k = 0; k < left.size(); ++k)
-                        if (left[k]->typeID == cur.typeID && (pass == 1 || left[k]->chargeID == cur.chargeID))
+                        if (sameItem(*left[k], cur) && (pass == 1 || left[k]->chargeID == cur.chargeID))
                         {
                             placed[slotsIn[s]] = left[k];
                             taken[s] = true;
@@ -710,6 +714,15 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
                 s["name"] = t ? t->name : std::string();
                 const Type* c = m->chargeID ? gd.type(m->chargeID) : nullptr;
                 s["chargeName"] = c ? json::Value(c->name) : json::Value();
+                if (m->baseTypeID)
+                {
+                    // An owned mutated module (from an opened slot), as it was requested.
+                    s["baseTypeID"] = m->baseTypeID;
+                    json::Value mu = json::Value::object();
+                    for (const auto& [attr, v] : m->mutators)
+                        mu[std::to_string(attr)] = v;
+                    s["mutators"] = std::move(mu);
+                }
                 price += priceOf(m->typeID) + priceOf(m->chargeID);
             }
             else

@@ -241,6 +241,7 @@ struct Candidate
 
     bool useful = false;
     bool goalRep = false;  // counts toward Options::maxReps
+    int copies = 0;        // mutated (abyssal) modules from opened slots: copies owned (0: catalog, any number)
     Role role = Role::Core;
     int subgroup = -1;
     std::array<double, 6> strength{};
@@ -956,6 +957,9 @@ private:
 
     std::vector<Candidate> cands_;
     std::vector<Subgroup> subgroups_;
+    // Mutated modules in opened slots: offered as they are (read-only), never invented.
+    std::vector<ModuleInput> openedMutated_;
+    void addMutatedCandidates(size_t& ruleExcluded);
 
     // kinds (one per subgroup)
     struct Kind
@@ -1101,6 +1105,8 @@ void Search::setup()
             if (opt_.partial ? opt_.openModules[i] != 0 : opt_.search[ri])
             {
                 ++requested[ri];
+                if (m.baseTypeID)
+                    openedMutated_.push_back(m);
                 continue;
             }
             ++pinnedInRack[ri];
@@ -1301,8 +1307,75 @@ void Search::gatherCandidates()
             }
         }
     }
+    addMutatedCandidates(ruleExcluded);
     logLine(std::to_string(cands_.size()) + " candidate modules/charges after static filters (" +
             std::to_string(ruleExcluded) + " excluded by module rules)");
+}
+
+// Abyssal (mutated) modules can't be bought from a catalog: the ones in opened slots
+// are candidates as they are (mutations, charge), each at most as often as the fit has
+// it, at no price (they are owned). Unpublished abyssal types never come up otherwise.
+void Search::addMutatedCandidates(size_t& ruleExcluded)
+{
+    const int aMaxGroup = gd_.attributeID("maxGroupFitted"), aMaxType = gd_.attributeID("maxTypeFitted");
+    std::vector<std::pair<ModuleInput, int>> owned;  // distinct modules, copies
+    for (ModuleInput m : openedMutated_)
+    {
+        m.state = State::Online;  // set below; copies differing only in state are the same module
+        auto it = std::find_if(owned.begin(), owned.end(), [&](const auto& o) {
+            return o.first.typeID == m.typeID && o.first.chargeID == m.chargeID && o.first.baseTypeID == m.baseTypeID &&
+                   o.first.mutators == m.mutators;
+        });
+        if (it == owned.end())
+            owned.push_back({m, 1});
+        else
+            ++it->second;
+    }
+    for (const auto& [m, copies] : owned)
+    {
+        const Type* t = gd_.type(m.typeID);
+        auto rack = rackOf(gd_, m.typeID);
+        if (!t || !rack || !slots_[static_cast<size_t>(*rack)])
+            continue;
+        if (excludedFromSearch(gd_, *t))
+        {
+            ++ruleExcluded;
+            continue;
+        }
+        const Type* base = gd_.type(m.baseTypeID);
+        auto attr = [&](int id) {
+            auto v = t->attr(id);
+            return v ? v : base ? base->attr(id) : std::nullopt;
+        };
+        const Group* g = gd_.groupOf(*t);
+        const bool ancillary = g && g->name.find("Ancillary") != std::string::npos;
+        if (ancillary && !opt_.allowAncillary)
+            continue;
+        const bool goalRep = goalRepType(*t);
+        if (goalRep && repLimit_ == 0)
+            continue;
+        Engine::Reach reach = engine_.reach(m.typeID);
+        if (!reach.ship && !reach.others && !reach.special && !goalRep)
+            continue;
+        Candidate c;
+        c.type = t;
+        c.rack = *rack;
+        c.groupID = t->groupID;
+        c.maxGroup = static_cast<int>(attr(aMaxGroup).value_or(0));
+        c.maxType = static_cast<int>(attr(aMaxType).value_or(0));
+        if ((c.maxGroup && pinnedGroupCount_[t->groupID] >= c.maxGroup) ||
+            (c.maxType && pinnedTypeCount_[t->id] >= c.maxType))
+            continue;
+        c.price = 0;
+        c.hasPrice = true;
+        c.reach = reach;
+        c.goalRep = goalRep;
+        c.copies = copies;
+        c.input = m;
+        c.input.state = reach.activatable || goalRep ? State::Active : State::Online;
+        cands_.push_back(c);
+        logLine("owned mutated module offered: " + std::to_string(copies) + "x " + t->name);
+    }
 }
 
 void Search::measure()
@@ -1401,7 +1474,7 @@ void Search::measure()
     chargeAlts_.clear();
     for (Candidate& c : cands_)
     {
-        if (!c.input.chargeID)
+        if (!c.input.chargeID || c.copies)  // owned mutated modules keep their own charge
         {
             kept.push_back(std::move(c));
             continue;
@@ -1466,6 +1539,8 @@ void Search::interactions()
         else
             key += (g ? g->name : std::to_string(c.groupID)) + "|" + std::to_string(c.resMask) + "|" +
                    sizeToken(c.type->name);
+        if (c.copies)
+            key += "|owned" + std::to_string(i);  // a mutated module: a kind of its own
         auto [it, inserted] = byKey.emplace(key, static_cast<int>(subgroups_.size()));
         if (inserted)
         {
@@ -1724,6 +1799,8 @@ void Search::buildKinds()
         k.cap = slots_[static_cast<size_t>(k.rack)];
         if (c.goalRep && repLimit_ >= 0)
             k.cap = std::min(k.cap, repLimit_);
+        if (c.copies)
+            k.cap = std::min(k.cap, c.copies);
         if (c.maxGroup)
             k.cap = std::min(k.cap, c.maxGroup - pinnedGroupCount_[c.groupID]);
         if (c.maxType)
@@ -3865,21 +3942,10 @@ void Search::stage2()
             if (auto it = shared.find(key); it != shared.end())
                 return it->second;
             Scored s;
-            // Group and type limits (pyfa: the raw maxGroupFitted of each module).
-            std::unordered_map<int, int> groupN = pinnedGroupCount_, typeN = pinnedTypeCount_;
+            // Group, type, repairer and owned-copy limits.
+            s.valid = validIds(ids);
             for (int c : ids)
-            {
-                ++groupN[cands_[static_cast<size_t>(c)].groupID];
-                ++typeN[cands_[static_cast<size_t>(c)].type->id];
-            }
-            s.valid = repLimit_ < 0 || repCount(ids) <= repLimit_;
-            for (int c : ids)
-            {
-                const Candidate& cd = cands_[static_cast<size_t>(c)];
-                if ((cd.maxGroup && groupN[cd.groupID] > cd.maxGroup) || (cd.maxType && typeN[cd.type->id] > cd.maxType))
-                    s.valid = false;
-                s.price += cd.price;
-            }
+                s.price += cands_[static_cast<size_t>(c)].price;
             if (s.valid)
             {
                 s.r = plan.evaluate(ch.data(), obj_);
@@ -4188,6 +4254,8 @@ bool Search::validIds(const std::vector<int>& ids) const
     for (size_t i = 0; i < ids.size(); ++i)
     {
         const Candidate& c = cands_[static_cast<size_t>(ids[i])];
+        if (c.copies && std::count(ids.begin(), ids.end(), ids[i]) > c.copies)
+            return false;
         if (!c.maxGroup && !c.maxType)
             continue;
         int g = 0, t = 0;

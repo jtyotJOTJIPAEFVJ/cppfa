@@ -288,7 +288,7 @@ PyfaReader --save normalized.db --search-check     # SearchPlan vs Engine, rando
 - fit CPU/PG totals: 0.1
 
 **Current results:**
-- **Engine vs pyfa:** 3,178 of 3,189 in-scope saved fits match on all ~200 compared values each (639,515 of 639,551 values). That includes 879 fits with implants, 1,458 with boosters and 425 with active command bursts. The differences:
+- **Engine vs pyfa:** 3,180 of 3,191 in-scope saved fits match on all ~200 compared values each (643,319 of 643,355 values; outgoing remote repair included on cap-stable fits). That includes 879 fits with implants, 1,458 with boosters, 425 with active command bursts and 58 with abyssal (mutated) modules, whose 773 module values all match. The differences:
   - 9 fits with a Reactive Armor Hardener in an exact tie, which pyfa breaks by double-precision noise (≤0.8% armor EHP)
   - 1 Enforcer (CONCORD security-status bonus, not modeled)
   - 1 Moa: a 2e-5 relative difference on a small rep value
