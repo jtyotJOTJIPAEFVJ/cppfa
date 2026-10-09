@@ -585,6 +585,8 @@ class ModuleOptimizerSettings:
             'maxReps': 0,
             'requireCapStable': False,
             'minCapRecharge': 0.0,
+            # Balanced goals: EHP/s one remote HP/s is worth (the rep target's resist multiplier)
+            'remoteWeight': 4.0,
             'results': 10,
             # 0 for all hardware threads
             'threads': 0,

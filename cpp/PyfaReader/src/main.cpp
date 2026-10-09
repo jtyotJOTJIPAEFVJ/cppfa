@@ -8,7 +8,7 @@
 //   PyfaReader [--game ...] [--save ...] --bench [fitID [seconds [goal]]]   (profiling case)
 //   PyfaReader [--game ...] [--save ...] --optimize <fitID> <goal> [--racks mid,low,rig,high] [--price-cap ISK]
 //              [--allow-officer] [--top K] [--results N] [--dump-kinds] [--slots m,l,r[,h]] [--threads N]
-//              [--no-ancillary] [--max-reps N] [--cap-stable] [--min-cap-recharge GJ/s]
+//              [--no-ancillary] [--max-reps N] [--cap-stable] [--min-cap-recharge GJ/s] [--remote-weight W]
 //   PyfaReader [--game ...] [--save ...] --optimize-check <fitID>[,<fitID>...] [goal|all] [--slots m,l,r[,h]]
 //              [--verbose]   (stage 1 vs brute force; default 2 mid / 2 low / 1 rig / 2 high open, racks
 //              as --racks: mid, low and rig unless given; also the --optimize constraint options)
@@ -214,9 +214,12 @@ int searchCheck(const GameData& gd, const Database& save, int maxFits)
     std::mt19937 rng(12345);
     const Goal goals[] = {Goal::ShieldPassive, Goal::ArmorPassive,  Goal::HullPassive,   Goal::ShieldActive,
                           Goal::ArmorActive,   Goal::ShieldResists, Goal::ArmorResists, Goal::ShieldRemote,
-                          Goal::ArmorRemote};
+                          Goal::ArmorRemote,   Goal::LocalShieldRemoteShield, Goal::LocalShieldRemoteArmor,
+                          Goal::LocalArmorRemoteShield, Goal::LocalArmorRemoteArmor};
     const char* goalNames[] = {"shieldPassive", "armorPassive", "hullPassive", "shieldActive", "armorActive", "shieldResists",
-                               "armorResists", "shieldRemote", "armorRemote"};
+                               "armorResists", "shieldRemote", "armorRemote",
+                               "localShieldRemoteShield", "localShieldRemoteArmor", "localArmorRemoteShield",
+                               "localArmorRemoteArmor"};
 
     size_t fits = 0, tests = 0, mismatches = 0, detailMismatches = 0, instructions = 0, dynamic = 0, orderFits = 0;
     double planSeconds = 0, fullSeconds = 0, buildSeconds = 0;
@@ -321,6 +324,14 @@ int searchCheck(const GameData& gd, const Database& save, int maxFits)
                     if (remote >= 0)
                         same &= makeRemoteProfile(detail.modules.data(), detail.moduleCount, cs.used, recharge, remote)
                                     .repair(remote) == again.goal;
+                    if (isBalancedGoal(goals[g]))
+                    {
+                        int l = balancedLocalLayer(goals[g]);
+                        BalancedParts parts = balancedParts(detail.modules.data(), detail.moduleCount, cs.used, recharge,
+                                                            l, balancedRemoteLayer(goals[g]),
+                                                            detail.divider[static_cast<size_t>(l)]);
+                        same &= parts.local == again.localRep && parts.remote == again.remoteRep;
+                    }
                     if (!same && detailMismatches++ < 10)
                         std::cerr << "fit " << fit->id << " " << goalNames[g] << ": detail doesn't reproduce the test\n";
                 }
@@ -498,7 +509,13 @@ int optimize(const GameData& gd, const Database& save, int64_t fitID, fitengine:
         std::snprintf(buf, sizeof(buf), "goal %.2f | cpu %.2f/%.2f pg %.2f/%.2f cal %.0f/%.0f | cap %.2f/%.2f",
                       r.goal, r.cpuUsed, r.cpuOutput, r.powerUsed, r.powerOutput, r.calibrationUsed,
                       r.calibrationOutput, r.capUsed, r.capRecharge);
-        return std::string(buf);
+        std::string out = buf;
+        if (isBalancedGoal(opt.goal))
+        {
+            std::snprintf(buf, sizeof(buf), " | local %.2f EHP/s, remote %.2f HP/s", r.localRep, r.remoteRep);
+            out += buf;
+        }
+        return out;
     };
     std::cout << "start: " << line(res.start) << "\n\n";
     for (size_t i = 0; i < res.fits.size(); ++i)
@@ -549,7 +566,9 @@ int optimizeCheck(const GameData& gd, const Database& save, const std::vector<in
     opt.bruteForce = true;
     opt.log = verbose ? &std::cerr : nullptr;
     const char* goalNames[] = {"shieldPassive", "armorPassive", "hullPassive", "shieldActive", "armorActive", "shieldResists",
-                               "armorResists", "shieldRemote", "armorRemote"};
+                               "armorResists", "shieldRemote", "armorRemote",
+                               "localShieldRemoteShield", "localShieldRemoteArmor", "localArmorRemoteShield",
+                               "localArmorRemoteArmor"};
     Character ch = gd.loadCharacter(5);
     Engine engine(gd, ch);
     size_t cases = 0, bad = 0;
@@ -731,7 +750,8 @@ int wmain(int argc, wchar_t* argv[])
             if (!goal)
             {
                 std::cerr << "unknown goal (shieldPassive, armorPassive, hullPassive, shieldActive, armorActive, shieldResists, armorResists, "
-                             "shieldRemote, armorRemote)\n";
+                             "shieldRemote, armorRemote, localShieldRemoteShield, localShieldRemoteArmor, "
+                             "localArmorRemoteShield, localArmorRemoteArmor)\n";
                 return 1;
             }
             optimizeOpt.goal = *goal;
@@ -750,6 +770,8 @@ int wmain(int argc, wchar_t* argv[])
             optimizeOpt.allowAncillary = false;
         else if (arg == L"--max-reps" && i + 1 < argc)
             optimizeOpt.maxReps = std::stoi(toUtf8(std::wstring(argv[++i])));
+        else if (arg == L"--remote-weight" && i + 1 < argc)
+            optimizeOpt.remoteWeight = std::stod(toUtf8(std::wstring(argv[++i])));
         else if (arg == L"--cap-stable")
             optimizeOpt.requireCapStable = true;
         else if (arg == L"--min-cap-recharge" && i + 1 < argc)
@@ -783,7 +805,7 @@ int wmain(int argc, wchar_t* argv[])
             {
                 if (g == "all")
                     ++i;
-                for (int k = 0; k <= static_cast<int>(fitengine::Goal::ArmorRemote); ++k)
+                for (int k = 0; k <= static_cast<int>(fitengine::Goal::LocalArmorRemoteArmor); ++k)
                     checkGoals.push_back(static_cast<fitengine::Goal>(k));
             }
             optimizeOpt.maxSlots = {2, 2, 1, 2};
@@ -817,7 +839,8 @@ int wmain(int argc, wchar_t* argv[])
             if (!goalOverride)
             {
                 std::cerr << "unknown goal (shieldPassive, armorPassive, hullPassive, shieldActive, armorActive, shieldResists, armorResists, "
-                             "shieldRemote, armorRemote)\n";
+                             "shieldRemote, armorRemote, localShieldRemoteShield, localShieldRemoteArmor, "
+                             "localArmorRemoteShield, localArmorRemoteArmor)\n";
                 return 2;
             }
         }

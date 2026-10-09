@@ -20,6 +20,7 @@
 #include "GameData.h"
 #include "generated/FitSchema.generated.h"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -168,6 +169,19 @@ RepProfile makeRepProfile(const ModuleStats* modules, int count, float capUsed, 
 // its reps are the layer's remote repairers, every other module uses capacitor in full.
 RepProfile makeRemoteProfile(const ModuleStats* modules, int count, float capUsed, float capRecharge, int layer);
 
+// Balanced goals' two tests: local, the effective sustainable repair of localLayer
+// (÷ localDivider) with the remote repairers of remoteLayer off; remote, the remote
+// repair of remoteLayer with the local repairers of localLayer off.
+struct BalancedParts
+{
+    float local = 0, remote = 0;
+};
+// Capacitor use (GJ/s) of the active local repairers of a layer, and of the remote ones.
+double localRepCap(const ModuleStats* modules, int count, int layer);
+double remoteRepCap(const ModuleStats* modules, int count, int layer);
+BalancedParts balancedParts(const ModuleStats* modules, int count, float capUsed, float capRecharge, int localLayer,
+                            int remoteLayer, float localDivider);
+
 struct FitResult
 {
     // Ship attributes in fitschema::ShipAttrs field order.
@@ -181,6 +195,7 @@ struct FitResult
     // Sustainable local repair (pyfa's sustainableTank), raw and effective HP/s.
     std::array<float, LayerCount> repair{}, effectiveRepair{};
     std::array<float, LayerCount> remoteRepair{};  // outgoing, HP/s (makeRemoteProfile)
+    std::array<std::array<BalancedParts, 2>, 2> balanced{};  // [local layer][remote layer] (Shield, Armor)
     std::vector<ModuleResult> modules;  // in input order
     std::vector<std::string> warnings;
 
@@ -234,6 +249,36 @@ enum class Goal
     ArmorResists,   // armor EHP per HP: 1 / mean armor resonance (uniform damage)
     ShieldRemote,   // outgoing remote shield repair, sustained by the capacitor (HP/s)
     ArmorRemote,    // outgoing remote armor repair, sustained by the capacitor (HP/s)
+    // Balanced local tank and remote repair: the harmonic mean of local and
+    // remoteWeight * remote (balancedScore), local the effective sustainable repair of
+    // the local layer with the goal's remote repairers off, remote the remote repair of
+    // the remote layer with the goal's local repairers off (balancedParts). Each side
+    // gets the capacitor in its own test.
+    LocalShieldRemoteShield,
+    LocalShieldRemoteArmor,
+    LocalArmorRemoteShield,
+    LocalArmorRemoteArmor,
+};
+
+inline bool isBalancedGoal(Goal g) { return g >= Goal::LocalShieldRemoteShield && g <= Goal::LocalArmorRemoteArmor; }
+// Balanced goals: the local and the remote layer (Shield or Armor).
+inline int balancedLocalLayer(Goal g) { return (static_cast<int>(g) - static_cast<int>(Goal::LocalShieldRemoteShield)) / 2; }
+inline int balancedRemoteLayer(Goal g) { return (static_cast<int>(g) - static_cast<int>(Goal::LocalShieldRemoteShield)) % 2; }
+// 2ab / (a + b) of a = local EHP/s and b = weight * remote HP/s: it grows with either
+// side and approaches 2 * min(a, b) when they differ a lot, so the larger side alone
+// gains little. Equal sides give their value.
+inline double balancedScore(double local, double remote, double weight)
+{
+    const double a = std::max(0.0, local), b = std::max(0.0, weight * remote);
+    return a + b > 0 ? 2 * a * b / (a + b) : 0.0;
+}
+
+// A goal with its parameters.
+struct Objective
+{
+    Goal goal = Goal::ArmorActive;
+    float remoteWeight = 4;  // balanced goals: EHP/s one remote HP/s is worth (the rep target's resists)
+    Objective(Goal g = Goal::ArmorActive, float weight = 4) : goal(g), remoteWeight(weight) {}
 };
 
 struct SearchSpec
@@ -265,9 +310,10 @@ struct TestResult
     float cpuOutput = 0, powerOutput = 0, calibrationOutput = 0;
     float capUsed = 0;      // GJ/s used by active modules
     float capRecharge = 0;  // peak recharge + injectors; cap stable (simplified) when capUsed <= capRecharge
+    float localRep = 0, remoteRep = 0;  // balanced goals: BalancedParts (EHP/s, HP/s)
 };
 
-TestResult toTestResult(const FitResult& r, Goal goal);
+TestResult toTestResult(const FitResult& r, const Objective& goal);
 
 // How the engine computed one attribute of an item (pyfa ModifiedAttributeDict):
 // value = caps(penalties((base + preInc) * mult) + post), where penalties applies
@@ -328,7 +374,7 @@ public:
 
     // choice[i]: option index for slot i, or -1 to leave it empty. Thread-safe.
     // detail (optional) receives the per-module stats and ship values.
-    TestResult evaluate(const int* choice, Goal goal, TestDetail* detail = nullptr) const;
+    TestResult evaluate(const int* choice, const Objective& goal, TestDetail* detail = nullptr) const;
 
     // The full fit a choice stands for.
     FitInput fitFor(const int* choice) const;

@@ -45,6 +45,7 @@ struct Request
     int maxReps = 0;                // Options::maxReps (0 = no limit)
     bool requireCapStable = false;  // Options::requireCapStable
     double minCapRecharge = 0;      // Options::minCapRecharge (GJ/s)
+    double remoteWeight = 4;        // Options::remoteWeight (balanced goals)
     int results = 10;
     int threads = 0;
     double timeBudget = 60;  // seconds (Options::timeBudget); 0 = no limit

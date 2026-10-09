@@ -1591,6 +1591,7 @@ struct Engine::Impl
         float capPeak = 0, capRecharge = 0, capUsed = 0;
         CapSums cap;
         std::array<float, LayerCount> hp{}, ehp{}, divider{}, repair{}, effRepair{}, remoteRepair{};
+        std::array<std::array<BalancedParts, 2>, 2> balanced{};
     };
 
     float shipValue(Scratch& s, Attr a) const
@@ -1727,7 +1728,8 @@ struct Engine::Impl
     }
 
     // Everything derived from the final attributes. s.moduleStats[i] belongs to s.modules[i].
-    void totals(Scratch& s, Totals& t, bool withRepair) const
+    // balancedMask: the balanced goals' tests to run, bit 2 * local layer + remote layer.
+    void totals(Scratch& s, Totals& t, bool withRepair, unsigned balancedMask = 0) const
     {
         t = Totals{};
         ModuleStats* stats = s.moduleStats.data();
@@ -1779,6 +1781,12 @@ struct Engine::Impl
             for (int l : {Shield, Armor})
                 t.remoteRepair[static_cast<size_t>(l)] =
                     makeRemoteProfile(stats, s.moduleCount, t.capUsed, t.capRecharge, l).repair(l);
+            for (int local : {Shield, Armor})
+                for (int remote : {Shield, Armor})
+                    if (balancedMask >> (2 * local + remote) & 1u)
+                        t.balanced[static_cast<size_t>(local)][static_cast<size_t>(remote)] =
+                            balancedParts(stats, s.moduleCount, t.capUsed, t.capRecharge, local, remote,
+                                          t.divider[static_cast<size_t>(local)]);
         }
     }
 
@@ -1808,7 +1816,7 @@ struct Engine::Impl
             out.ship[static_cast<size_t>(f)] = value(s, s.ship, f, 0);
 
         Totals t;
-        totals(s, t, true);
+        totals(s, t, true, 15u);
 
         out.modules.resize(static_cast<size_t>(s.moduleCount));
         for (int i = 0; i < s.moduleCount; ++i)
@@ -1841,6 +1849,7 @@ struct Engine::Impl
         out.repair = t.repair;
         out.effectiveRepair = t.effRepair;
         out.remoteRepair = t.remoteRepair;
+        out.balanced = t.balanced;
         return out;
     }
 };
@@ -1888,10 +1897,18 @@ Engine::Reach Engine::reach(int typeID, bool asCharge) const
     return r;
 }
 
-TestResult toTestResult(const FitResult& r, Goal goal)
+TestResult toTestResult(const FitResult& r, const Objective& objective)
 {
     TestResult t;
-    switch (goal)
+    if (isBalancedGoal(objective.goal))
+    {
+        const BalancedParts& b = r.balanced[static_cast<size_t>(balancedLocalLayer(objective.goal))]
+                                           [static_cast<size_t>(balancedRemoteLayer(objective.goal))];
+        t.localRep = b.local;
+        t.remoteRep = b.remote;
+        t.goal = static_cast<float>(balancedScore(b.local, b.remote, objective.remoteWeight));
+    }
+    switch (objective.goal)
     {
     case Goal::ShieldPassive: t.goal = r.ehp[Shield]; break;
     case Goal::ArmorPassive: t.goal = r.ehp[Armor]; break;
@@ -1902,6 +1919,7 @@ TestResult toTestResult(const FitResult& r, Goal goal)
     case Goal::ArmorResists: t.goal = 1 / r.divider[Armor]; break;
     case Goal::ShieldRemote: t.goal = r.remoteRepair[Shield]; break;
     case Goal::ArmorRemote: t.goal = r.remoteRepair[Armor]; break;
+    default: break;
     }
     t.cpuUsed = r.cpuUsed;
     t.powerUsed = r.powerUsed;
@@ -2117,6 +2135,37 @@ RepProfile makeRemoteProfile(const ModuleStats* modules, int count, float capUse
         sorted[static_cast<size_t>(k)] = p.reps[static_cast<size_t>(order[k])];
     p.reps = sorted;
     return p;
+}
+
+double localRepCap(const ModuleStats* modules, int count, int layer)
+{
+    const uint8_t bits = layer == Shield ? RepShield : layer == Armor ? (RepArmor | RepArmorFueled) : RepHull;
+    double cap = 0;
+    for (int i = 0; i < count; ++i)
+        if ((modules[i].repEffects & bits) && modules[i].capUse > 0)
+            cap += modules[i].capUse;
+    return cap;
+}
+
+double remoteRepCap(const ModuleStats* modules, int count, int layer)
+{
+    double cap = 0;
+    for (int i = 0; i < count; ++i)
+        if (modules[i].remoteLayer == layer && modules[i].capUse > 0)
+            cap += modules[i].capUse;
+    return cap;
+}
+
+BalancedParts balancedParts(const ModuleStats* modules, int count, float capUsed, float capRecharge, int localLayer,
+                            int remoteLayer, float localDivider)
+{
+    // A repairer that is off uses no capacitor: its use comes off the total.
+    BalancedParts b;
+    const float withoutRemote = static_cast<float>(capUsed - remoteRepCap(modules, count, remoteLayer));
+    const float withoutLocal = static_cast<float>(capUsed - localRepCap(modules, count, localLayer));
+    b.local = makeRepProfile(modules, count, withoutRemote, capRecharge).repair(localLayer) / localDivider;
+    b.remote = makeRemoteProfile(modules, count, withoutLocal, capRecharge, remoteLayer).repair(remoteLayer);
+    return b;
 }
 
 // ==================================================================== SearchPlan
@@ -2703,8 +2752,9 @@ FitInput SearchPlan::fitFor(const int* choice) const
     return fit;
 }
 
-TestResult SearchPlan::evaluate(const int* choice, Goal goal, TestDetail* detail) const
+TestResult SearchPlan::evaluate(const int* choice, const Objective& objective, TestDetail* detail) const
 {
+    const Goal goal = objective.goal;
     const Impl& e = d_->e;
     const Data& d = *d_;
     const Scratch& b = *d.base;
@@ -2798,11 +2848,21 @@ TestResult SearchPlan::evaluate(const int* choice, Goal goal, TestDetail* detail
     }
 
     Impl::Totals t;
+    const bool balanced = isBalancedGoal(goal);
     bool active = goal == Goal::ShieldActive || goal == Goal::ArmorActive || goal == Goal::ShieldRemote ||
-                  goal == Goal::ArmorRemote;
-    e.totals(s, t, active);
+                  goal == Goal::ArmorRemote || balanced;
+    e.totals(s, t, active,
+             balanced ? 1u << (2 * balancedLocalLayer(goal) + balancedRemoteLayer(goal)) : 0u);
 
     TestResult r;
+    if (balanced)
+    {
+        const BalancedParts& parts = t.balanced[static_cast<size_t>(balancedLocalLayer(goal))]
+                                               [static_cast<size_t>(balancedRemoteLayer(goal))];
+        r.localRep = parts.local;
+        r.remoteRep = parts.remote;
+        r.goal = static_cast<float>(balancedScore(parts.local, parts.remote, objective.remoteWeight));
+    }
     switch (goal)
     {
     case Goal::ShieldPassive: r.goal = t.ehp[Shield]; break;
@@ -2814,6 +2874,7 @@ TestResult SearchPlan::evaluate(const int* choice, Goal goal, TestDetail* detail
     case Goal::ArmorResists: r.goal = 1 / t.divider[Armor]; break;
     case Goal::ShieldRemote: r.goal = t.remoteRepair[Shield]; break;
     case Goal::ArmorRemote: r.goal = t.remoteRepair[Armor]; break;
+    default: break;
     }
     r.cpuUsed = t.cpu;
     r.powerUsed = t.power;
