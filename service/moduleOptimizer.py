@@ -41,10 +41,11 @@ pyfalog = Logger(__name__)
 REQUEST_VERSION = 1
 
 # Goal names of the request, in the order the dialog shows them
-GOALS = ('shieldPassive', 'armorPassive', 'hullPassive', 'shieldActive', 'armorActive')
+GOALS = ('shieldPassive', 'armorPassive', 'hullPassive', 'shieldActive', 'armorActive', 'shieldResists',
+         'armorResists', 'shieldRemote', 'armorRemote')
 
-# Only these slots can be optimized
-OPTIMIZABLE_SLOTS = (FittingSlot.MED, FittingSlot.LOW, FittingSlot.RIG)
+# Only these slots can be optimized (high slots: for remote repairers)
+OPTIMIZABLE_SLOTS = (FittingSlot.HIGH, FittingSlot.MED, FittingSlot.LOW, FittingSlot.RIG)
 
 SLOT_NAMES = {
     FittingSlot.LOW: 'low',
@@ -124,12 +125,17 @@ def buildModuleEntry(position, mod, optimize):
 
 
 def buildRequest(fit, positions, goal, priceCap=0, allowOfficer=False, results=10, threads=0,
-                 prices=None, allSkillsV=False, timeBudget=60):
+                 prices=None, allSkillsV=False, timeBudget=60, allowAncillary=True, maxReps=0,
+                 requireCapStable=False, minCapRecharge=0):
     """
     The request dict for fit, with the modules (or empty slots) at positions (indices in
     fit.modules) open. prices: {typeID: ISK}; None reads pyfa's price cache.
     timeBudget: seconds the optimizer may spend improving its results, 0 for no limit.
     allSkillsV sends no character (all skills at V), for tests.
+    Constraints: allowAncillary False leaves out ancillary repairers; maxReps limits the
+    goal's repairers in the fit (active and remote goals, 0 for no limit);
+    requireCapStable and minCapRecharge (GJ/s, peak recharge plus cap boosters) are
+    capacitor requirements. An option that misses one doesn't count as fitting.
     """
     if goal not in GOALS:
         raise ValueError('Unknown goal {}'.format(goal))
@@ -153,6 +159,10 @@ def buildRequest(fit, positions, goal, priceCap=0, allowOfficer=False, results=1
     request['goal'] = goal
     request['priceCap'] = float(priceCap or 0)
     request['allowOfficer'] = bool(allowOfficer)
+    request['allowAncillary'] = bool(allowAncillary)
+    request['maxReps'] = max(0, int(maxReps or 0))
+    request['requireCapStable'] = bool(requireCapStable)
+    request['minCapRecharge'] = max(0.0, float(minCapRecharge or 0))
     request['results'] = int(results)
     request['threads'] = int(threads)
     request['timeBudget'] = max(0.0, float(timeBudget or 0))
@@ -303,7 +313,7 @@ class Infeasibility:
 
     def __init__(self, data):
         data = data or {}
-        self.reason = data.get('reason', '')  # 'calibration', 'outputs' or 'search'
+        self.reason = data.get('reason', '')  # 'calibration', 'outputs', 'search' or 'capacitor'
         self.message = data.get('message', '')
         self.resources = [Shortfall(r) for r in data.get('resources', ())]
         # Pinned modules named in the message: {position, slot, typeID, name, cost}

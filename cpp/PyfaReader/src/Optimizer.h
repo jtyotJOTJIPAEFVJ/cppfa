@@ -1,7 +1,7 @@
 #pragma once
 
-// Module search: the best modules for the open mid, low and rig slots of a fit
-// for one goal (see cpp/OPTIMIZER_PLAN.md).
+// Module search: the best modules for the open mid, low, rig and high slots of a
+// fit for one goal (see cpp/OPTIMIZER_PLAN.md).
 //
 // Stage 1 searches with one representative per subgroup of similar modules and
 // a separable model of the goal, value(core modules) / damage factor(resist
@@ -30,6 +30,7 @@ enum Rack
     RackMid,
     RackLow,
     RackRig,
+    RackHigh,  // remote repairers (other high slot modules are rarely useful to a goal)
     RackCount
 };
 const char* rackName(int rack);
@@ -37,15 +38,26 @@ const char* rackName(int rack);
 struct Options
 {
     Goal goal = Goal::ArmorActive;
-    std::array<bool, RackCount> search{true, true, true};  // racks whose slots are searched
+    std::array<bool, RackCount> search{true, true, true, false};  // racks whose slots are searched
     bool allowOfficer = false;
+    // Constraints. allowAncillary false: no ancillary repairers (local or remote) among
+    // the candidates. maxReps (active and remote goals; 0 = no limit): the goal's
+    // repairers in the fit at most (local ones of the goal's layer, or remote ones),
+    // the pinned ones included. requireCapStable: capacitor use within recharge
+    // (TestResult::capUsed <= capRecharge, pyfa's simplified check). minCapRecharge:
+    // TestResult::capRecharge (peak recharge + cap boosters, GJ/s) at least this. A set
+    // that misses a constraint doesn't count as fitting.
+    bool allowAncillary = true;
+    int maxReps = 0;
+    bool requireCapStable = false;
+    double minCapRecharge = 0;
     double priceCap = 0;  // per module, ISK; 0 = no cap (modules without a price count as over the cap)
     const std::unordered_map<int, double>* prices = nullptr;  // typeID -> ISK
     int topK = 200;       // stage 1 keeps this many sets
     int patience = 50;    // stage 2 stops after this many starting sets without improvement
     int results = 10;     // distinct final sets reported
     double boundPad = 1e-5;  // relative padding of upper bounds (model vs engine float noise)
-    std::array<int, RackCount> maxSlots{8, 8, 8};  // open slots per searched rack at most (the rest stay empty)
+    std::array<int, RackCount> maxSlots{8, 8, 8, 8};  // open slots per searched rack at most (the rest stay empty)
     int threads = 0;              // worker threads, 0 = one per hardware thread
     std::ostream* log = nullptr;  // progress and statistics
     bool dumpKinds = false;       // print the candidate / subgroup table to log and stop
@@ -165,6 +177,8 @@ struct Infeasibility
     // "outputs": CPU/power over even with the open slots' best output and cost bounds
     //            (checked after measuring the candidates, before the model and search).
     // "search": the bounds allow it, but the search found no set that fits.
+    // "capacitor": sets fit CPU, power and calibration, but none found meets the
+    //              capacitor constraints (Options::requireCapStable, minCapRecharge).
     std::string reason;
     std::string message;  // for the user
     std::vector<Shortfall> resources;  // the resources the pinned part is over on

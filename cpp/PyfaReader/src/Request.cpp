@@ -6,6 +6,7 @@
 #include <cmath>
 #include <limits>
 #include <map>
+#include <numeric>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -90,7 +91,11 @@ const std::pair<const char*, Goal> kGoals[] = {{"shieldPassive", Goal::ShieldPas
                                                {"armorPassive", Goal::ArmorPassive},
                                                {"hullPassive", Goal::HullPassive},
                                                {"shieldActive", Goal::ShieldActive},
-                                               {"armorActive", Goal::ArmorActive}};
+                                               {"armorActive", Goal::ArmorActive},
+                                               {"shieldResists", Goal::ShieldResists},
+                                               {"armorResists", Goal::ArmorResists},
+                                               {"shieldRemote", Goal::ShieldRemote},
+                                               {"armorRemote", Goal::ArmorRemote}};
 
 const std::pair<const char*, Slot> kSlots[] = {{"low", Slot::Low},   {"med", Slot::Med},
                                                {"high", Slot::High}, {"rig", Slot::Rig},
@@ -150,6 +155,8 @@ State parseState(const json::Value& v, const std::string& what)
     throw std::runtime_error(what + ": unknown state \"" + s + "\" (offline, online, active, overheated)");
 }
 
+const Slot kRackSlots[opt::RackCount] = {Slot::Med, Slot::Low, Slot::Rig, Slot::High};
+
 int rackOfSlot(Slot s)
 {
     switch (s)
@@ -157,6 +164,7 @@ int rackOfSlot(Slot s)
     case Slot::Med: return opt::RackMid;
     case Slot::Low: return opt::RackLow;
     case Slot::Rig: return opt::RackRig;
+    case Slot::High: return opt::RackHigh;
     default: return -1;
     }
 }
@@ -402,10 +410,19 @@ Request parse(const json::Value& doc, const GameData& gd)
     auto g = parseGoal(asString(*goal, "request.goal"));
     if (!g)
         throw std::runtime_error("request.goal: unknown goal \"" + goal->get<std::string>() +
-                                 "\" (shieldPassive, armorPassive, hullPassive, shieldActive, armorActive)");
+                                 "\" (shieldPassive, armorPassive, hullPassive, shieldActive, armorActive, "
+                                 "shieldResists, armorResists, shieldRemote, armorRemote)");
     req.goal = *g;
     req.priceCap = getNumber(doc, "priceCap", 0, "request");
     req.allowOfficer = getBool(doc, "allowOfficer", false, "request");
+    req.allowAncillary = getBool(doc, "allowAncillary", true, "request");
+    req.maxReps = getInt(doc, "maxReps", 0, "request");
+    if (req.maxReps < 0)
+        throw std::runtime_error("request.maxReps must be >= 0 (0 = no limit)");
+    req.requireCapStable = getBool(doc, "requireCapStable", false, "request");
+    req.minCapRecharge = getNumber(doc, "minCapRecharge", 0, "request");
+    if (!(req.minCapRecharge >= 0))
+        throw std::runtime_error("request.minCapRecharge must be >= 0 (GJ/s, 0 = none)");
     req.results = getInt(doc, "results", 10, "request");
     if (req.results < 1)
         throw std::runtime_error("request.results must be at least 1");
@@ -456,6 +473,10 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
     o.goal = ro.goal ? *ro.goal : req.goal;
     o.priceCap = req.priceCap;
     o.allowOfficer = req.allowOfficer;
+    o.allowAncillary = req.allowAncillary;
+    o.maxReps = req.maxReps;
+    o.requireCapStable = req.requireCapStable;
+    o.minCapRecharge = req.minCapRecharge;
     o.results = req.results;
     o.threads = req.threads;
     o.prices = prices;
@@ -488,7 +509,7 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
         if (rack < 0)
         {
             warnings.push_back(std::string(slotName(e.slot)) + " slot at position " + std::to_string(e.position) +
-                          " can't be optimized (only med, low and rig slots); kept as is");
+                          " can't be optimized (only high, med, low and rig slots); kept as is");
             continue;
         }
         requested[static_cast<size_t>(rack)].push_back(i);
@@ -528,7 +549,7 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
     {
         size_t want = requested[static_cast<size_t>(r)].size();
         if (static_cast<size_t>(res.openSlots[static_cast<size_t>(r)]) < want)
-            warnings.push_back(std::string(slotName(r == opt::RackMid ? Slot::Med : r == opt::RackLow ? Slot::Low : Slot::Rig)) +
+            warnings.push_back(std::string(slotName(kRackSlots[r])) +
                           ": " + std::to_string(want) + " slots requested, " +
                           std::to_string(res.openSlots[static_cast<size_t>(r)]) +
                           " free (the rest stay empty)");
@@ -583,6 +604,7 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
         open["med"] = res.openSlots[opt::RackMid];
         open["low"] = res.openSlots[opt::RackLow];
         open["rig"] = res.openSlots[opt::RackRig];
+        open["high"] = res.openSlots[opt::RackHigh];
         out["openSlots"] = std::move(open);
     }
     json::Value start = statsJson(res.start);
@@ -759,7 +781,7 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
         cj["stage1Best"] = c.stage1Best;
         cj["maxError"] = c.maxError;
         out["check"] = std::move(cj);
-        bool noSlots = res.openSlots[0] + res.openSlots[1] + res.openSlots[2] == 0;
+        bool noSlots = std::accumulate(res.openSlots.begin(), res.openSlots.end(), 0) == 0;
         ok = noSlots || (c.ran && c.mismatches == 0 && c.fittingGoalChanges == 0);
     }
     return out;
@@ -818,13 +840,13 @@ json::Value makeRequest(const GameData& gd, const fitengine::Engine& engine, con
     fitengine::FitResult fr = engine.evaluate(in);
 
     // Which rack indices are open.
-    const Slot rackSlot[opt::RackCount] = {Slot::Med, Slot::Low, Slot::Rig};
+    const Slot* rackSlot = kRackSlots;
     const fitschema::Attr sizeAttr[opt::RackCount] = {fitschema::Attr::medSlots, fitschema::Attr::lowSlots,
-                                                      fitschema::Attr::rigSlots};
+                                                      fitschema::Attr::rigSlots, fitschema::Attr::hiSlots};
     std::array<std::set<int>, opt::RackCount> openIdx;
     std::array<bool, opt::RackCount> whole{};
     if (open == "all")
-        whole = {true, true, true};
+        whole = {true, true, true, false};  // the high rack only when named (high:*)
     else
     {
         std::stringstream ss(open);
@@ -835,9 +857,13 @@ json::Value makeRequest(const GameData& gd, const fitengine::Engine& engine, con
                 continue;
             size_t colon = part.find(':');
             std::string rack = part.substr(0, colon);
-            int r = rack == "mid" || rack == "med" ? opt::RackMid : rack == "low" ? opt::RackLow : rack == "rig" ? opt::RackRig : -1;
+            int r = rack == "mid" || rack == "med" ? opt::RackMid
+                    : rack == "low"                ? opt::RackLow
+                    : rack == "rig"                ? opt::RackRig
+                    : rack == "high"               ? opt::RackHigh
+                                                   : -1;
             if (r < 0 || colon == std::string::npos)
-                throw std::runtime_error("--open: expected rack:indices, e.g. mid:0,1;low:2 or rig:*");
+                throw std::runtime_error("--open: expected rack:indices, e.g. mid:0,1;low:2;high:* or rig:*");
             std::string list = part.substr(colon + 1);
             if (list == "*")
             {

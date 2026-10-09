@@ -46,7 +46,11 @@ def goalLabels():
         'armorPassive': _t('Armor EHP (passive)'),
         'hullPassive': _t('Hull EHP (passive)'),
         'shieldActive': _t('Shield repair, sustained (EHP/s)'),
-        'armorActive': _t('Armor repair, sustained (EHP/s)')}
+        'armorActive': _t('Armor repair, sustained (EHP/s)'),
+        'shieldResists': _t('Shield resists only'),
+        'armorResists': _t('Armor resists only'),
+        'shieldRemote': _t('Remote shield repair, sustained (HP/s)'),
+        'armorRemote': _t('Remote armor repair, sustained (HP/s)')}
 
 
 def slotLabels():
@@ -67,11 +71,30 @@ def slotLabel(fit, position):
 
 
 def isActiveGoal(goal):
-    return goal.endswith('Active')
+    """Repair per second: local (active) or remote."""
+    return goal.endswith('Active') or goal.endswith('Remote')
+
+
+def isResistGoal(goal):
+    return goal.endswith('Resists')
+
+
+def averageResist(value):
+    """Resists-only goal value (EHP per HP, 1 / mean resonance) as the mean resist, 0..1."""
+    return 1 - 1 / value if value > 0 else 0
 
 
 def formatGoal(goal, value):
+    if isResistGoal(goal):
+        return '{:.2f}%'.format(averageResist(value) * 100)
     return formatAmount(value, 4 if isActiveGoal(goal) else 5, 0, 0)
+
+
+def formatGain(goal, option, start):
+    """Resists-only goals: the change of the average resist, in percentage points."""
+    if isResistGoal(goal):
+        return '{:+.2f}%'.format((averageResist(option.goal) - averageResist(start.goal)) * 100)
+    return formatGoal(goal, option.gain)
 
 
 def formatIsk(value, signed=False):
@@ -150,7 +173,9 @@ class ModuleOptimizerDialog(wx.Frame):
         goal = self.settings.get('goal')
         self.goalChoice.SetSelection(mo.GOALS.index(goal) if goal in mo.GOALS else 0)
         self.goalChoice.SetToolTip(_t('Passive: effective HP for uniform damage. Active: effective HP per second '
-                                      'repaired, sustained by the capacitor.'))
+                                      'repaired, sustained by the capacitor. Resists only: the average resist of '
+                                      'the layer (uniform damage), ignoring its HP. Remote: HP per second the '
+                                      'remote repairers give, sustained by the capacitor (select high slots).'))
         options.Add(self.goalChoice, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
 
         priceLabel = wx.StaticText(panel, label=_t('Max price per module (M ISK):'))
@@ -187,6 +212,41 @@ class ModuleOptimizerDialog(wx.Frame):
         self.cancelButton.Disable()
         options.Add(self.cancelButton, 0, wx.ALIGN_CENTER_VERTICAL)
         sizer.Add(options, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
+        # Constraints
+        constraints = wx.BoxSizer(wx.HORIZONTAL)
+        self.allowAncillary = wx.CheckBox(panel, label=_t('Ancillary repairers'))
+        self.allowAncillary.SetValue(self.settings.get('allowAncillary'))
+        self.allowAncillary.SetToolTip(_t('Allow ancillary shield boosters and armor repairers (local and remote). '
+                                          'Their sustained repair counts the reload.'))
+        constraints.Add(self.allowAncillary, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+
+        repsLabel = wx.StaticText(panel, label=_t('Max repairers:'))
+        constraints.Add(repsLabel, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+        self.maxReps = wx.SpinCtrl(panel, min=0, max=16, initial=int(self.settings.get('maxReps')))
+        tip = _t('Most repairers of the goal in the fit, those outside the selection included: local ones for '
+                 'active goals, remote ones for remote goals. 0 for no limit.')
+        repsLabel.SetToolTip(tip)
+        self.maxReps.SetToolTip(tip)
+        constraints.Add(self.maxReps, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+
+        self.requireCapStable = wx.CheckBox(panel, label=_t('Cap stable'))
+        self.requireCapStable.SetValue(self.settings.get('requireCapStable'))
+        self.requireCapStable.SetToolTip(_t('Only options whose capacitor use is within its recharge '
+                                            '(as the Cap column shows).'))
+        constraints.Add(self.requireCapStable, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+
+        capLabel = wx.StaticText(panel, label=_t('Min cap recharge (GJ/s):'))
+        constraints.Add(capLabel, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+        self.minCapRecharge = wx.SpinCtrlDouble(panel, min=0, max=1e5, inc=10,
+                                                initial=float(self.settings.get('minCapRecharge')))
+        self.minCapRecharge.SetDigits(1)
+        tip = _t('Only options whose capacitor recharge (peak recharge plus cap boosters, the second number in the '
+                 'Cap column) is at least this, e.g. to run remote repairers fitted elsewhere. 0 for none.')
+        capLabel.SetToolTip(tip)
+        self.minCapRecharge.SetToolTip(tip)
+        constraints.Add(self.minCapRecharge, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+        sizer.Add(constraints, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
         # Progress
         progress = wx.BoxSizer(wx.HORIZONTAL)
@@ -276,6 +336,10 @@ class ModuleOptimizerDialog(wx.Frame):
         self.settings.set('goal', goal)
         self.settings.set('priceCap', max(0.0, self.priceCap.GetValue()) * 1e6)
         self.settings.set('allowOfficer', self.allowOfficer.GetValue())
+        self.settings.set('allowAncillary', self.allowAncillary.GetValue())
+        self.settings.set('maxReps', self.maxReps.GetValue())
+        self.settings.set('requireCapStable', self.requireCapStable.GetValue())
+        self.settings.set('minCapRecharge', max(0.0, self.minCapRecharge.GetValue()))
         self.settings.set('results', self.resultCount.GetValue())
         self.settings.set('timeBudget', self.timeBudget.GetValue())
         return goal
@@ -297,14 +361,17 @@ class ModuleOptimizerDialog(wx.Frame):
         goal = self.saveOptions()
         positions = [p for p in self.positions if p < len(fit.modules) and mo.isOptimizable(fit.modules[p])]
         if not positions:
-            wx.MessageBox(_t('None of the selected slots can be optimized: only mid, low and rig slots can.'),
+            wx.MessageBox(_t('None of the selected slots can be optimized: only high, mid, low and rig slots can.'),
                           _t('Optimize Modules'), wx.OK | wx.ICON_INFORMATION, self)
             return
         try:
             self.request = mo.buildRequest(
                 fit, positions, goal, priceCap=self.settings.get('priceCap'),
                 allowOfficer=self.settings.get('allowOfficer'), results=self.settings.get('results'),
-                threads=self.settings.get('threads'), timeBudget=self.settings.get('timeBudget'))
+                threads=self.settings.get('threads'), timeBudget=self.settings.get('timeBudget'),
+                allowAncillary=self.settings.get('allowAncillary'), maxReps=self.settings.get('maxReps'),
+                requireCapStable=self.settings.get('requireCapStable'),
+                minCapRecharge=self.settings.get('minCapRecharge'))
         except Exception as e:
             pyfalog.exception('Failed to build the optimizer request')
             wx.MessageBox(_t('Could not describe the fit to the optimizer:\n{}').format(e),
@@ -366,7 +433,10 @@ class ModuleOptimizerDialog(wx.Frame):
             wx.MessageBox(error, _t('Optimize Modules'), wx.OK | wx.ICON_ERROR, self)
             return
         self.gauge.SetValue(1000)
-        if result.infeasible is not None:
+        if result.infeasible is not None and result.infeasible.reason == 'capacitor':
+            self.phaseText.SetLabel(_t('Done in {:.1f} s: no option meets the capacitor requirement').format(
+                run.seconds or 0))
+        elif result.infeasible is not None:
             self.phaseText.SetLabel(_t('Done in {:.1f} s: no option can fit').format(run.seconds or 0))
         else:
             self.phaseText.SetLabel(_t('Done in {:.1f} s: {} options').format(run.seconds or 0, len(result.options)))
@@ -380,6 +450,7 @@ class ModuleOptimizerDialog(wx.Frame):
         self.runButton.Enable(not running)
         self.cancelButton.Enable(running)
         for control in (self.goalChoice, self.priceCap, self.allowOfficer, self.resultCount, self.timeBudget,
+                        self.allowAncillary, self.maxReps, self.requireCapStable, self.minCapRecharge,
                         self.exeButton):
             control.Enable(not running)
 
@@ -401,7 +472,10 @@ class ModuleOptimizerDialog(wx.Frame):
         if result is not None:
             if result.infeasible is not None:
                 # The optimizer's diagnosis: which resource, by how much, what to change.
-                lines.append(_t('No option can fit.') + ' ' + result.infeasible.message)
+                if result.infeasible.reason == 'capacitor':
+                    lines.append(result.infeasible.message)
+                else:
+                    lines.append(_t('No option can fit.') + ' ' + result.infeasible.message)
             elif not result.options:
                 lines.append(_t('No options found.'))
             lines.extend(result.warnings)
@@ -430,7 +504,7 @@ class ModuleOptimizerDialog(wx.Frame):
         for option in self.rows:
             row = self.list.InsertItem(self.list.GetItemCount(), str(option.rank))
             stats = option.stats
-            values = [formatGoal(goal, option.goal), formatGoal(goal, option.gain), formatIsk(option.price),
+            values = [formatGoal(goal, option.goal), formatGain(goal, option, start), formatIsk(option.price),
                       formatIsk(option.priceDelta, signed=True),
                       formatUse(stats.cpuUsed, stats.cpuOutput), formatUse(stats.powerUsed, stats.powerOutput),
                       formatUse(stats.calibrationUsed, stats.calibrationOutput), self.capText(stats),

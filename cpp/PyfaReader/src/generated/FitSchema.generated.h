@@ -134,6 +134,8 @@ enum class Attr : uint16_t
     reloadTime,
     remoteRepDurationCapBonus,
     repairBonus,
+    repairMultiplierBonusMax,
+    repairMultiplierBonusPerCycle,
     resistanceKiller,
     resistanceKillerHull,
     resistanceMultiplier,
@@ -232,7 +234,7 @@ enum class Attr : uint16_t
     warfareLinkCPUAdd,
     warfareLinkCPUPenalty,
 };
-inline constexpr size_t kAttrCount = 220;
+inline constexpr size_t kAttrCount = 222;
 
 // eve.db attributeID per Attr.
 inline constexpr uint16_t kAttrEveID[kAttrCount] = {
@@ -246,15 +248,15 @@ inline constexpr uint16_t kAttrEveID[kAttrCount] = {
     1369, 101, 1376, 12, 1375, 13, 2691, 884, 927, 6082, 2030, 1997,
     1998, 2000, 2032, 5962, 5961, 1999, 669, 1230, 1208, 1205, 1206, 1231,
     994, 995, 996, 997, 30, 313, 549, 323, 11, 145, 90, 55,
-    1795, 3024, 806, 1978, 1979, 2746, 1849, 1137, 293, 1923, 1906, 308,
-    68, 851, 548, 263, 337, 146, 271, 272, 3015, 273, 274, 2298,
-    2299, 2300, 2301, 2821, 2305, 2347, 5988, 2346, 2345, 2344, 3161, 51,
-    204, 83, 2743, 2688, 150, 2442, 2437, 1431, 1509, 2681, 1433, 1507,
-    2680, 1434, 1511, 1531, 1441, 1443, 1516, 2682, 1444, 1510, 1533, 1436,
-    1438, 1517, 2684, 1439, 1521, 1532, 1440, 1446, 1448, 1526, 2686, 1449,
-    1522, 1534, 2692, 2665, 2668, 2666, 2669, 2667, 2671, 2670, 987, 2405,
-    110, 1368, 102, 441, 1132, 1153, 161, 2596, 2469, 2597, 2471, 2598,
-    2473, 2537, 1882, 1883,
+    1795, 3024, 806, 2797, 2796, 1978, 1979, 2746, 1849, 1137, 293, 1923,
+    1906, 308, 68, 851, 548, 263, 337, 146, 271, 272, 3015, 273,
+    274, 2298, 2299, 2300, 2301, 2821, 2305, 2347, 5988, 2346, 2345, 2344,
+    3161, 51, 204, 83, 2743, 2688, 150, 2442, 2437, 1431, 1509, 2681,
+    1433, 1507, 2680, 1434, 1511, 1531, 1441, 1443, 1516, 2682, 1444, 1510,
+    1533, 1436, 1438, 1517, 2684, 1439, 1521, 1532, 1440, 1446, 1448, 1526,
+    2686, 1449, 1522, 1534, 2692, 2665, 2668, 2666, 2669, 2667, 2671, 2670,
+    987, 2405, 110, 1368, 102, 441, 1132, 1153, 161, 2596, 2469, 2597,
+    2471, 2598, 2473, 2537, 1882, 1883,
 };
 
 inline constexpr const char* kAttrName[kAttrCount] = {
@@ -381,6 +383,8 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "reloadTime",
     "remoteRepDurationCapBonus",
     "repairBonus",
+    "repairMultiplierBonusMax",
+    "repairMultiplierBonusPerCycle",
     "resistanceKiller",
     "resistanceKillerHull",
     "resistanceMultiplier",
@@ -1557,16 +1561,19 @@ struct RemoteArmorRepairerAttrs
     float overloadArmorDamageAmount = 0.0f;
     float overloadSelfDurationBonus = 0.0f;
     float power = 0.0f;
+    float repairMultiplierBonusMax = 0.0f;
+    float repairMultiplierBonusPerCycle = 0.0f;
     float shipBonusRole3 = 0.0f;
     float shipBonusRole4 = 0.0f;
 
-    static constexpr Attr kFields[11] = {
+    static constexpr Attr kFields[13] = {
         Attr::armorDamageAmount, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
         Attr::duration, Attr::mediumRemoteRepFittingMultiplier, Attr::overloadArmorDamageAmount, Attr::overloadSelfDurationBonus,
-        Attr::power, Attr::shipBonusRole3, Attr::shipBonusRole4,
+        Attr::power, Attr::repairMultiplierBonusMax, Attr::repairMultiplierBonusPerCycle, Attr::shipBonusRole3,
+        Attr::shipBonusRole4,
     };
 };
-static_assert(sizeof(RemoteArmorRepairerAttrs) == 11 * sizeof(float));
+static_assert(sizeof(RemoteArmorRepairerAttrs) == 13 * sizeof(float));
 
 // Groups: Remote Hull Repairer
 struct RemoteHullRepairerAttrs
@@ -2563,6 +2570,8 @@ struct AncillaryRemoteArmorRepairerAttrs
     float overloadSelfDurationBonus = 0.0f;
     float power = 0.0f;
     float reloadTime = 0.0f;
+    float repairMultiplierBonusMax = 0.0f;
+    float repairMultiplierBonusPerCycle = 0.0f;
     float shieldBonus = 0.0f;
     float shieldEmDamageResonance = 0.0f;
     float shieldExplosiveDamageResonance = 0.0f;
@@ -2576,19 +2585,20 @@ struct AncillaryRemoteArmorRepairerAttrs
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
 
-    static constexpr Attr kFields[35] = {
+    static constexpr Attr kFields[37] = {
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
         Attr::chargedArmorDamageMultiplier, Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus,
         Attr::explosiveDamageResistanceBonus, Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance,
         Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus, Attr::mediumRemoteRepFittingMultiplier, Attr::overloadArmorDamageAmount,
-        Attr::overloadSelfDurationBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
-        Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
-        Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
-        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::overloadSelfDurationBonus, Attr::power, Attr::reloadTime, Attr::repairMultiplierBonusMax,
+        Attr::repairMultiplierBonusPerCycle, Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance,
+        Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speed, Attr::structureRigEwarCapUseBonus,
+        Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value,
+        Attr::warfareBuff3Value,
     };
 };
-static_assert(sizeof(AncillaryRemoteArmorRepairerAttrs) == 35 * sizeof(float));
+static_assert(sizeof(AncillaryRemoteArmorRepairerAttrs) == 37 * sizeof(float));
 
 // Groups: Ancillary Remote Shield Booster
 struct AncillaryRemoteShieldBoosterAttrs
@@ -3014,14 +3024,16 @@ struct MutadaptiveRemoteArmorRepairerAttrs
     float overloadArmorDamageAmount = 0.0f;
     float overloadSelfDurationBonus = 0.0f;
     float power = 0.0f;
+    float repairMultiplierBonusMax = 0.0f;
+    float repairMultiplierBonusPerCycle = 0.0f;
 
-    static constexpr Attr kFields[9] = {
+    static constexpr Attr kFields[11] = {
         Attr::armorDamageAmount, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
         Attr::duration, Attr::mediumRemoteRepFittingMultiplier, Attr::overloadArmorDamageAmount, Attr::overloadSelfDurationBonus,
-        Attr::power,
+        Attr::power, Attr::repairMultiplierBonusMax, Attr::repairMultiplierBonusPerCycle,
     };
 };
-static_assert(sizeof(MutadaptiveRemoteArmorRepairerAttrs) == 9 * sizeof(float));
+static_assert(sizeof(MutadaptiveRemoteArmorRepairerAttrs) == 11 * sizeof(float));
 
 // Group -> layout. Generic code uses fields/fieldCount; hand-written code casts to the struct.
 struct GroupLayout

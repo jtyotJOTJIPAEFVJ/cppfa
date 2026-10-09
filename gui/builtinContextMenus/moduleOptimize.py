@@ -11,8 +11,8 @@ _t = wx.GetTranslation
 
 class OptimizeModules(ContextMenuSingle):
     """
-    Optimize modules...: runs the C++ module optimizer on the selected mid, low and rig
-    slots, empty ones included, and lists what it finds (gui.moduleOptimizerDialog).
+    Optimize modules...: runs the C++ module optimizer on the selected high, mid, low and
+    rig slots, empty ones included, and lists what it finds (gui.moduleOptimizerDialog).
     """
 
     def __init__(self):

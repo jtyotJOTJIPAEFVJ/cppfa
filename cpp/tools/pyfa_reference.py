@@ -91,8 +91,13 @@ def num(v):
 
 def dump_fit(fit, svc_fit):
     from eos.const import FittingModuleState
+    from eos.utils.spoolSupport import SpoolOptions, SpoolType
+    from eos.utils.stats import RRTypes
 
     ship = fit.ship
+    remote = RRTypes(0, 0, 0, 0)
+    for mod in fit.modules:  # modules only, as Fit.getRemoteReps without drones
+        remote += mod.getRemoteReps(spoolOptions=SpoolOptions(SpoolType.SPOOL_SCALE, 1, True))
     out = {
         'fitID': fit.ID,
         'name': fit.name,
@@ -115,6 +120,8 @@ def dump_fit(fit, svc_fit):
         'boosters': [{'typeID': b.item.ID, 'active': bool(b.active),
                       'sideEffects': [se.effectID for se in b.sideEffects if se.active]} for b in fit.boosters],
         'effectiveSustainable': {k: num(v) for k, v in fit.effectiveSustainableTank.items()},
+        # Outgoing remote repair of the modules (HP/s), full spool-up as pyfa's default; reload factored.
+        'remote': {k: num(getattr(remote, k)) for k in ('shield', 'armor')},
         'modules': [],
     }
     for pos, mod in enumerate(fit.modules):

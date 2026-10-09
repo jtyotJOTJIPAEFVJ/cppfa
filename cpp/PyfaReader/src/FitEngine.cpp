@@ -172,6 +172,8 @@ enum Hot : int
     HotHp,
     HotCrystalChance,
     HotCrystalDamage,
+    HotSpoolMax,
+    HotSpoolStep,
     kHot
 };
 
@@ -191,6 +193,8 @@ struct TypeProto
     std::array<int, 6> reqSkills{};
     int reqCount = 0;
     bool ancillaryShield = false, isPaste = false;
+    int8_t remoteLayer = -1;             // remote repairers: the layer they repair (Shield, Armor)
+    bool ancillaryRemoteArmor = false;  // group Ancillary Remote Armor Repairer
     std::vector<float> base;  // per layout field: the unmutated base value
     std::array<int8_t, kHot> hotField{};
     std::array<float, kHot> hotBase{};
@@ -251,6 +255,8 @@ struct Item
     uint32_t repEffects = 0;   // which repairer effects ran (RepEffect bits)
     bool ancillaryShield = false;  // module group (Remote) Ancillary Shield Booster
     bool isPaste = false;          // charge is Nanite Repair Paste
+    int8_t remoteLayer = -1;             // TypeProto::remoteLayer
+    bool ancillaryRemoteArmor = false;
 };
 
 struct Penalty
@@ -367,7 +373,7 @@ struct Engine::Impl
     int eveSpeed, eveDuration, eveDurationHighIsGood, eveReactivation, eveReloadTime, eveCapNeed, eveCapacity,
         eveVolume, eveChargeRate, eveCrystalsDamaged, eveHp, eveCrystalChance, eveCrystalDamage, eveShieldBonus,
         eveArmorDamage, eveStructureDamage, eveCapacitorBonus, eveChargedArmorMult, eveCpu, evePower, eveUpgradeCost,
-        eveResistanceShift;
+        eveResistanceShift, eveSpoolMax, eveSpoolStep;
     std::array<int, 4> eveBurstDurations{};
     std::array<int, 4> eveWarfareBuffID{}, eveWarfareBuffValue{};
     std::array<int, kHot> hotEve{};
@@ -443,6 +449,8 @@ struct Engine::Impl
         eveUpgradeCost = eve("upgradeCost");
         eveResistanceShift = eve("resistanceShiftAmount");
         eveCapacitorBonus = eve("capacitorBonus");
+        eveSpoolMax = eve("repairMultiplierBonusMax");
+        eveSpoolStep = eve("repairMultiplierBonusPerCycle");
         for (int x = 0; x < 4; ++x)
         {
             eveWarfareBuffID[x] = eve(("warfareBuff" + std::to_string(x + 1) + "ID").c_str());
@@ -454,7 +462,8 @@ struct Engine::Impl
         hotEve = {eveSpeed, eveDuration, eveDurationHighIsGood, eveBurstDurations[0], eveBurstDurations[1],
                   eveBurstDurations[2], eveBurstDurations[3], eveReactivation, eveReloadTime, eveChargeRate,
                   eveCapNeed, eveCpu, evePower, eveUpgradeCost, eveShieldBonus, eveArmorDamage, eveStructureDamage,
-                  eveChargedArmorMult, eveCrystalsDamaged, eveHp, eveCrystalChance, eveCrystalDamage};
+                  eveChargedArmorMult, eveCrystalsDamaged, eveHp, eveCrystalChance, eveCrystalDamage,
+                  eveSpoolMax, eveSpoolStep};
         attrCpu = attrByName.at("cpu");
         attrPower = attrByName.at("power");
         attrCpuOutput = attrByName.at("cpuOutput");
@@ -642,6 +651,8 @@ struct Engine::Impl
         it.reqCount = p.reqCount;
         it.ancillaryShield = p.ancillaryShield;
         it.isPaste = p.isPaste;
+        it.remoteLayer = p.remoteLayer;
+        it.ancillaryRemoteArmor = p.ancillaryRemoteArmor;
         return idx;
     }
 
@@ -661,6 +672,17 @@ struct Engine::Impl
         p->ancillaryShield = p->group && (p->group->name == "Ancillary Shield Booster" ||
                                           p->group->name == "Ancillary Remote Shield Booster");
         p->isPaste = type->name == "Nanite Repair Paste";
+        // pyfa Module.getRepAmountParameters (hull and capacitor transfer aren't goals)
+        if (p->group)
+        {
+            const std::string& g = p->group->name;
+            if (g == "Remote Shield Booster" || g == "Ancillary Remote Shield Booster")
+                p->remoteLayer = Shield;
+            else if (g == "Remote Armor Repairer" || g == "Ancillary Remote Armor Repairer" ||
+                     g == "Mutadaptive Remote Armor Repairer")
+                p->remoteLayer = Armor;
+            p->ancillaryRemoteArmor = g == "Ancillary Remote Armor Repairer";
+        }
         for (int eid : type->effects)
             if (const EffectInfo* e = effect(eid))
                 p->effects.emplace_back(eid, e);
@@ -1568,7 +1590,7 @@ struct Engine::Impl
         float cpuOutput = 0, powerOutput = 0, calibrationOutput = 0;
         float capPeak = 0, capRecharge = 0, capUsed = 0;
         CapSums cap;
-        std::array<float, LayerCount> hp{}, ehp{}, divider{}, repair{}, effRepair{};
+        std::array<float, LayerCount> hp{}, ehp{}, divider{}, repair{}, effRepair{}, remoteRepair{};
     };
 
     float shipValue(Scratch& s, Attr a) const
@@ -1681,6 +1703,27 @@ struct Engine::Impl
             m.structureDamage = (it.repEffects & RepHull) ? readHot(s, mod, HotStructureDamage) : 0.0f;
             m.chargedArmorMult = readHot(s, mod, HotChargedArmorMult);
         }
+        m.remoteLayer = -1;
+        m.remoteAmount = 0;
+        if (it.remoteLayer >= 0 && it.state >= State::Active)
+        {
+            // pyfa Module.getRepAmountParameters at full spool-up (globalDefaultSpoolupPercentage 1).
+            double amount;
+            if (it.remoteLayer == Shield)
+                amount = readHot(s, mod, HotShieldBonus);
+            else
+            {
+                double mult = 1;
+                if (it.ancillaryRemoteArmor && it.charge >= 0 && hasHot(s, mod, HotChargedArmorMult))
+                    mult = readHot(s, mod, HotChargedArmorMult);
+                amount = readHot(s, mod, HotArmorDamage) * mult;
+            }
+            double spoolMax = readHot(s, mod, HotSpoolMax), spoolStep = readHot(s, mod, HotSpoolStep);
+            if (spoolMax != 0 && spoolStep != 0)
+                amount *= 1 + spoolMax;  // calculateSpoolup(SPOOL_SCALE, 1): ceil(max / step) cycles reach max
+            m.remoteLayer = it.remoteLayer;
+            m.remoteAmount = static_cast<float>(amount);
+        }
     }
 
     // Everything derived from the final attributes. s.moduleStats[i] belongs to s.modules[i].
@@ -1733,6 +1776,9 @@ struct Engine::Impl
             t.repair = makeRepProfile(stats, s.moduleCount, t.capUsed, t.capRecharge).repairAll();
             for (int l = 0; l < LayerCount; ++l)
                 t.effRepair[l] = t.repair[l] / t.divider[l];
+            for (int l : {Shield, Armor})
+                t.remoteRepair[static_cast<size_t>(l)] =
+                    makeRemoteProfile(stats, s.moduleCount, t.capUsed, t.capRecharge, l).repair(l);
         }
     }
 
@@ -1791,8 +1837,10 @@ struct Engine::Impl
         out.capUsed = t.capUsed;
         out.hp = t.hp;
         out.ehp = t.ehp;
+        out.divider = t.divider;
         out.repair = t.repair;
         out.effectiveRepair = t.effRepair;
+        out.remoteRepair = t.remoteRepair;
         return out;
     }
 };
@@ -1850,6 +1898,10 @@ TestResult toTestResult(const FitResult& r, Goal goal)
     case Goal::HullPassive: t.goal = r.ehp[Hull]; break;
     case Goal::ShieldActive: t.goal = r.effectiveRepair[Shield]; break;
     case Goal::ArmorActive: t.goal = r.effectiveRepair[Armor]; break;
+    case Goal::ShieldResists: t.goal = 1 / r.divider[Shield]; break;
+    case Goal::ArmorResists: t.goal = 1 / r.divider[Armor]; break;
+    case Goal::ShieldRemote: t.goal = r.remoteRepair[Shield]; break;
+    case Goal::ArmorRemote: t.goal = r.remoteRepair[Armor]; break;
     }
     t.cpuUsed = r.cpuUsed;
     t.powerUsed = r.powerUsed;
@@ -2020,6 +2072,51 @@ std::array<float, LayerCount> RepProfile::repairAll(double extraCapUse) const
     for (int l = 0; l < LayerCount; ++l)
         out[static_cast<size_t>(l)] = repair(l, extraCapUse);
     return out;
+}
+
+// Outgoing remote repair of one layer, sustained like the local tank: pyfa's
+// Module.getRemoteReps (reload factored in) per repairer, the capacitor left after
+// every other module shared between the layer's remote repairers, most cap-efficient
+// first. Repairers that use no capacitor (charged ancillary shield boosters) count in full.
+RepProfile makeRemoteProfile(const ModuleStats* modules, int count, float capUsed, float capRecharge, int layer)
+{
+    RepProfile p;
+    p.capRecharge = capRecharge;
+    double used = capUsed;
+    double efficiency[RepProfile::kMaxReps];
+    for (int i = 0; i < count; ++i)
+    {
+        const ModuleStats& m = modules[i];
+        if (m.remoteLayer != layer || m.averageCycle <= 0)
+            continue;
+        double seconds = m.averageCycle / 1000.0;
+        if (m.capUse <= 0)
+        {
+            p.extra[static_cast<size_t>(layer)] += m.remoteAmount / seconds;
+            continue;
+        }
+        if (p.repCount >= RepProfile::kMaxReps)
+            throw std::runtime_error("too many repairers");
+        used -= m.capUse;
+        RepProfile::Rep& r = p.reps[static_cast<size_t>(p.repCount)];
+        r.capUse = m.capUse;
+        r.amount = m.remoteAmount;
+        r.onDuty = r.paste = 1;
+        r.cycleSeconds = seconds;
+        r.hasCharge = false;
+        r.layer = static_cast<uint8_t>(layer);
+        efficiency[p.repCount++] = m.remoteAmount / seconds / m.capUse;
+    }
+    p.capUsed = used;
+    int order[RepProfile::kMaxReps];
+    for (int r = 0; r < p.repCount; ++r)
+        order[r] = r;
+    std::stable_sort(order, order + p.repCount, [&](int a, int b) { return efficiency[a] > efficiency[b]; });
+    std::array<RepProfile::Rep, RepProfile::kMaxReps> sorted = p.reps;
+    for (int k = 0; k < p.repCount; ++k)
+        sorted[static_cast<size_t>(k)] = p.reps[static_cast<size_t>(order[k])];
+    p.reps = sorted;
+    return p;
 }
 
 // ==================================================================== SearchPlan
@@ -2701,7 +2798,8 @@ TestResult SearchPlan::evaluate(const int* choice, Goal goal, TestDetail* detail
     }
 
     Impl::Totals t;
-    bool active = goal == Goal::ShieldActive || goal == Goal::ArmorActive;
+    bool active = goal == Goal::ShieldActive || goal == Goal::ArmorActive || goal == Goal::ShieldRemote ||
+                  goal == Goal::ArmorRemote;
     e.totals(s, t, active);
 
     TestResult r;
@@ -2712,6 +2810,10 @@ TestResult SearchPlan::evaluate(const int* choice, Goal goal, TestDetail* detail
     case Goal::HullPassive: r.goal = t.ehp[Hull]; break;
     case Goal::ShieldActive: r.goal = t.effRepair[Shield]; break;
     case Goal::ArmorActive: r.goal = t.effRepair[Armor]; break;
+    case Goal::ShieldResists: r.goal = 1 / t.divider[Shield]; break;
+    case Goal::ArmorResists: r.goal = 1 / t.divider[Armor]; break;
+    case Goal::ShieldRemote: r.goal = t.remoteRepair[Shield]; break;
+    case Goal::ArmorRemote: r.goal = t.remoteRepair[Armor]; break;
     }
     r.cpuUsed = t.cpu;
     r.powerUsed = t.power;
