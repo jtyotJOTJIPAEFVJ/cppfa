@@ -95,7 +95,11 @@ const std::pair<const char*, Goal> kGoals[] = {{"shieldPassive", Goal::ShieldPas
                                                {"shieldResists", Goal::ShieldResists},
                                                {"armorResists", Goal::ArmorResists},
                                                {"shieldRemote", Goal::ShieldRemote},
-                                               {"armorRemote", Goal::ArmorRemote}};
+                                               {"armorRemote", Goal::ArmorRemote},
+                                               {"localShieldRemoteShield", Goal::LocalShieldRemoteShield},
+                                               {"localShieldRemoteArmor", Goal::LocalShieldRemoteArmor},
+                                               {"localArmorRemoteShield", Goal::LocalArmorRemoteShield},
+                                               {"localArmorRemoteArmor", Goal::LocalArmorRemoteArmor}};
 
 const std::pair<const char*, Slot> kSlots[] = {{"low", Slot::Low},   {"med", Slot::Med},
                                                {"high", Slot::High}, {"rig", Slot::Rig},
@@ -216,10 +220,15 @@ void requireType(const GameData& gd, int typeID, const std::string& what)
         throw std::runtime_error(what + ": unknown typeID " + std::to_string(typeID));
 }
 
-json::Value statsJson(const TestResult& r)
+json::Value statsJson(const TestResult& r, Goal goal)
 {
     json::Value s = json::Value::object();
     s["goal"] = num(r.goal);
+    if (fitengine::isBalancedGoal(goal))
+    {
+        s["localRep"] = num(r.localRep);
+        s["remoteRep"] = num(r.remoteRep);
+    }
     s["cpuUsed"] = num(r.cpuUsed);
     s["cpuOutput"] = num(r.cpuOutput);
     s["powerUsed"] = num(r.powerUsed);
@@ -411,7 +420,8 @@ Request parse(const json::Value& doc, const GameData& gd)
     if (!g)
         throw std::runtime_error("request.goal: unknown goal \"" + goal->get<std::string>() +
                                  "\" (shieldPassive, armorPassive, hullPassive, shieldActive, armorActive, "
-                                 "shieldResists, armorResists, shieldRemote, armorRemote)");
+                                 "shieldResists, armorResists, shieldRemote, armorRemote, localShieldRemoteShield, "
+                                 "localShieldRemoteArmor, localArmorRemoteShield, localArmorRemoteArmor)");
     req.goal = *g;
     req.priceCap = getNumber(doc, "priceCap", 0, "request");
     req.allowOfficer = getBool(doc, "allowOfficer", false, "request");
@@ -420,6 +430,9 @@ Request parse(const json::Value& doc, const GameData& gd)
     if (req.maxReps < 0)
         throw std::runtime_error("request.maxReps must be >= 0 (0 = no limit)");
     req.requireCapStable = getBool(doc, "requireCapStable", false, "request");
+    req.remoteWeight = getNumber(doc, "remoteWeight", 4, "request");
+    if (!(req.remoteWeight > 0))
+        throw std::runtime_error("request.remoteWeight must be > 0");
     req.minCapRecharge = getNumber(doc, "minCapRecharge", 0, "request");
     if (!(req.minCapRecharge >= 0))
         throw std::runtime_error("request.minCapRecharge must be >= 0 (GJ/s, 0 = none)");
@@ -476,6 +489,7 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
     o.allowAncillary = req.allowAncillary;
     o.maxReps = req.maxReps;
     o.requireCapStable = req.requireCapStable;
+    o.remoteWeight = req.remoteWeight;
     o.minCapRecharge = req.minCapRecharge;
     o.results = req.results;
     o.threads = req.threads;
@@ -607,7 +621,7 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
         open["high"] = res.openSlots[opt::RackHigh];
         out["openSlots"] = std::move(open);
     }
-    json::Value start = statsJson(res.start);
+    json::Value start = statsJson(res.start, o.goal);
     start["price"] = startPrice;
     out["start"] = std::move(start);
     out["clampedModules"] = std::move(clamped);
@@ -710,7 +724,7 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
             changed += unchanged ? 0 : 1;
             slots.push_back(std::move(s));
         }
-        TestResult again = fitengine::toTestResult(engine.evaluate(full), o.goal);
+        TestResult again = fitengine::toTestResult(engine.evaluate(full), {o.goal, static_cast<float>(o.remoteWeight)});
         if (std::abs(again.goal - f.exact.goal) > 1e-4 * std::max(1.0f, std::abs(f.exact.goal)))
             warnings.push_back("option " + std::to_string(fi + 1) + ": goal " + std::to_string(f.exact.goal) +
                           " but the assembled fit evaluates to " + std::to_string(again.goal));
@@ -723,7 +737,7 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
         op["price"] = price;
         op["priceDelta"] = price - startPrice;
         op["changedSlots"] = changed;
-        op["stats"] = statsJson(f.exact);
+        op["stats"] = statsJson(f.exact, o.goal);
         op["slots"] = std::move(slots);
         options.push_back(std::move(op));
     }

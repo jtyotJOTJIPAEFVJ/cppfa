@@ -95,13 +95,20 @@ int layerOf(Goal g)
     case Goal::ArmorActive:
     case Goal::ArmorResists:
     case Goal::ArmorRemote: return Armor;
+    case Goal::LocalShieldRemoteShield:
+    case Goal::LocalShieldRemoteArmor:
+    case Goal::LocalArmorRemoteShield:
+    case Goal::LocalArmorRemoteArmor: return balancedLocalLayer(g);
     default: return Hull;
     }
 }
 // Remote goals: outgoing remote repair (HP/s, no resists). They run the active goals'
 // machinery on makeRemoteProfile: the repairers are the layer's remote ones.
 bool isRemoteGoal(Goal g) { return g == Goal::ShieldRemote || g == Goal::ArmorRemote; }
-bool isActiveGoal(Goal g) { return g == Goal::ShieldActive || g == Goal::ArmorActive || isRemoteGoal(g); }
+bool isActiveGoal(Goal g)
+{
+    return g == Goal::ShieldActive || g == Goal::ArmorActive || isRemoteGoal(g) || isBalancedGoal(g);
+}
 // Resists-only goals: EHP per HP (1 / D). The model's core value is a constant 1, so
 // HP modules are worth nothing and only resonances (and fitting) matter.
 bool isResistGoal(Goal g) { return g == Goal::ShieldResists || g == Goal::ArmorResists; }
@@ -606,7 +613,9 @@ class Search
 {
 public:
     Search(const GameData& gd, const Engine& engine, const FitInput& fit, const Options& opt)
-        : gd_(gd), engine_(engine), opt_(opt), fit_(fit), log_(opt.log), goal_(opt.goal), layer_(layerOf(opt.goal)),
+        : gd_(gd), engine_(engine), opt_(opt), fit_(fit), log_(opt.log), goal_(opt.goal), obj_(opt.goal, static_cast<float>(opt.remoteWeight)),
+          layer_(layerOf(opt.goal)), rlayer_(isBalancedGoal(opt.goal) ? balancedRemoteLayer(opt.goal) : -1),
+          balanced_(isBalancedGoal(opt.goal)),
           active_(isActiveGoal(opt.goal)), resistOnly_(isResistGoal(opt.goal)), remote_(isRemoteGoal(opt.goal)),
           capConstrained_(opt.requireCapStable || opt.minCapRecharge > 0)
     {
@@ -634,24 +643,29 @@ private:
         sc.resFits = resourcesFit(sc.r);
         sc.fits = sc.resFits && sc.capShort <= 0;
     }
-    // The same on the model (stage 1): a core's profile plus x GJ/s of resist modules.
-    bool capModelOk(const RepProfile& p, double x) const
-    {
-        double used = p.capUsed + x;
-        for (int k = 0; k < p.repCount; ++k)
-            used += p.reps[static_cast<size_t>(k)].capUse;
-        return (!opt_.requireCapStable || used <= p.capRecharge) &&
-               (opt_.minCapRecharge <= 0 || p.capRecharge >= opt_.minCapRecharge);
-    }
-    // The goal's repairer profile (local, or remote for remote goals).
+    // The goal's repairer profile (local, or remote for remote goals; balanced goals:
+    // the local test's, with the goal's remote repairers off).
     RepProfile profileOf(const ModuleStats* m, int n, float used, float recharge) const
     {
-        return remote_ ? makeRemoteProfile(m, n, used, recharge, layer_) : makeRepProfile(m, n, used, recharge);
+        if (remote_)
+            return makeRemoteProfile(m, n, used, recharge, layer_);
+        if (balanced_)
+            used = static_cast<float>(used - remoteRepCap(m, n, rlayer_));
+        return makeRepProfile(m, n, used, recharge);
     }
-    // Modules that are the profile's repairers (their capacitor use is shared out).
+    // Modules whose capacitor use profileOf shares out (or, balanced, switches off).
     bool profileRep(const ModuleStats& m) const
     {
-        return remote_ ? m.remoteLayer == layer_ && m.capUse > 0 : m.repEffects != 0;
+        if (remote_)
+            return m.remoteLayer == layer_ && m.capUse > 0;
+        return m.repEffects != 0 || (balanced_ && m.remoteLayer == rlayer_ && m.capUse > 0);
+    }
+    // Unconstrained repair of a module toward the goal (both sides for balanced goals).
+    double repOf(const ModuleStats& m) const
+    {
+        if (balanced_)
+            return repStrength(m, layer_, false) + repStrength(m, rlayer_, true);
+        return repStrength(m, layer_, remote_);
     }
     // Options::maxReps counts these: the goal layer's local repairers (active goals) or
     // remote repairers (remote goals), by group.
@@ -702,13 +716,30 @@ private:
     struct CoreEval
     {
         RepProfile profile;
+        RepProfile remote;  // balanced goals: the remote test's (the goal's local repairers off)
         double v0 = 0;
         double cpu = 0, power = 0, calibration = 0;
+        double capUsed = 0, capRecharge = 0;  // all modules on (TestResult::capUsed / capRecharge)
     };
     void assemble(const uint8_t* counts, CoreEval& out);
+    // The goal over a resist set with damage factor d and capacitor use x: V(x) / d, or
+    // for balanced goals balancedScore(L(x) / d, R(x)). Both fall as x or d grow.
     double coreValue(const CoreEval& ce, double extraCap) const
     {
-        return active_ ? ce.profile.repair(layer_, extraCap) : ce.v0;
+        return active_ && !balanced_ ? ce.profile.repair(layer_, extraCap) : ce.v0;
+    }
+    double scoreOf(const CoreEval& ce, double extraCap, double d) const
+    {
+        if (balanced_)
+            return balancedScore(ce.profile.repair(layer_, extraCap) / d, ce.remote.repair(rlayer_, extraCap),
+                                 obj_.remoteWeight);
+        return coreValue(ce, extraCap) / d;
+    }
+    // The capacitor constraints on the model: a core plus x GJ/s of resist modules.
+    bool capModelOk(const CoreEval& ce, double x) const
+    {
+        return (!opt_.requireCapStable || ce.capUsed + x <= ce.capRecharge) &&
+               (opt_.minCapRecharge <= 0 || ce.capRecharge >= opt_.minCapRecharge);
     }
 
     // resist side
@@ -800,6 +831,8 @@ private:
     // ---- stage 1
     void stage1();
     double partialBound(const uint8_t* fixed, unsigned freeMask);
+    // side: 0 the goal; balanced goals 1 the local side (L / D), 2 the remote side (R).
+    double partialBoundSide(const uint8_t* fixed, unsigned freeMask, int side);
     bool partialFits(const uint8_t* fixed, unsigned freeMask);
     bool fixedFits(const uint8_t* fixed, unsigned freeMask, CoreEval& scratch);
     std::array<double, 3> outputMax_{};  // most CPU / power / calibration any set can reach
@@ -906,7 +939,10 @@ private:
     FitInput fit_;
     std::ostream* log_;
     Goal goal_;
-    int layer_;
+    Objective obj_;  // goal_ with its parameters, for the engine
+    int layer_;      // the goal's layer; balanced goals: the local one
+    int rlayer_;     // balanced goals: the remote layer (-1 otherwise)
+    bool balanced_;  // isBalancedGoal: see scoreOf
     bool active_;
     bool resistOnly_;  // isResistGoal: layer HP counts as 1
     bool remote_;      // isRemoteGoal: no resists (D = 1), the profile is makeRemoteProfile
@@ -1021,6 +1057,17 @@ bool Search::goalRepType(const Type& t) const
     if (!g)
         return false;
     const std::string& n = g->name;
+    auto local = [&](int layer) {
+        return layer == Shield ? n == "Shield Booster" || n == "Ancillary Shield Booster"
+                               : n == "Armor Repair Unit" || n == "Ancillary Armor Repairer";
+    };
+    auto remote = [&](int layer) {
+        return layer == Shield ? n == "Remote Shield Booster" || n == "Ancillary Remote Shield Booster"
+                               : n == "Remote Armor Repairer" || n == "Ancillary Remote Armor Repairer" ||
+                                     n == "Mutadaptive Remote Armor Repairer";
+    };
+    if (balanced_)
+        return local(layer_) || remote(rlayer_);
     switch (goal_)
     {
     case Goal::ShieldActive: return n == "Shield Booster" || n == "Ancillary Shield Booster";
@@ -1089,7 +1136,7 @@ void Search::setup()
     }
     FitResult b = engine_.evaluate(base_);
     {
-        const TestResult tb = toTestResult(b, goal_);
+        const TestResult tb = toTestResult(b, obj_);
         pinnedUsed_ = {tb.cpuUsed, tb.powerUsed, tb.calibrationUsed};
         pinnedOutput_ = {tb.cpuOutput, tb.powerOutput, tb.calibrationOutput};
     }
@@ -1105,7 +1152,7 @@ void Search::setup()
             slots_[ri] = opt_.search[ri] ? std::clamp(rackSize, 0, limit) : 0;
     }
     result_.openSlots = slots_;
-    result_.start = toTestResult(engine_.evaluate(fit_), goal_);
+    result_.start = toTestResult(engine_.evaluate(fit_), obj_);
     logLine(std::string("ship ") + ship_->name + ": searching " + std::to_string(slots_[RackMid]) + " mid / " +
             std::to_string(slots_[RackLow]) + " low / " + std::to_string(slots_[RackRig]) + " rig / " +
             std::to_string(slots_[RackHigh]) + " high slots, " + std::to_string(base_.modules.size()) +
@@ -1174,7 +1221,7 @@ void Search::gatherCandidates()
             if (!opt_.allowOfficer && (t->metaGroupID == 5 || t->attr(aMeta).value_or(0) == 5))
                 continue;
             const Group* g = gd_.groupOf(*t);
-            if (goal_ == Goal::ShieldActive && g && g->name == "Capacitor Power Relay")
+            if ((goal_ == Goal::ShieldActive || (balanced_ && layer_ == Shield)) && g && g->name == "Capacitor Power Relay")
                 continue;
             const bool ancillary = g && (g->name == "Ancillary Shield Booster" || g->name == "Ancillary Armor Repairer" ||
                                          g->name == "Ancillary Remote Shield Booster" ||
@@ -1204,7 +1251,7 @@ void Search::gatherCandidates()
                 continue;
             Engine::Reach reach = engine_.reach(id);
             // Remote repairers' own effects are projected (not compiled): they count through ModuleStats.
-            if (!reach.ship && !reach.others && !reach.special && !(remote_ && goalRep))
+            if (!reach.ship && !reach.others && !reach.special && !goalRep)
                 continue;
 
             Candidate c;
@@ -1287,13 +1334,13 @@ void Search::measure()
         if (!haveEmpty)
         {
             int none = -1;
-            r0 = plan.evaluate(&none, goal_, &d0);
+            r0 = plan.evaluate(&none, obj_, &d0);
             haveEmpty = true;
         }
         for (size_t i = first; i < last; ++i)
         {
             int choice = static_cast<int>(i - first);
-            TestResult r = plan.evaluate(&choice, goal_, &d);
+            TestResult r = plan.evaluate(&choice, obj_, &d);
             calls_.fetch_add(1, std::memory_order_relaxed);
             Candidate& c = cands_[i];
             c.goalGain = r.goal - r0.goal;
@@ -1321,7 +1368,7 @@ void Search::measure()
                     c.pinnedDrop[k] = std::max(0.0, -((used[k] - used0[k]) - own[k]));
             }
             c.capUse = (m.state >= State::Active && m.capNeed != 0 && m.rawCycle + m.reactivation > 0) ? m.capUse : 0;
-            c.rep = repStrength(m, layer_, remote_);
+            c.rep = repOf(m);
             c.shipChanged = 0;
             for (size_t f = 0; f < std::size(fitschema::ShipAttrs::kFields); ++f)
                 if (std::abs(d.ship[f] - d0.ship[f]) > 1e-6f * std::max(std::abs(d0.ship[f]), 1e-6f))
@@ -1499,7 +1546,7 @@ void Search::interactions()
         {
             int t = targets[ti];
             int choice[2] = {-1, static_cast<int>(ti)};
-            TestResult rt = pp.evaluate(choice, goal_, &dt);
+            TestResult rt = pp.evaluate(choice, obj_, &dt);
             calls_.fetch_add(1, std::memory_order_relaxed);
             const ModuleStats mt = dt.modules[static_cast<size_t>(dt.moduleCount - 1)];
             for (size_t ki = first; ki < last; ++ki)
@@ -1509,10 +1556,10 @@ void Search::interactions()
                 if (!std::any_of(of.begin(), of.end(), [&](const auto& p) { return p.first == t; }))
                     continue;
                 choice[0] = static_cast<int>(ki - first);
-                TestResult rk = pp.evaluate(choice, goal_, &dk);
+                TestResult rk = pp.evaluate(choice, obj_, &dk);
                 calls_.fetch_add(1, std::memory_order_relaxed);
                 const ModuleStats& mk = dk.modules[static_cast<size_t>(dk.moduleCount - 1)];
-                double gain = (rk.goal - rt.goal) + (repStrength(mk, layer_, remote_) - repStrength(mt, layer_, remote_));
+                double gain = (rk.goal - rt.goal) + (repOf(mk) - repOf(mt));
                 if (mt.state >= State::Active && mk.capUse > 0 && mt.capUse > 0)
                     gain += mt.capUse - mk.capUse;
                 c.pairGain = std::max(c.pairGain, gain);
@@ -1742,7 +1789,7 @@ void Search::buildCorePlan()
     // Base values (nothing chosen).
     std::vector<int> none(spec.slots.size(), -1);
     TestDetail d;
-    corePlan_->evaluate(none.data(), goal_, &d);
+    corePlan_->evaluate(none.data(), obj_, &d);
     basePinned_.assign(base_.modules.size(), ModuleStats{});
     pinnedLive_.assign(base_.modules.size(), false);
     for (int i = 0; i < d.moduleCount; ++i)
@@ -1853,7 +1900,7 @@ void Search::evaluateCore(const uint8_t* projection, TestDetail& d)
             for (int c = 0; c < projection[k]; ++c)
                 choice[static_cast<size_t>(slot++)] = kinds_[static_cast<size_t>(k)].local;
     }
-    corePlan_->evaluate(choice.data(), goal_, &d);
+    corePlan_->evaluate(choice.data(), obj_, &d);
     calls_.fetch_add(1, std::memory_order_relaxed);
 }
 
@@ -1989,12 +2036,18 @@ void Search::assemble(const uint8_t* counts, CoreEval& out)
     }
     if (active_ || capConstrained_)
     {
+        const int n = static_cast<int>(stats.size());
         float peak = inflCap_.empty() ? basePeak_ : capPeakRecord(counts);
-        CapSums cs = capSums(stats.data(), static_cast<int>(stats.size()));
-        out.profile = profileOf(stats.data(), static_cast<int>(stats.size()), cs.used, cs.added + peak);
+        CapSums cs = capSums(stats.data(), n);
+        out.capUsed = cs.used;
+        out.capRecharge = cs.added + peak;
+        out.profile = profileOf(stats.data(), n, cs.used, cs.added + peak);
+        if (balanced_)
+            out.remote = makeRemoteProfile(stats.data(), n, static_cast<float>(cs.used - localRepCap(stats.data(), n, layer_)),
+                                           cs.added + peak, rlayer_);
     }
     if (active_)
-        out.v0 = out.profile.repair(layer_, 0);
+        out.v0 = balanced_ ? out.profile.repair(layer_, 0) : coreValue(out, 0);
     else
         out.v0 = inflHp_.empty() ? baseHp_ : hpRecord(counts);
 }
@@ -2233,7 +2286,7 @@ void Search::evaluateResist(const uint8_t* counts, const std::array<const Multis
     static thread_local std::vector<int> choice;
     choice.assign(static_cast<size_t>(slotCount), -1);
     placeChoice(choice, resistRackOptions_, resistFirstSlot_, counts, eps_, sets, resistKinds_, kindRack_);
-    resistPlan_->evaluate(choice.data(), goal_, &d);
+    resistPlan_->evaluate(choice.data(), obj_, &d);
     calls_.fetch_add(1, std::memory_order_relaxed);
 }
 
@@ -2848,7 +2901,7 @@ const Search::FitRecord& Search::fitRecord(const uint8_t* counts, int fset)
             sets[static_cast<size_t>(r)] = &fitMs_[static_cast<size_t>(r)][ref.ms[static_cast<size_t>(r)]];
         placeChoice(choice, fitRackOptions_, fitFirstSlot_, counts, inflFit_, sets, fitKinds_, kindRack);
         static thread_local TestDetail d;
-        TestResult res = fitPlan_->evaluate(choice.data(), goal_, &d);
+        TestResult res = fitPlan_->evaluate(choice.data(), obj_, &d);
         calls_.fetch_add(1, std::memory_order_relaxed);
         FitRecord rec;
         rec.outputs = {res.cpuOutput, res.powerOutput, res.calibrationOutput};
@@ -2996,8 +3049,25 @@ const std::vector<std::vector<int>>& Search::projections(const std::vector<int>&
 // change resists); every split is tried. On the value side, capacitor
 // projections are grouped by the slots they take, and the repairer knapsack only
 // gets the slots left.
+// Balanced goals: balancedScore grows with both sides, so the score of the sides'
+// bounds bounds it; each side is bounded on its own (with the most capacitor either
+// test can have).
 double Search::partialBound(const uint8_t* fixed, unsigned freeMask)
 {
+    if (!balanced_)
+        return partialBoundSide(fixed, freeMask, 0);
+    const double l = partialBoundSide(fixed, freeMask, 1);
+    if (l <= 0)
+        return 0;
+    const double r = partialBoundSide(fixed, freeMask, 2);
+    return balancedScore(l, r, obj_.remoteWeight);
+}
+
+double Search::partialBoundSide(const uint8_t* fixed, unsigned freeMask, int side)
+{
+    // Which repairers count: the goal's, or one side's of a balanced goal.
+    const bool remote = side == 2 || (side == 0 && remote_);
+    const int layer = side == 2 ? rlayer_ : layer_;
     std::vector<uint8_t> base(fixed, fixed + kinds_.size());
     std::vector<uint8_t> tmp;
     auto withProjection = [&](const std::vector<int>& proj) {
@@ -3105,7 +3175,7 @@ double Search::partialBound(const uint8_t* fixed, unsigned freeMask)
                 const uint8_t* counts = withProjection(proj);
                 if (self >= 0 && tmp[static_cast<size_t>(self)] == 0)
                     tmp[static_cast<size_t>(self)] = 1;
-                RepItem it = decompose(record(counts), layer_, remote_);
+                RepItem it = decompose(record(counts), layer, remote);
                 best.fixed = std::max(best.fixed, it.fixed);
                 best.gain = std::max(best.gain, it.gain);
                 best.capUse = std::min(best.capUse, it.capUse);
@@ -3140,7 +3210,7 @@ double Search::partialBound(const uint8_t* fixed, unsigned freeMask)
                     free ? kind.cap : base[k], free ? kk : -1, free ? kind.rack : -1);
         }
         for (size_t p = 0; p < basePinned_.size(); ++p)
-            if (pinnedLive_[p] && (remote_ ? basePinned_[p].remoteLayer == layer_ : basePinned_[p].repEffects != 0))
+            if (pinnedLive_[p] && (remote ? basePinned_[p].remoteLayer == layer : basePinned_[p].repEffects != 0))
                 addItem(inflPinned_[p],
                         [&](const uint8_t* counts) { return pinnedRecord(static_cast<int>(p), counts); }, 1, -1, -1);
         for (const auto& proj : projections(capAll_, freeMask))
@@ -3227,8 +3297,8 @@ double Search::partialBound(const uint8_t* fixed, unsigned freeMask)
         std::array<int, RackCount> resistSlots = fixedFree;
         for (int r : freeRacks)
             resistSlots[static_cast<size_t>(r)] = fixedFree[static_cast<size_t>(r)] - valueSlots[static_cast<size_t>(r)];
-        double dMin = std::numeric_limits<double>::infinity();
-        for (const EpsOption& e : epsOptions)
+        double dMin = side == 2 ? 1.0 : std::numeric_limits<double>::infinity();  // remote repair: no resists
+        for (const EpsOption& e : side == 2 ? std::vector<EpsOption>{} : epsOptions)
         {
             if (!fitsIn(e.size, resistSlots))
                 continue;
@@ -3468,7 +3538,7 @@ void Search::stage1()
         counts.resize(kinds_.size());
         countsOf(node.ms, levels, counts);
         assemble(counts.data(), ce);
-        if (capConstrained_ && !capModelOk(ce.profile, 0))
+        if (capConstrained_ && !capModelOk(ce, 0))
             return;
         std::array<int, RackCount> free = freeOf(counts);
         ResistOrder& order = resistOrder(counts.data(), free);
@@ -3480,14 +3550,14 @@ void Search::stage1()
         {
             const ResistRec& rr = resistRec(*order.table, s);
             double d = rr.d;
-            if (ce.v0 / d * (1 + opt_.boundPad) <= localCut())
+            if (scoreOf(ce, 0, d) * (1 + opt_.boundPad) <= localCut())
                 break;
             if (ce.cpu + rr.cpu > slack[0] + 0.01 || ce.power + rr.power > slack[1] + 0.01 ||
                 ce.calibration + rr.calibration > slack[2] + 0.01)
                 continue;
-            if (capConstrained_ && !capModelOk(ce.profile, rr.x))
+            if (capConstrained_ && !capModelOk(ce, rr.x))
                 continue;
-            double score = coreValue(ce, rr.x) / d;
+            double score = scoreOf(ce, rr.x, d);
             ++scored[static_cast<size_t>(worker)];
             if (score <= localCut())
                 continue;
@@ -3637,14 +3707,14 @@ void Search::stage1()
                 CoreEval& e = childEval[static_cast<size_t>(worker)];
                 assemble(ch.data(), e);
                 // Resist modules only add capacitor use, fitting modules none: exact.
-                if (capConstrained_ && !capModelOk(e.profile, 0))
+                if (capConstrained_ && !capModelOk(e, 0))
                     return;
                 std::array<int, RackCount> childFree = freeOf(ch);
                 double d = feasibleMinD(ch.data(), childFree, e, fitSlack(ch.data(), childFree));
                 ++bounded[static_cast<size_t>(worker)];
                 if (!std::isfinite(d) || e.v0 <= 0)
                     return;
-                childBound[i] = e.v0 / d * (1 + opt_.boundPad);
+                childBound[i] = scoreOf(e, 0, d) * (1 + opt_.boundPad);
             }
             else if (partialFits(ch.data(), b.freeMask) &&
                      fixedFits(ch.data(), b.freeMask, childEval[static_cast<size_t>(worker)]))
@@ -3812,7 +3882,7 @@ void Search::stage2()
             }
             if (s.valid)
             {
-                s.r = plan.evaluate(ch.data(), goal_);
+                s.r = plan.evaluate(ch.data(), obj_);
                 ++out.evaluations;
                 s.goal = s.r.goal;
                 s.bucket = goalBucket(s.goal);
@@ -4181,7 +4251,7 @@ Scored Search::canonical(RSet& x)
     s.price = priceOf(x);
     if (s.valid)
     {
-        s.r = toTestResult(engine_.evaluate(fitOf(x)), goal_);
+        s.r = toTestResult(engine_.evaluate(fitOf(x)), obj_);
         s.goal = s.r.goal;
         s.bucket = goalBucket(s.goal);
         judge(s);
@@ -4345,7 +4415,7 @@ bool Search::improveOnce(RSet& x, RefineStats& st, bool pairs)
                 int none = -1;
                 Nb n;
                 n.pos = static_cast<int>(p);
-                n.s = score(plan.evaluate(&none, goal_), restPrice);
+                n.s = score(plan.evaluate(&none, obj_), restPrice);
                 nbs.push_back(n);
                 ++st.evaluations;
             }
@@ -4356,7 +4426,7 @@ bool Search::improveOnce(RSet& x, RefineStats& st, bool pairs)
                 Nb n;
                 n.pos = static_cast<int>(p);
                 n.in = opts[i];
-                n.s = score(plan.evaluate(&choice, goal_), restPrice + cands_[static_cast<size_t>(opts[i])].price);
+                n.s = score(plan.evaluate(&choice, obj_), restPrice + cands_[static_cast<size_t>(opts[i])].price);
                 nbs.push_back(n);
                 ++st.evaluations;
             }
@@ -4515,7 +4585,7 @@ bool Search::improveOnce(RSet& x, RefineStats& st, bool pairs)
             n.in = i1;
             n.pos2 = pp.second;
             n.in2 = i2;
-            n.s = score(plan.evaluate(choice, goal_), price);
+            n.s = score(plan.evaluate(choice, obj_), price);
             moves.push_back(n);
             ++st.evaluations;
         }
@@ -5050,7 +5120,7 @@ Search::Enumerated Search::enumerate(const std::array<std::vector<int>, RackCoun
                 choice[static_cast<size_t>(lay.firstSlot[ri])] = last;
         }
         ++evalW[static_cast<size_t>(w)];
-        TestResult t = plan.evaluate(choice.data(), goal_);
+        TestResult t = plan.evaluate(choice.data(), obj_);
         if (!(t.goal > 0) || !fitsAll(t))
             return;
         ++fitW[static_cast<size_t>(w)];
@@ -5266,7 +5336,7 @@ void Search::bruteForce()
         for (size_t g = 0; g < capLimit.size(); ++g)
             if (groupUsed[g] > capLimit[g])
                 return;
-        TestResult t = plan.evaluate(choice.data(), goal_);
+        TestResult t = plan.evaluate(choice.data(), obj_);
         if (t.goal <= 0)
             return;
         bool fits = fitsAll(t);
@@ -5294,7 +5364,7 @@ void Search::bruteForce()
             }
             if (!ok)
                 continue;
-            TestResult tf = plan.evaluate(ch.data(), goal_);
+            TestResult tf = plan.evaluate(ch.data(), obj_);
             if (std::abs(tf.goal - t.goal) > 1e-6 * std::abs(t.goal))
                 ++goalChanges[static_cast<size_t>(worker)];
             fits = fitsAll(tf);
@@ -5436,7 +5506,7 @@ bool Search::diagnoseCalibration()
             continue;
         FitInput without = base_;
         without.modules.erase(without.modules.begin() + static_cast<ptrdiff_t>(j));
-        const double cal = used - static_cast<double>(toTestResult(engine_.evaluate(without), goal_).calibrationUsed);
+        const double cal = used - static_cast<double>(toTestResult(engine_.evaluate(without), obj_).calibrationUsed);
         if (cal > 0)
             rigs.emplace_back(static_cast<int>(j), cal);
     }

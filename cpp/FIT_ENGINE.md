@@ -14,6 +14,7 @@ It lives in `cpp/` of the pyfa repo, on branch `cppfa`. Pyfa is the ground truth
 | `ShieldActive` / `ArmorActive` | Effective sustainable rep/s of that layer: pyfa's `sustainableTank` with **reload always factored in**, ÷ the same mean resist |
 | `ShieldResists` / `ArmorResists` | EHP per HP of that layer: 1 ÷ the mean resist multiplier |
 | `ShieldRemote` / `ArmorRemote` | Outgoing remote rep/s (HP/s) of that layer: pyfa's `Module.getRemoteReps` per remote repairer (reload factored in, mutadaptive ones fully spooled), the capacitor left after every other module shared between them most cap-efficient first (`makeRemoteProfile`) |
+| `LocalShieldRemoteShield` … `LocalArmorRemoteArmor` | Balanced: the harmonic mean of the local layer's effective rep/s (the goal's remote repairers off) and remote rep/s × `Objective::remoteWeight` (the goal's local repairers off), `balancedParts` / `balancedScore` |
 
 Every evaluation also returns:
 - **Fitting:** CPU, powergrid and calibration, used and available.

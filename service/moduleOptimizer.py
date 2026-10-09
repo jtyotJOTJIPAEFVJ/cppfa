@@ -42,7 +42,13 @@ REQUEST_VERSION = 1
 
 # Goal names of the request, in the order the dialog shows them
 GOALS = ('shieldPassive', 'armorPassive', 'hullPassive', 'shieldActive', 'armorActive', 'shieldResists',
-         'armorResists', 'shieldRemote', 'armorRemote')
+         'armorResists', 'shieldRemote', 'armorRemote', 'localShieldRemoteShield', 'localShieldRemoteArmor',
+         'localArmorRemoteShield', 'localArmorRemoteArmor')
+
+
+def isBalancedGoal(goal):
+    """Local tank and remote repair together (the harmonic mean of the two, see OPTIMIZER_CLI.md)."""
+    return goal.startswith('local')
 
 # Only these slots can be optimized (high slots: for remote repairers)
 OPTIMIZABLE_SLOTS = (FittingSlot.HIGH, FittingSlot.MED, FittingSlot.LOW, FittingSlot.RIG)
@@ -126,7 +132,7 @@ def buildModuleEntry(position, mod, optimize):
 
 def buildRequest(fit, positions, goal, priceCap=0, allowOfficer=False, results=10, threads=0,
                  prices=None, allSkillsV=False, timeBudget=60, allowAncillary=True, maxReps=0,
-                 requireCapStable=False, minCapRecharge=0):
+                 requireCapStable=False, minCapRecharge=0, remoteWeight=4):
     """
     The request dict for fit, with the modules (or empty slots) at positions (indices in
     fit.modules) open. prices: {typeID: ISK}; None reads pyfa's price cache.
@@ -136,6 +142,7 @@ def buildRequest(fit, positions, goal, priceCap=0, allowOfficer=False, results=1
     goal's repairers in the fit (active and remote goals, 0 for no limit);
     requireCapStable and minCapRecharge (GJ/s, peak recharge plus cap boosters) are
     capacitor requirements. An option that misses one doesn't count as fitting.
+    remoteWeight: balanced goals, the EHP/s one remote HP/s is worth (the rep target's resists).
     """
     if goal not in GOALS:
         raise ValueError('Unknown goal {}'.format(goal))
@@ -163,6 +170,7 @@ def buildRequest(fit, positions, goal, priceCap=0, allowOfficer=False, results=1
     request['maxReps'] = max(0, int(maxReps or 0))
     request['requireCapStable'] = bool(requireCapStable)
     request['minCapRecharge'] = max(0.0, float(minCapRecharge or 0))
+    request['remoteWeight'] = max(0.1, float(remoteWeight or 4))
     request['results'] = int(results)
     request['threads'] = int(threads)
     request['timeBudget'] = max(0.0, float(timeBudget or 0))
@@ -257,6 +265,9 @@ class FitStats:
         self.capUsed = data.get('capUsed', 0.0)
         self.capRecharge = data.get('capRecharge', 0.0)
         self.capStable = bool(data.get('capStable', True))
+        # Balanced goals: local tank (EHP/s) and remote repair (HP/s), each in its own test
+        self.localRep = data.get('localRep')
+        self.remoteRep = data.get('remoteRep')
         self.fits = bool(data.get('fits', True))
         self.price = data.get('price')
 

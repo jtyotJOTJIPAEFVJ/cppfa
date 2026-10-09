@@ -38,12 +38,13 @@ const char* rackName(int rack);
 struct Options
 {
     Goal goal = Goal::ArmorActive;
+    double remoteWeight = 4;  // balanced goals (Objective::remoteWeight): EHP/s per remote HP/s
     std::array<bool, RackCount> search{true, true, true, false};  // racks whose slots are searched
     bool allowOfficer = false;
     // Constraints. allowAncillary false: no ancillary repairers (local or remote) among
-    // the candidates. maxReps (active and remote goals; 0 = no limit): the goal's
-    // repairers in the fit at most (local ones of the goal's layer, or remote ones),
-    // the pinned ones included. requireCapStable: capacitor use within recharge
+    // the candidates. maxReps (active, remote and balanced goals; 0 = no limit): the
+    // goal's repairers in the fit at most (local ones of the goal's layer, remote ones,
+    // or both for balanced goals), the pinned ones included. requireCapStable: capacitor use within recharge
     // (TestResult::capUsed <= capRecharge, pyfa's simplified check). minCapRecharge:
     // TestResult::capRecharge (peak recharge + cap boosters, GJ/s) at least this. A set
     // that misses a constraint doesn't count as fitting.

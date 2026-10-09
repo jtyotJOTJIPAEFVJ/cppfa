@@ -50,7 +50,11 @@ def goalLabels():
         'shieldResists': _t('Shield resists only'),
         'armorResists': _t('Armor resists only'),
         'shieldRemote': _t('Remote shield repair, sustained (HP/s)'),
-        'armorRemote': _t('Remote armor repair, sustained (HP/s)')}
+        'armorRemote': _t('Remote armor repair, sustained (HP/s)'),
+        'localShieldRemoteShield': _t('Local shield + remote shield repair, balanced'),
+        'localShieldRemoteArmor': _t('Local shield + remote armor repair, balanced'),
+        'localArmorRemoteShield': _t('Local armor + remote shield repair, balanced'),
+        'localArmorRemoteArmor': _t('Local armor + remote armor repair, balanced')}
 
 
 def slotLabels():
@@ -71,8 +75,16 @@ def slotLabel(fit, position):
 
 
 def isActiveGoal(goal):
-    """Repair per second: local (active) or remote."""
-    return goal.endswith('Active') or goal.endswith('Remote')
+    """Repair per second: local (active), remote or both (balanced)."""
+    return goal.endswith('Active') or goal.endswith('Remote') or mo.isBalancedGoal(goal)
+
+
+def goalCell(goal, value, stats):
+    """The Goal column; balanced goals add the two sides: local EHP/s and remote HP/s."""
+    text = formatGoal(goal, value)
+    if mo.isBalancedGoal(goal) and stats is not None and stats.localRep is not None:
+        text += ' ({} / {})'.format(formatAmount(stats.localRep, 4, 0, 0), formatAmount(stats.remoteRep, 4, 0, 0))
+    return text
 
 
 def isResistGoal(goal):
@@ -175,7 +187,11 @@ class ModuleOptimizerDialog(wx.Frame):
         self.goalChoice.SetToolTip(_t('Passive: effective HP for uniform damage. Active: effective HP per second '
                                       'repaired, sustained by the capacitor. Resists only: the average resist of '
                                       'the layer (uniform damage), ignoring its HP. Remote: HP per second the '
-                                      'remote repairers give, sustained by the capacitor (select high slots).'))
+                                      'remote repairers give, sustained by the capacitor (select high slots). '
+                                      'Balanced: local tank and remote repair together, each measured with the '
+                                      'other side\'s repairers off; the score is the harmonic mean of local EHP/s '
+                                      'and remote HP/s times the target resists multiplier, shown with '
+                                      '(local / remote).'))
         options.Add(self.goalChoice, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
 
         priceLabel = wx.StaticText(panel, label=_t('Max price per module (M ISK):'))
@@ -215,6 +231,16 @@ class ModuleOptimizerDialog(wx.Frame):
 
         # Constraints
         constraints = wx.BoxSizer(wx.HORIZONTAL)
+        weightLabel = wx.StaticText(panel, label=_t('Target resists:'))
+        constraints.Add(weightLabel, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+        self.remoteWeight = wx.SpinCtrlDouble(panel, min=0.5, max=100, inc=0.5,
+                                              initial=float(self.settings.get('remoteWeight')))
+        self.remoteWeight.SetDigits(1)
+        tip = _t('Balanced goals: the EHP the rep target gets per HP repaired (its resist multiplier; 4 for 75 % '
+                 'resists). Remote HP/s times this is balanced against the local EHP/s.')
+        weightLabel.SetToolTip(tip)
+        self.remoteWeight.SetToolTip(tip)
+        constraints.Add(self.remoteWeight, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
         self.allowAncillary = wx.CheckBox(panel, label=_t('Ancillary repairers'))
         self.allowAncillary.SetValue(self.settings.get('allowAncillary'))
         self.allowAncillary.SetToolTip(_t('Allow ancillary shield boosters and armor repairers (local and remote). '
@@ -295,6 +321,8 @@ class ModuleOptimizerDialog(wx.Frame):
         self.SetClientSize(wx.Size(max(sizer.GetMinSize().width, 980), sizer.GetMinSize().height + 40))
         self.CenterOnParent()
 
+        self.updateGoalControls()
+        self.goalChoice.Bind(wx.EVT_CHOICE, self.onGoalChanged)
         self.runButton.Bind(wx.EVT_BUTTON, self.onRun)
         self.cancelButton.Bind(wx.EVT_BUTTON, self.onCancel)
         self.onlineButton.Bind(wx.EVT_BUTTON, self.onSetOnline)
@@ -340,6 +368,7 @@ class ModuleOptimizerDialog(wx.Frame):
         self.settings.set('maxReps', self.maxReps.GetValue())
         self.settings.set('requireCapStable', self.requireCapStable.GetValue())
         self.settings.set('minCapRecharge', max(0.0, self.minCapRecharge.GetValue()))
+        self.settings.set('remoteWeight', max(0.5, self.remoteWeight.GetValue()))
         self.settings.set('results', self.resultCount.GetValue())
         self.settings.set('timeBudget', self.timeBudget.GetValue())
         return goal
@@ -371,7 +400,7 @@ class ModuleOptimizerDialog(wx.Frame):
                 threads=self.settings.get('threads'), timeBudget=self.settings.get('timeBudget'),
                 allowAncillary=self.settings.get('allowAncillary'), maxReps=self.settings.get('maxReps'),
                 requireCapStable=self.settings.get('requireCapStable'),
-                minCapRecharge=self.settings.get('minCapRecharge'))
+                minCapRecharge=self.settings.get('minCapRecharge'), remoteWeight=self.settings.get('remoteWeight'))
         except Exception as e:
             pyfalog.exception('Failed to build the optimizer request')
             wx.MessageBox(_t('Could not describe the fit to the optimizer:\n{}').format(e),
@@ -453,6 +482,14 @@ class ModuleOptimizerDialog(wx.Frame):
                         self.allowAncillary, self.maxReps, self.requireCapStable, self.minCapRecharge,
                         self.exeButton):
             control.Enable(not running)
+        self.updateGoalControls(running)
+
+    def updateGoalControls(self, running=False):
+        goal = mo.GOALS[max(0, self.goalChoice.GetSelection())]
+        self.remoteWeight.Enable(not running and mo.isBalancedGoal(goal))
+
+    def onGoalChanged(self, event):
+        self.updateGoalControls(self.run is not None)
 
     # -------------------------------------------------------------------------
     # Results
@@ -494,7 +531,7 @@ class ModuleOptimizerDialog(wx.Frame):
         start = result.start
         # Row 0: the fit as it was
         startRow = self.list.InsertItem(0, _t('now'))
-        values = [formatGoal(goal, start.goal), '', formatIsk(start.price), '',
+        values = [goalCell(goal, start.goal, start), '', formatIsk(start.price), '',
                   formatUse(start.cpuUsed, start.cpuOutput), formatUse(start.powerUsed, start.powerOutput),
                   formatUse(start.calibrationUsed, start.calibrationOutput), self.capText(start),
                   _t('yes') if start.fits else _t('no'), _t('(current modules)')]
@@ -504,7 +541,7 @@ class ModuleOptimizerDialog(wx.Frame):
         for option in self.rows:
             row = self.list.InsertItem(self.list.GetItemCount(), str(option.rank))
             stats = option.stats
-            values = [formatGoal(goal, option.goal), formatGain(goal, option, start), formatIsk(option.price),
+            values = [goalCell(goal, option.goal, stats), formatGain(goal, option, start), formatIsk(option.price),
                       formatIsk(option.priceDelta, signed=True),
                       formatUse(stats.cpuUsed, stats.cpuOutput), formatUse(stats.powerUsed, stats.powerOutput),
                       formatUse(stats.calibrationUsed, stats.calibrationOutput), self.capText(stats),
