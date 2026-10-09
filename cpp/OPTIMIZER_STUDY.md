@@ -151,7 +151,7 @@ Time cost overall: +0.5-1 s for small requests, +1-5 s at 16 threads for whole r
 - **The pruning rule is a dominance heuristic.** It is checked by the member brute force (unpruned) on the 197 small requests (132 of them again on the final build) with no loss. A module that is weaker on every measured stat but helps through an unmeasured interaction would be lost. None is known.
 - "Infeasible (search)" is still not a proof (see `OPTIMIZER_STATUS.md` 4.).
 - Next steps:
-  1. Faster plan reuse in refine. Plan builds are ~85 % of refine's time (one plan per position per sweep), so first-improvement sweeps or incremental plans could cut it 2-3x. That would allow a larger exact-pass limit and more patience.
+  1. Faster plan reuse in refine. Measured (log line `refine thread time`, 1 thread): plan builds were 61-70 % of refine's time, not ~85 %, at 0.31-0.46 ms per plan; plan evaluations were 24-35 %. Plan construction has since been sped up ~2.9x (0.41 → 0.14 ms on Hawk 123 and Myrmidon 2593; refine 1.7-1.9x faster at 1 and 16 threads, identical results): item prototypes per type, a reused base scratch, a skill/group module index for modifier targets, precomputed skill modifiers and effect lists, and a linear order check. Plan builds are now ~40 % of refine and evaluations ~58 %, so first-improvement sweeps or incremental plans would now save less; per-test cost matters as much.
   2. A 1-thread time table for the saved fits, plus `det.py` (two 16-thread runs compared option by option).
   3. Finish the 4-slot member sweep on the final build, with a faster brute-force layout for big mid pools.
   4. The member brute force could replace stage 1 entirely for very small requests (1-2 slots), where it is faster than building the model.
