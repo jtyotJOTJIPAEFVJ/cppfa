@@ -679,6 +679,8 @@ class ModuleOptimizerDialog(wx.Frame):
                     modInfos[choice.position] = self.originals.get(choice.position)
                 elif choice.isEmpty:
                     modInfos[choice.position] = None
+                elif choice.baseTypeID:
+                    modInfos[choice.position] = self.ownedMutated(choice)
                 else:
                     modInfos[choice.position] = ModuleInfo(
                         itemID=choice.typeID, chargeID=choice.chargeID,
@@ -692,6 +694,21 @@ class ModuleOptimizerDialog(wx.Frame):
             self.list.Select(selected)
             self.list.Focus(selected)
         self.checkApplied(fit, modInfos)
+
+    def ownedMutated(self, choice):
+        """A mutated module the optimizer kept (maybe in another slot): the original one, mutaplasmid and all."""
+        for info in self.originals.values():
+            if info is not None and info.itemID == choice.typeID and info.baseItemID == choice.baseTypeID and \
+                    all(abs(info.mutations.get(k, float('nan')) - v) <= 1e-6 * max(1.0, abs(v))
+                        for k, v in choice.mutators.items()):
+                return ModuleInfo(
+                    itemID=info.itemID, baseItemID=info.baseItemID, mutaplasmidID=info.mutaplasmidID,
+                    mutations=dict(info.mutations), chargeID=choice.chargeID,
+                    state=choice.state if choice.state is not None else FittingModuleState.ONLINE,
+                    spoolType=info.spoolType, spoolAmount=info.spoolAmount, rahPattern=info.rahPattern)
+        pyfalog.warning('Optimizer kept a mutated module that is not in the opened slots: {}', choice)
+        return ModuleInfo(itemID=choice.typeID, baseItemID=choice.baseTypeID, mutations=dict(choice.mutators),
+                          chargeID=choice.chargeID, state=choice.state)
 
     def checkApplied(self, fit, modInfos):
         """Tell the user about slots pyfa refused (restrictions, charges)."""

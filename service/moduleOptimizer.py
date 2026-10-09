@@ -241,6 +241,9 @@ class SlotChoice:
         self.name = data.get('name') or ''
         self.chargeName = data.get('chargeName') or ''
         self.unchanged = bool(data.get('unchanged'))
+        # An owned mutated (abyssal) module from an opened slot: its base type and mutations
+        self.baseTypeID = data.get('baseTypeID') or None
+        self.mutators = {int(k): v for k, v in (data.get('mutators') or {}).items()}
 
     @property
     def isEmpty(self):
