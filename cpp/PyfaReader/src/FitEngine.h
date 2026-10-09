@@ -122,6 +122,10 @@ struct ModuleStats
     bool pasteCharge = false;  // the loaded charge is Nanite Repair Paste
     float duration = 0;        // 'duration' attribute (ms)
     float shieldBonus = 0, armorDamage = 0, structureDamage = 0, chargedArmorMult = 0;
+    // Remote repairers (active): the layer (-1: none) and the amount per cycle, charge
+    // multiplier and full spool-up included (pyfa getRepAmountParameters).
+    int8_t remoteLayer = -1;
+    float remoteAmount = 0;
 };
 
 // pyfa __generateDrain: capacitor used by active modules and added by cap boosters.
@@ -160,6 +164,9 @@ struct RepProfile
     std::array<float, LayerCount> repairAll(double extraCapUse = 0) const;
 };
 RepProfile makeRepProfile(const ModuleStats* modules, int count, float capUsed, float capRecharge);
+// The same for outgoing remote repair of one layer (Goal::ShieldRemote / ArmorRemote):
+// its reps are the layer's remote repairers, every other module uses capacitor in full.
+RepProfile makeRemoteProfile(const ModuleStats* modules, int count, float capUsed, float capRecharge, int layer);
 
 struct FitResult
 {
@@ -167,11 +174,13 @@ struct FitResult
     std::array<float, std::size(fitschema::ShipAttrs::kFields)> ship{};
     float cpuUsed = 0, powerUsed = 0, calibrationUsed = 0;
     std::array<float, LayerCount> hp{}, ehp{};  // ehp: uniform damage profile
+    std::array<float, LayerCount> divider{};    // mean resonance (uniform damage); ehp = hp / divider
     float capPeakRecharge = 0;  // GJ/s at 25% cap
     float capRecharge = 0;      // peak recharge + injectors
     float capUsed = 0;          // GJ/s used by active modules
     // Sustainable local repair (pyfa's sustainableTank), raw and effective HP/s.
     std::array<float, LayerCount> repair{}, effectiveRepair{};
+    std::array<float, LayerCount> remoteRepair{};  // outgoing, HP/s (makeRemoteProfile)
     std::vector<ModuleResult> modules;  // in input order
     std::vector<std::string> warnings;
 
@@ -221,6 +230,10 @@ enum class Goal
     HullPassive,    // hull EHP
     ShieldActive,   // effective sustainable shield rep/s
     ArmorActive,    // effective sustainable armor rep/s
+    ShieldResists,  // shield EHP per HP: 1 / mean shield resonance (uniform damage)
+    ArmorResists,   // armor EHP per HP: 1 / mean armor resonance (uniform damage)
+    ShieldRemote,   // outgoing remote shield repair, sustained by the capacitor (HP/s)
+    ArmorRemote,    // outgoing remote armor repair, sustained by the capacitor (HP/s)
 };
 
 struct SearchSpec

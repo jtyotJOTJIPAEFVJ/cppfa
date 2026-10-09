@@ -6,15 +6,17 @@
 //   PyfaReader [--game ...] [--save ...] --engine-dump <out.tsv>
 //   PyfaReader [--game ...] [--save ...] --search-check [maxFits]
 //   PyfaReader [--game ...] [--save ...] --bench [fitID [seconds [goal]]]   (profiling case)
-//   PyfaReader [--game ...] [--save ...] --optimize <fitID> <goal> [--racks mid,low,rig] [--price-cap ISK]
-//              [--allow-officer] [--top K] [--results N] [--dump-kinds] [--slots m,l,r] [--threads N]
-//   PyfaReader [--game ...] [--save ...] --optimize-check <fitID>[,<fitID>...] [goal|all] [--slots m,l,r]
-//              [--verbose]   (stage 1 vs brute force; default 2 mid / 2 low / 1 rig open)
+//   PyfaReader [--game ...] [--save ...] --optimize <fitID> <goal> [--racks mid,low,rig,high] [--price-cap ISK]
+//              [--allow-officer] [--top K] [--results N] [--dump-kinds] [--slots m,l,r[,h]] [--threads N]
+//              [--no-ancillary] [--max-reps N] [--cap-stable] [--min-cap-recharge GJ/s]
+//   PyfaReader [--game ...] [--save ...] --optimize-check <fitID>[,<fitID>...] [goal|all] [--slots m,l,r[,h]]
+//              [--verbose]   (stage 1 vs brute force; default 2 mid / 2 low / 1 rig / 2 high open, racks
+//              as --racks: mid, low and rig unless given; also the --optimize constraint options)
 //   PyfaReader [--game ...] [--save ...] --optimize-request <in.json|-> [--out <out.json>] [--goal G] [--check]
 //              [--threads N] [--slots m,l,r] [--verbose]   (pyfa integration, see cpp/OPTIMIZER_CLI.md)
 //              [--members] [--no-refine] [--time-budget S] [--refine-rounds N] [--refine-patience N]
 //              [--refine-pairs N] [--refine-chains N] [--refine-starts N] [--refine-exact N]   (refine tests; also for --optimize)
-//   PyfaReader [--game ...] [--save ...] --make-request <fitID> [--open all|mid:0,1;low:2;rig:*] [--goal G]
+//   PyfaReader [--game ...] [--save ...] --make-request <fitID> [--open all|mid:0,1;low:2;rig:*;high:*] [--goal G]
 //              [--out <req.json>]   (a request for a saved fit, for testing)
 //
 // Without a fit it lists the most recently modified fits. A fit name is matched
@@ -173,6 +175,8 @@ int engineDump(const GameData& gd, const Database& save, const fs::path& outPath
             put(std::string("sustainable.") + reps[l], r.repair[l]);
             put(std::string("effectiveSustainable.") + reps[l], r.effectiveRepair[l]);
         }
+        put("remote.shield", r.remoteRepair[fitengine::Shield]);
+        put("remote.armor", r.remoteRepair[fitengine::Armor]);
         put("cap.peakRecharge", r.capPeakRecharge);
         put("cap.recharge", r.capRecharge);
         put("cap.used", r.capUsed);
@@ -208,9 +212,11 @@ int searchCheck(const GameData& gd, const Database& save, int maxFits)
     Character ch = gd.loadCharacter(5);
     Engine engine(gd, ch);
     std::mt19937 rng(12345);
-    const Goal goals[] = {Goal::ShieldPassive, Goal::ArmorPassive, Goal::HullPassive, Goal::ShieldActive,
-                          Goal::ArmorActive};
-    const char* goalNames[] = {"shieldPassive", "armorPassive", "hullPassive", "shieldActive", "armorActive"};
+    const Goal goals[] = {Goal::ShieldPassive, Goal::ArmorPassive,  Goal::HullPassive,   Goal::ShieldActive,
+                          Goal::ArmorActive,   Goal::ShieldResists, Goal::ArmorResists, Goal::ShieldRemote,
+                          Goal::ArmorRemote};
+    const char* goalNames[] = {"shieldPassive", "armorPassive", "hullPassive", "shieldActive", "armorActive", "shieldResists",
+                               "armorResists", "shieldRemote", "armorRemote"};
 
     size_t fits = 0, tests = 0, mismatches = 0, detailMismatches = 0, instructions = 0, dynamic = 0, orderFits = 0;
     double planSeconds = 0, fullSeconds = 0, buildSeconds = 0;
@@ -311,6 +317,10 @@ int searchCheck(const GameData& gd, const Database& save, int maxFits)
                         RepProfile p = makeRepProfile(detail.modules.data(), detail.moduleCount, cs.used, recharge);
                         same &= p.repair(layer) / detail.divider[static_cast<size_t>(layer)] == again.goal;
                     }
+                    int remote = goals[g] == Goal::ShieldRemote ? Shield : goals[g] == Goal::ArmorRemote ? Armor : -1;
+                    if (remote >= 0)
+                        same &= makeRemoteProfile(detail.modules.data(), detail.moduleCount, cs.used, recharge, remote)
+                                    .repair(remote) == again.goal;
                     if (!same && detailMismatches++ < 10)
                         std::cerr << "fit " << fit->id << " " << goalNames[g] << ": detail doesn't reproduce the test\n";
                 }
@@ -343,15 +353,7 @@ int searchCheck(const GameData& gd, const Database& save, int maxFits)
 int bench(const GameData& gd, const Database& save, int64_t fitID, double seconds, const std::string& goalName)
 {
     using namespace fitengine;
-    const std::pair<const char*, Goal> goals[] = {{"shieldPassive", Goal::ShieldPassive},
-                                                  {"armorPassive", Goal::ArmorPassive},
-                                                  {"hullPassive", Goal::HullPassive},
-                                                  {"shieldActive", Goal::ShieldActive},
-                                                  {"armorActive", Goal::ArmorActive}};
-    Goal goal = Goal::ArmorActive;
-    for (const auto& [name, g] : goals)
-        if (goalName == name)
-            goal = g;
+    Goal goal = request::parseGoal(goalName).value_or(Goal::ArmorActive);
 
     auto isMidOrLow = [&](int typeID) {
         const Type* t = gd.type(typeID);
@@ -453,16 +455,7 @@ int bench(const GameData& gd, const Database& save, int64_t fitID, double second
 
 std::optional<fitengine::Goal> parseGoal(const std::string& name)
 {
-    using fitengine::Goal;
-    const std::pair<const char*, Goal> goals[] = {{"shieldPassive", Goal::ShieldPassive},
-                                                  {"armorPassive", Goal::ArmorPassive},
-                                                  {"hullPassive", Goal::HullPassive},
-                                                  {"shieldActive", Goal::ShieldActive},
-                                                  {"armorActive", Goal::ArmorActive}};
-    for (const auto& [n, g] : goals)
-        if (name == n)
-            return g;
-    return std::nullopt;
+    return request::parseGoal(name);
 }
 
 // The best modules for a saved fit's mid/low/rig slots (fitengine::opt).
@@ -555,7 +548,8 @@ int optimizeCheck(const GameData& gd, const Database& save, const std::vector<in
     opt.prices = prices.empty() ? nullptr : &prices;
     opt.bruteForce = true;
     opt.log = verbose ? &std::cerr : nullptr;
-    const char* goalNames[] = {"shieldPassive", "armorPassive", "hullPassive", "shieldActive", "armorActive"};
+    const char* goalNames[] = {"shieldPassive", "armorPassive", "hullPassive", "shieldActive", "armorActive", "shieldResists",
+                               "armorResists", "shieldRemote", "armorRemote"};
     Character ch = gd.loadCharacter(5);
     Engine engine(gd, ch);
     size_t cases = 0, bad = 0;
@@ -736,7 +730,8 @@ int wmain(int argc, wchar_t* argv[])
             auto goal = parseGoal(toUtf8(std::wstring(argv[++i])));
             if (!goal)
             {
-                std::cerr << "unknown goal (shieldPassive, armorPassive, hullPassive, shieldActive, armorActive)\n";
+                std::cerr << "unknown goal (shieldPassive, armorPassive, hullPassive, shieldActive, armorActive, shieldResists, armorResists, "
+                             "shieldRemote, armorRemote)\n";
                 return 1;
             }
             optimizeOpt.goal = *goal;
@@ -751,6 +746,14 @@ int wmain(int argc, wchar_t* argv[])
             optimizeOpt.priceCap = std::stod(toUtf8(std::wstring(argv[++i])));
         else if (arg == L"--allow-officer")
             optimizeOpt.allowOfficer = true;
+        else if (arg == L"--no-ancillary")
+            optimizeOpt.allowAncillary = false;
+        else if (arg == L"--max-reps" && i + 1 < argc)
+            optimizeOpt.maxReps = std::stoi(toUtf8(std::wstring(argv[++i])));
+        else if (arg == L"--cap-stable")
+            optimizeOpt.requireCapStable = true;
+        else if (arg == L"--min-cap-recharge" && i + 1 < argc)
+            optimizeOpt.minCapRecharge = std::stod(toUtf8(std::wstring(argv[++i])));
         else if (arg == L"--top" && i + 1 < argc)
             optimizeOpt.topK = std::stoi(toUtf8(std::wstring(argv[++i])));
         else if (arg == L"--results" && i + 1 < argc)
@@ -780,16 +783,17 @@ int wmain(int argc, wchar_t* argv[])
             {
                 if (g == "all")
                     ++i;
-                for (int k = 0; k < 5; ++k)
+                for (int k = 0; k <= static_cast<int>(fitengine::Goal::ArmorRemote); ++k)
                     checkGoals.push_back(static_cast<fitengine::Goal>(k));
             }
-            optimizeOpt.maxSlots = {2, 2, 1};
+            optimizeOpt.maxSlots = {2, 2, 1, 2};
         }
         else if (arg == L"--slots" && i + 1 < argc)
         {
             std::string v = toUtf8(std::wstring(argv[++i]));
             std::array<int, fitengine::opt::RackCount> m{};
-            if (sscanf_s(v.c_str(), "%d,%d,%d", &m[0], &m[1], &m[2]) == 3)
+            m[fitengine::opt::RackHigh] = 8;
+            if (sscanf_s(v.c_str(), "%d,%d,%d,%d", &m[0], &m[1], &m[2], &m[3]) >= 3)
                 slotsOverride = m;
         }
         else if (arg == L"--threads" && i + 1 < argc)
@@ -812,7 +816,8 @@ int wmain(int argc, wchar_t* argv[])
             goalOverride = request::parseGoal(toUtf8(std::wstring(argv[++i])));
             if (!goalOverride)
             {
-                std::cerr << "unknown goal (shieldPassive, armorPassive, hullPassive, shieldActive, armorActive)\n";
+                std::cerr << "unknown goal (shieldPassive, armorPassive, hullPassive, shieldActive, armorActive, shieldResists, armorResists, "
+                             "shieldRemote, armorRemote)\n";
                 return 2;
             }
         }

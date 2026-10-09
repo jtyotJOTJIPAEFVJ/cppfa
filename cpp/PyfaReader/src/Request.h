@@ -41,6 +41,10 @@ struct Request
     fitengine::Goal goal = fitengine::Goal::ArmorActive;
     double priceCap = 0;
     bool allowOfficer = false;
+    bool allowAncillary = true;     // Options::allowAncillary
+    int maxReps = 0;                // Options::maxReps (0 = no limit)
+    bool requireCapStable = false;  // Options::requireCapStable
+    double minCapRecharge = 0;      // Options::minCapRecharge (GJ/s)
     int results = 10;
     int threads = 0;
     double timeBudget = 60;  // seconds (Options::timeBudget); 0 = no limit
@@ -74,8 +78,8 @@ json::Value errorResponse(const std::string& message);
 
 // A request for a saved fit (testing): every module with its state; `open` picks the
 // slots to optimize as "all" (every mid, low and rig slot, padded with empty slots up
-// to the rack size) or "mid:0,1;low:2;rig:*" (indices within the rack, in position
-// order, empty slots included; '*' = the whole rack).
+// to the rack size) or "mid:0,1;low:2;rig:*;high:*" (indices within the rack, in
+// position order, empty slots included; '*' = the whole rack).
 json::Value makeRequest(const GameData& gd, const fitengine::Engine& engine, const Fit& fit, const std::string& open, fitengine::Goal goal);
 
 const char* goalName(fitengine::Goal g);

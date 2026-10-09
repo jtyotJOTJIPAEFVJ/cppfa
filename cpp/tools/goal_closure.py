@@ -25,6 +25,8 @@ BURSTS = [('module', f'warfareBuff{x}Value') for x in range(1, 5)]
 # are unresolved and the backward pass can't find these on its own.
 RAH = [('module', 'resistanceShiftAmount')] + [('module', f'armor{x}DamageResonance')
                                                for x in ('Em', 'Thermal', 'Kinetic', 'Explosive')]
+# Mutadaptive remote armor repairers: pyfa spools them up (default: fully) per cycle.
+SPOOL = [('module', 'repairMultiplierBonusMax'), ('module', 'repairMultiplierBonusPerCycle')]
 FITTING = [('ship', a) for a in ('cpuOutput', 'powerOutput', 'upgradeCapacity',
                                   # slot / hardpoint counts: T3 subsystems change them
                                   'hiSlots', 'medSlots', 'lowSlots', 'rigSlots',
@@ -37,6 +39,9 @@ GOALS = {
     'shieldActive': [('ship', f'shield{x}DamageResonance') for x in RES] + [('module', 'shieldBonus')] + CAP,
     'armorActive': [('ship', f'armor{x}DamageResonance') for x in RES] +
                    [('module', 'armorDamageAmount'), ('module', 'chargedArmorDamageMultiplier')] + CAP + RAH,
+    # Outgoing remote repair (pyfa Module.getRemoteReps), mutadaptive spool-up included.
+    'shieldRemote': [('module', 'shieldBonus')] + CAP + SPOOL,
+    'armorRemote': [('module', 'armorDamageAmount'), ('module', 'chargedArmorDamageMultiplier')] + CAP + SPOOL,
     # Not an optimization goal, but pyfa reports hull rep/s; cheap to keep it exact.
     'hullActive': [('ship', f'{x.lower()}DamageResonance') for x in RES] + [('module', 'structureDamageAmount')] + CAP,
 }

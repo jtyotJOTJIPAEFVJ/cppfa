@@ -35,6 +35,9 @@ TOP = [
 ] + [
     ('effectiveSustainable', k, f'effectiveSustainable.{k}') for k in ('shieldRepair', 'armorRepair', 'hullRepair')
 ]
+# Outgoing remote repair: the engine's is sustained by the capacitor (makeRemoteProfile),
+# pyfa's isn't, so it's compared on cap-stable fits only.
+REMOTE = [('remote', k, f'remote.{k}') for k in ('shield', 'armor')]
 MODULE_SCALARS = ('rawCycleTime', 'reactivationDelay', 'moduleReloadTime', 'averageCycleTime', 'capUse', 'numShots')
 
 
@@ -90,6 +93,10 @@ def main():
         for section, k, ek in TOP:
             if ref[section].get(k) is not None:
                 pairs.append((ek, ref[section][k], got.get(ek)))
+        if ref.get('remote') and ref['cap']['used'] is not None and ref['cap']['used'] <= ref['cap']['recharge']:
+            for section, k, ek in REMOTE:
+                if ref[section].get(k) is not None:
+                    pairs.append((ek, ref[section][k], got.get(ek)))
         for m in ref['modules']:
             p = f"mod.{m['position']}."
             for attr, v in m['attrs'].items():
