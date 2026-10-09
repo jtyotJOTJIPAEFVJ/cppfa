@@ -777,6 +777,7 @@ private:
     struct RefineStats
     {
         size_t sweeps = 0, pairChecks = 0, evaluations = 0, canonicalEvals = 0, plans = 0;
+        double planSeconds = 0, evalSeconds = 0, canonicalSeconds = 0;  // thread time
     };
     bool improveOnce(RSet& x, RefineStats& st, bool pairs);
     void localSearch(RSet& x, RefineStats& st, const Clock::time_point* deadline);
@@ -4129,7 +4130,9 @@ bool Search::improveOnce(RSet& x, RefineStats& st, bool pairs)
                 withIn(y, q.rack, n.in2);
             }
             withIn(y, p.rack, n.in);
+            auto tc = Clock::now();
             canonical(y);
+            st.canonicalSeconds += std::chrono::duration<double>(Clock::now() - tc).count();
             ++st.canonicalEvals;
             if (better(y.s, x.s))
             {
@@ -4176,7 +4179,10 @@ bool Search::improveOnce(RSet& x, RefineStats& st, bool pairs)
                 ++end;
             }
             spec.slots = {std::move(in)};
+            auto tb = Clock::now();
             SearchPlan plan(engine_, spec);
+            auto te = Clock::now();
+            st.planSeconds += std::chrono::duration<double>(te - tb).count();
             ++st.plans;
             if (first && out >= 0)
             {
@@ -4198,6 +4204,7 @@ bool Search::improveOnce(RSet& x, RefineStats& st, bool pairs)
                 nbs.push_back(n);
                 ++st.evaluations;
             }
+            st.evalSeconds += std::chrono::duration<double>(Clock::now() - te).count();
             at = end;
         }
     }
@@ -4327,7 +4334,10 @@ bool Search::improveOnce(RSet& x, RefineStats& st, bool pairs)
         }
         if (itemsOf(spec.base) + 2 * static_cast<int>(ins[0].size() + ins[1].size()) > kPlanItemBudget)
             continue;  // can't happen with refinePairs in the hundreds; skip rather than fail
+        auto tb = Clock::now();
         SearchPlan plan(engine_, spec);
+        auto te = Clock::now();
+        st.planSeconds += std::chrono::duration<double>(te - tb).count();
         ++st.plans;
         std::vector<int> ids = allIds(rest);
         const size_t restN = ids.size();
@@ -4353,6 +4363,7 @@ bool Search::improveOnce(RSet& x, RefineStats& st, bool pairs)
             moves.push_back(n);
             ++st.evaluations;
         }
+        st.evalSeconds += std::chrono::duration<double>(Clock::now() - te).count();
     }
     return accept(moves);
 }
@@ -4604,6 +4615,9 @@ void Search::refine(Clock::time_point t0)
         tot.evaluations += s.evaluations;
         tot.canonicalEvals += s.canonicalEvals;
         tot.plans += s.plans;
+        tot.planSeconds += s.planSeconds;
+        tot.evalSeconds += s.evalSeconds;
+        tot.canonicalSeconds += s.canonicalSeconds;
     }
     stats.refineEvaluations = tot.evaluations + refineEvals_.load();
     logLine("refine: " + std::to_string(rounds) + " rounds on " + std::to_string(chain.size()) + " chains (" + stop +
@@ -4611,6 +4625,11 @@ void Search::refine(Clock::time_point t0)
             std::to_string(tot.plans) + " plans, " + std::to_string(tot.evaluations) + " plan evaluations, " +
             std::to_string(refineEvals_.load()) + " canonical; best " +
             (best.fits ? std::to_string(best.goal) : std::string("none")));
+    logLine("refine thread time: plan builds " + std::to_string(tot.planSeconds) + " s (" +
+            std::to_string(tot.planSeconds * 1e3 / std::max<size_t>(tot.plans, 1)) + " ms each), plan evaluations " +
+            std::to_string(tot.evalSeconds) + " s (" +
+            std::to_string(tot.evalSeconds * 1e6 / std::max<size_t>(tot.evaluations, 1)) + " us each), canonical " +
+            std::to_string(tot.canonicalSeconds) + " s");
 }
 
 // Options::memberBruteForce: every combination of every module choice of the open

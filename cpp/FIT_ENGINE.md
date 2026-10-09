@@ -133,7 +133,7 @@ The engine uses these layouts generically, by field index. The named structs exi
 
 `Engine(gameData, character)` compiles the TSV rows into `Mod`s. A `Mod` holds enum operation, target and source selectors, a schema `Attr` target, resolved skill/attribute IDs, filters and conditions. Mods are stored per effect and per context. Only rows whose target attribute is in the schema are kept (~5,000).
 
-`FitResult Engine::evaluate(const FitInput&)` (~70 µs per fit) does the following.
+`FitResult Engine::evaluate(const FitInput&)` (~40 µs per fit on the saved fits, `--engine-dump`) does the following.
 
 **Items:** ship, mode, implants, boosters, modules, and charges as their own items. Each item has its layout's fields in a float arena, in 8 arrays:
 - base value
@@ -190,7 +190,7 @@ SearchSpec spec;
 spec.base = fit;                  // ship, mode, implants, boosters, pinned modules (with states/charges)
 spec.slots = {{opt1, opt2, ...},  // open slot 0: candidate ModuleInputs (type, state, charge, mutators)
               {...}, ...};
-SearchPlan plan(engine, spec);    // ~0.1-0.5 ms
+SearchPlan plan(engine, spec);    // ~0.05-0.15 ms
 TestResult r = plan.evaluate(choice, Goal::ArmorActive);  // choice[i] = option index or -1 (empty)
 FitInput full = plan.fitFor(choice);   // the equivalent full fit
 ```
@@ -236,7 +236,7 @@ FitInput full = plan.fitFor(choice);   // the equivalent full fit
 **Performance** (single thread, Release, i.e. the user's machine):
 - `--search-check` average (≤4 open slots): **~1.0 µs** per test
 - `--bench 1980 15 armorActive`: **1.5 µs** per test (~665k/s). That's a C5 Paladin with 11 open slots × up to 8 options, 152 instructions replayed per test, 5 of 110 items written, 4 of 98 modules with per-test cycle values.
-- Full `Engine::evaluate`: ~70 µs.
+- Full `Engine::evaluate`: ~20 µs (`--search-check` fits), ~40 µs (all saved fits).
 
 Profiles showed the remaining cost spread over:
 - the replay loop (amount reads and applying)
@@ -311,6 +311,6 @@ To profile in Visual Studio: Release|x64, Debugging → Command Arguments `--ben
 
 - **Parallelism:** build one `SearchPlan` per (ship, pinned modules, implants, boosters, candidate sets) and evaluate combinations from multiple threads; `evaluate` is thread-safe.
 - **Cost drivers:** cost per test grows with the number of instructions replayed per test, i.e. options whose effects interact with other parts of the fit. Options that don't affect the goal still cost their own instructions. Filtering candidates by goal relevance before building the plan pays off; `goal_closure.py`'s backward pass identifies which groups and attributes a goal depends on.
-- **Rebuilding:** plan build is ~0.1–0.5 ms, so rebuilding plans with narrower candidate sets during a search, e.g. per branch, is affordable.
+- **Rebuilding:** plan build is ~0.05–0.15 ms (refine's plans, ~220 items: 0.14 ms), so rebuilding plans with narrower candidate sets during a search, e.g. per branch, is affordable.
 - **Pinned modules:** they keep their state. A pinned remote rep set to active consumes capacitor in every test, which is the intended way to reserve capacitor.
 - **Choice of goal:** `Goal` only selects which value is returned. The cost of a test is nearly the same for all goals: active goals add the sustainable-tank step, and fitting and capacitor are always computed.

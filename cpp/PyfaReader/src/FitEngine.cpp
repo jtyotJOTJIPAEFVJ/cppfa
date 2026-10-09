@@ -5,6 +5,10 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <memory>
+#include <mutex>
+#include <shared_mutex>
+#include <string_view>
 #include <optional>
 #include <stdexcept>
 #include <unordered_map>
@@ -178,6 +182,22 @@ struct CycleInfo
     int numShots = 0;
 };
 
+// What an item takes from its type alone (Engine::Impl::protoOf), so setting up an
+// item doesn't look its attributes up again.
+struct TypeProto
+{
+    const Layout* layout = nullptr;
+    const Group* group = nullptr;
+    std::array<int, 6> reqSkills{};
+    int reqCount = 0;
+    bool ancillaryShield = false, isPaste = false;
+    std::vector<float> base;  // per layout field: the unmutated base value
+    std::array<int8_t, kHot> hotField{};
+    std::array<float, kHot> hotBase{};
+    uint32_t hotHas = 0;
+    std::vector<std::pair<int, const EffectInfo*>> effects;  // the type's effects the engine knows, in order
+};
+
 struct Item
 {
     const Type* type = nullptr;
@@ -192,6 +212,7 @@ struct Item
     bool active = true;  // implants / boosters
     const std::vector<int>* sideEffects = nullptr;  // boosters: effectIDs switched on
     const std::vector<std::pair<int, float>>* mutators = nullptr;
+    const TypeProto* proto = nullptr;  // the type's own values (valid while baseType and mutators are unset)
     std::array<int, 6> reqSkills{};
     int reqCount = 0;
 
@@ -328,7 +349,19 @@ struct Engine::Impl
     std::vector<std::string> penaltyGroups{"default"};
     uint8_t preMulGroup = 0;  // the Reactive Armor Hardener's penalty group
     std::vector<const Type*> skills;
+    // Per pass: the skills' passive modifiers in traversal order (constant for the character).
+    std::array<std::vector<std::pair<const Mod*, const Type*>>, 3> skillMods;
     size_t compiled = 0;
+    // Item prototypes per type, built on first use (thread-safe: search plans run in parallel).
+    mutable std::shared_mutex protoM;
+    struct ProtoKeyHash
+    {
+        size_t operator()(const std::pair<const Type*, const Layout*>& k) const
+        {
+            return std::hash<const void*>()(k.first) * 31 + std::hash<const void*>()(k.second);
+        }
+    };
+    mutable std::unordered_map<std::pair<const Type*, const Layout*>, std::unique_ptr<TypeProto>, ProtoKeyHash> protos;
 
     // eve attribute IDs used by hand-written code
     int eveSpeed, eveDuration, eveDurationHighIsGood, eveReactivation, eveReloadTime, eveCapNeed, eveCapacity,
@@ -432,6 +465,12 @@ struct Engine::Impl
         for (const Type* s : ch.skills)
             if (!s->effects.empty())
                 skills.push_back(s);
+        for (uint8_t pass = 0; pass < 3; ++pass)
+            for (const Type* skill : skills)
+                for (int eid : skill->effects)
+                    if (const EffectInfo* e = effect(eid); e && e->passive && e->runTime == pass)
+                        for (const Mod& m : e->mods[CtxSkill])
+                            skillMods[pass].emplace_back(&m, skill);
     }
 
     uint8_t penaltyGroupID(const std::string& name)
@@ -595,15 +634,55 @@ struct Engine::Impl
         it.layout = layout;
         it.stride = layout->count;
         it.data = allocFields(s, it.stride);
-        it.group = gd.groupOf(*type);
         it.kind = kind;
-        auto req = gd.requiredSkills(*type);
-        it.reqCount = static_cast<int>(std::min(req.size(), it.reqSkills.size()));
-        it.ancillaryShield = it.group && (it.group->name == "Ancillary Shield Booster" ||
-                                          it.group->name == "Ancillary Remote Shield Booster");
-        it.isPaste = type->name == "Nanite Repair Paste";
-        std::copy_n(req.begin(), it.reqCount, it.reqSkills.begin());
+        const TypeProto& p = protoOf(type, layout);
+        it.proto = &p;
+        it.group = p.group;
+        it.reqSkills = p.reqSkills;
+        it.reqCount = p.reqCount;
+        it.ancillaryShield = p.ancillaryShield;
+        it.isPaste = p.isPaste;
         return idx;
+    }
+
+    const TypeProto& protoOf(const Type* type, const Layout* layout) const
+    {
+        {
+            std::shared_lock lock(protoM);
+            if (auto it = protos.find({type, layout}); it != protos.end())
+                return *it->second;
+        }
+        auto p = std::make_unique<TypeProto>();
+        p->layout = layout;
+        p->group = gd.groupOf(*type);
+        auto req = gd.requiredSkills(*type);
+        p->reqCount = static_cast<int>(std::min(req.size(), p->reqSkills.size()));
+        std::copy_n(req.begin(), p->reqCount, p->reqSkills.begin());
+        p->ancillaryShield = p->group && (p->group->name == "Ancillary Shield Booster" ||
+                                          p->group->name == "Ancillary Remote Shield Booster");
+        p->isPaste = type->name == "Nanite Repair Paste";
+        for (int eid : type->effects)
+            if (const EffectInfo* e = effect(eid))
+                p->effects.emplace_back(eid, e);
+        Item it;  // the type alone: no base type, no mutators
+        it.type = type;
+        it.layout = layout;
+        p->base.resize(static_cast<size_t>(layout->count));
+        for (int f = 0; f < layout->count; ++f)
+            p->base[static_cast<size_t>(f)] = baseOf(it, fitschema::kAttrEveID[static_cast<size_t>(layout->fields[f])]);
+        for (int h = 0; h < kHot; ++h)
+        {
+            int eve = hotEve[static_cast<size_t>(h)];
+            p->hotField[static_cast<size_t>(h)] = static_cast<int8_t>(fieldOf(it, eve));
+            p->hotBase[static_cast<size_t>(h)] = baseOf(it, eve);
+            if (hasBase(it, eve))
+                p->hotHas |= 1u << h;
+        }
+        std::unique_lock lock(protoM);
+        auto& slot = protos[{type, layout}];
+        if (!slot)
+            slot = std::move(p);  // else another thread built it first
+        return *slot;
     }
 
     static float* allocFields(Scratch& s, int stride)
@@ -618,6 +697,19 @@ struct Engine::Impl
 
     void initValues(Item& it) const
     {
+        if (it.proto && !it.baseType && !it.mutators)
+        {
+            const TypeProto& p = *it.proto;
+            const int n = it.layout->count;
+            std::copy_n(p.base.data(), n, it.base());
+            std::fill_n(it.preInc(), n, 0.0f);
+            std::fill_n(it.mult(), n, 1.0f);
+            std::fill_n(it.postInc(), n, 0.0f);
+            it.hotField = p.hotField;
+            it.hotBase = p.hotBase;
+            it.hotHas |= p.hotHas;
+            return;
+        }
         for (int f = 0; f < it.layout->count; ++f)
         {
             int eve = fitschema::kAttrEveID[static_cast<size_t>(it.layout->fields[f])];
@@ -1249,14 +1341,11 @@ struct Engine::Impl
     {
         for (uint8_t pass = 0; pass < 3; ++pass)
         {
-            for (const Type* skill : skills)
-                for (int eid : skill->effects)
-                    if (const EffectInfo* e = effect(eid); e && e->passive && e->runTime == pass)
-                        for (const Mod& m : e->mods[CtxSkill])
-                            sink.apply(s, m, -1, skill);
+            for (const auto& [m, skill] : skillMods[pass])
+                sink.apply(s, *m, -1, skill);
 
-            for (int eid : s.items[s.ship].type->effects)
-                if (const EffectInfo* e = effect(eid); e && e->passive && e->runTime == pass)
+            for (const auto& [eid, e] : s.items[s.ship].proto->effects)
+                if (e->passive && e->runTime == pass)
                     for (const Mod& m : e->mods[CtxShip])
                         sink.apply(s, m, s.ship, nullptr);
 
@@ -1267,9 +1356,8 @@ struct Engine::Impl
                 const Item& it = s.items[b];
                 if (!it.active)
                     continue;
-                for (int eid : it.type->effects)
-                    if (const EffectInfo* e = effect(eid); e && e->runTime == pass &&
-                                                           (e->passive || (e->sideEffect && sideEffectOn(it, eid))))
+                for (const auto& [eid, e] : it.proto->effects)
+                    if (e->runTime == pass && (e->passive || (e->sideEffect && sideEffectOn(it, eid))))
                         for (const Mod& m : e->mods[CtxBooster])
                             sink.apply(s, m, b, nullptr);
             }
@@ -1278,8 +1366,8 @@ struct Engine::Impl
                 int imp = s.implants[i];
                 if (!s.items[imp].active)
                     continue;
-                for (int eid : s.items[imp].type->effects)
-                    if (const EffectInfo* e = effect(eid); e && e->passive && e->runTime == pass)
+                for (const auto& [eid, e] : s.items[imp].proto->effects)
+                    if (e->passive && e->runTime == pass)
                         for (const Mod& m : e->mods[CtxImplant])
                             sink.apply(s, m, imp, nullptr);
             }
@@ -1289,17 +1377,17 @@ struct Engine::Impl
                 int mod = s.modules[i];
                 const Item& it = s.items[mod];
                 if (it.charge >= 0)
-                    for (int eid : s.items[it.charge].type->effects)
-                        if (const EffectInfo* e = effect(eid); e && e->runTime == pass && runsInState(*e, it.state))
+                    for (const auto& [eid, e] : s.items[it.charge].proto->effects)
+                        if (e->runTime == pass && runsInState(*e, it.state))
                             for (const Mod& m : e->mods[CtxModuleCharge])
                                 sink.apply(s, m, mod, nullptr);
                 if (it.state >= State::Overheated)
-                    for (int eid : it.type->effects)
-                        if (const EffectInfo* e = effect(eid); e && e->overheat && e->runTime == pass)
+                    for (const auto& [eid, e] : it.proto->effects)
+                        if (e->overheat && e->runTime == pass)
                             for (const Mod& m : e->mods[CtxModule])
                                 sink.apply(s, m, mod, nullptr);
-                for (int eid : it.type->effects)
-                    if (const EffectInfo* e = effect(eid); e && e->runTime == pass && runsInState(*e, it.state))
+                for (const auto& [eid, e] : it.proto->effects)
+                    if (e->runTime == pass && runsInState(*e, it.state))
                     {
                         for (const Mod& m : e->mods[CtxModule])
                             sink.apply(s, m, mod, nullptr);
@@ -1308,8 +1396,8 @@ struct Engine::Impl
             }
 
             if (s.mode >= 0)
-                for (int eid : s.items[s.mode].type->effects)
-                    if (const EffectInfo* e = effect(eid); e && e->runTime == pass)
+                for (const auto& [eid, e] : s.items[s.mode].proto->effects)
+                    if (e->runTime == pass)
                         for (const Mod& m : e->mods[CtxModule])
                             sink.apply(s, m, s.mode, nullptr);
 
@@ -1965,6 +2053,36 @@ struct Instr
 };
 }
 
+namespace
+{
+// Plan base scratches are ~1.3 MB: allocating (and zeroing) a fresh one per plan
+// cost about a third of a plan build, so destroyed plans hand theirs back.
+std::mutex scratchPoolM;
+std::vector<std::unique_ptr<Scratch>> scratchPool;
+constexpr size_t kScratchPoolMax = 32;
+
+std::unique_ptr<Scratch> takeScratch()
+{
+    {
+        std::lock_guard lock(scratchPoolM);
+        if (!scratchPool.empty())
+        {
+            auto s = std::move(scratchPool.back());
+            scratchPool.pop_back();
+            return s;
+        }
+    }
+    return std::unique_ptr<Scratch>(new Scratch);  // default-init: resetScratch makes it usable
+}
+
+void giveScratch(std::unique_ptr<Scratch> s)
+{
+    std::lock_guard lock(scratchPoolM);
+    if (scratchPool.size() < kScratchPoolMax)
+        scratchPool.push_back(std::move(s));
+}
+}
+
 struct SearchPlan::Data
 {
     const Impl& e;
@@ -1980,6 +2098,13 @@ struct SearchPlan::Data
     Stats stats;
 
     Data(const Impl& impl, const SearchSpec& sp) : e(impl), spec(sp) {}
+    ~Data()
+    {
+        if (base)
+            giveScratch(std::move(base));
+    }
+    Data(const Data&) = delete;
+    Data& operator=(const Data&) = delete;
 };
 
 namespace
@@ -2060,6 +2185,94 @@ struct Recorder
     const std::vector<int>& itemOption;
     std::vector<Instr>& out;
     uint8_t pass = 0;
+    // Module indexes for target filters: the superset has every option of every slot,
+    // so scanning all modules for each modifier dominated recording.
+    //   bySkill[c]: (skill typeID, s.modules index) for every skill a module (c = 0)
+    //               or its charge (c = 1) requires
+    //   byGroup[c]: (group name, s.modules index) of the module or its charge
+    // Both sorted, so equal keys list modules in s.modules order.
+    std::vector<std::pair<int, int>> bySkill[2];
+    std::vector<std::pair<std::string_view, int>> byGroup[2];
+    std::vector<int> cand;
+
+    void indexModules(const Scratch& s)
+    {
+        for (int i = 0; i < s.moduleCount; ++i)
+        {
+            const Item& mod = s.items[s.modules[i]];
+            for (int c = 0; c < 2; ++c)
+            {
+                if (c == 1 && mod.charge < 0)
+                    break;
+                const Item& it = c ? s.items[mod.charge] : mod;
+                for (int k = 0; k < it.reqCount; ++k)
+                    bySkill[c].emplace_back(it.reqSkills[static_cast<size_t>(k)], i);
+                if (it.group)
+                    byGroup[c].emplace_back(it.group->name, i);
+            }
+        }
+        for (auto& v : bySkill)
+        {
+            std::sort(v.begin(), v.end());
+            v.erase(std::unique(v.begin(), v.end()), v.end());
+        }
+        for (auto& v : byGroup)
+            std::sort(v.begin(), v.end());
+    }
+
+    // resolveTargets for Modules / ModuleCharges through the indexes, when some filter
+    // clause has only skill and group terms: every match satisfies one of them.
+    bool moduleTargets(const Scratch& s, const Mod& m, const Type* skill, std::vector<int>& targets)
+    {
+        if (m.target != TargetSel::Modules && m.target != TargetSel::ModuleCharges)
+            return false;
+        auto indexable = [&](const Term& t) {
+            return t.kind == FilterTerm::Kind::Skill || t.kind == FilterTerm::Kind::Group ||
+                   (t.kind == FilterTerm::Kind::OwnerSkill && skill);
+        };
+        const std::vector<Term>* key = nullptr;
+        for (const auto& clause : m.filter)
+            if (std::all_of(clause.begin(), clause.end(), indexable) && (!key || clause.size() < key->size()))
+                key = &clause;
+        if (!key)
+            return false;
+        cand.clear();
+        for (const Term& t : *key)
+        {
+            const int c = t.onCharge ? 1 : 0;
+            if (t.kind == FilterTerm::Kind::Group)
+            {
+                const auto& v = byGroup[c];
+                for (auto it = std::lower_bound(v.begin(), v.end(), std::make_pair(std::string_view(t.group), -1));
+                     it != v.end() && it->first == t.group; ++it)
+                    cand.push_back(it->second);
+            }
+            else
+            {
+                const int id = t.kind == FilterTerm::Kind::Skill ? t.id : skill->id;
+                if (!id)
+                    continue;  // needsSkill(0) never matches
+                const auto& v = bySkill[c];
+                for (auto it = std::lower_bound(v.begin(), v.end(), std::make_pair(id, -1)); it != v.end() && it->first == id;
+                     ++it)
+                    cand.push_back(it->second);
+            }
+        }
+        if (key->size() > 1)
+        {
+            std::sort(cand.begin(), cand.end());
+            cand.erase(std::unique(cand.begin(), cand.end()), cand.end());
+        }
+        for (int i : cand)
+        {
+            int mod = s.modules[i];
+            if (m.target == TargetSel::ModuleCharges && s.items[mod].charge < 0)
+                continue;
+            if (e.filterMatches(s, m, mod, skill))
+                targets.push_back(m.target == TargetSel::Modules ? mod : s.items[mod].charge);
+        }
+        return true;
+    }
 
     int optionOf(int item) const { return item >= 0 ? itemOption[static_cast<size_t>(item)] : -1; }
 
@@ -2093,7 +2306,8 @@ struct Recorder
         case SourceSel::Buff:
             break;
         }
-        resolveTargets(e, s, m, owner, skill, in.targets);
+        if (!moduleTargets(s, m, skill, in.targets))
+            resolveTargets(e, s, m, owner, skill, in.targets);
         if (in.targets.empty())
             return;
         addWrites(e, s, m, in.targets, in);
@@ -2191,7 +2405,7 @@ SearchPlan::SearchPlan(const Engine& engine, const SearchSpec& spec)
 {
     const Impl& e = d_->e;
     Data& d = *d_;
-    d.base = std::make_unique<Scratch>();
+    d.base = takeScratch();
     Scratch& s = *d.base;
     e.resetScratch(s);
 
@@ -2217,7 +2431,9 @@ SearchPlan::SearchPlan(const Engine& engine, const SearchSpec& spec)
 
     // Record pyfa's evaluation order.
     std::vector<Instr> all;
+    all.reserve(1024);
     Recorder rec{e, d.itemOption, all};
+    rec.indexModules(s);
     e.traverse(s, rec);
     d.stats.instructions = all.size();
 
@@ -2257,24 +2473,25 @@ SearchPlan::SearchPlan(const Engine& engine, const SearchSpec& spec)
     }
 
     // Order check: a dynamic instruction reading a field that a baked instruction
-    // modifies later would see that later modification; pyfa wouldn't.
-    for (size_t k = 0; k < all.size(); ++k)
+    // modifies later would see that later modification; pyfa wouldn't. Backwards,
+    // with the fields static instructions write later.
     {
-        if (!all[k].dynamic)
-            continue;
-        for (size_t j = k + 1; j < all.size(); ++j)
+        std::vector<uint64_t> laterStatic(static_cast<size_t>(s.count), 0);
+        for (size_t k = all.size(); k-- > 0;)
         {
-            if (all[j].dynamic)
-                continue;
-            bool hit = false;
-            for (const auto& w : all[j].writes)
-                for (const auto& r : all[k].reads)
-                    hit |= w == r;
-            if (hit)
+            const Instr& in = all[k];
+            if (!in.dynamic)
             {
-                ++d.stats.orderSensitive;
-                break;
+                for (const auto& [item, f] : in.writes)
+                    laterStatic[static_cast<size_t>(item)] |= uint64_t{1} << f;
+                continue;
             }
+            for (const auto& [item, f] : in.reads)
+                if (laterStatic[static_cast<size_t>(item)] >> f & 1)
+                {
+                    ++d.stats.orderSensitive;
+                    break;
+                }
         }
     }
 
@@ -2318,11 +2535,13 @@ SearchPlan::SearchPlan(const Engine& engine, const SearchSpec& spec)
                 return true;
         return false;
     };
+    std::vector<std::pair<int, int>> cycleDeps, fittingDeps;
     for (int i = 0; i < s.moduleCount; ++i)
     {
         int mod = s.modules[i];
         Item& it = s.items[mod];
-        std::vector<std::pair<int, int>> cycleDeps, fittingDeps;
+        cycleDeps.clear();
+        fittingDeps.clear();
         for (int eve : {e.eveSpeed, e.eveDuration, e.eveDurationHighIsGood, e.eveReactivation, e.eveReloadTime,
                         e.eveChargeRate, e.eveCapNeed})
             addReadDeps(e, s, mod, eve, cycleDeps);
