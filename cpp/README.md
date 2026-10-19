@@ -25,8 +25,12 @@ are Windows paths. Scripts (PowerShell, from the repo root):
 - `scripts\build_pyfa.ps1`: the PyInstaller build of pyfa with the exe bundled, copied over
   an installed pyfa
 
+Each needs `-NoCopy` (build only) or `-PyfaInstall <dir>` (also copy into the pyfa installed
+there); there is no default install.
+
 ## Running pyfa under WSL
 
+Needs a Debian or Ubuntu WSL distribution with `uv`, `apt-get`, `dpkg` and `curl`.
 `scripts/setup-wsl-venv.sh` creates `.venv` with the wxPython binary wheel and extracts the
 shared libraries that wheel needs but newer Ubuntus lack into `.venv/syslib` (no root needed).
 Run it again after `uv.lock` changes. Then run Python through `scripts/wsl-python.sh
