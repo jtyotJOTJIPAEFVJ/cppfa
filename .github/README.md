@@ -80,7 +80,8 @@ with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` and call `scripts\<sc
 - `build_reader.ps1 -NoCopy` builds `cpp\bin\Release\PyfaReader.exe`, where pyfa looks for it
   (the dialog can also point to another path).
 - `build_pyfa.ps1 -NoCopy` builds the Windows pyfa (PyInstaller) with the optimizer bundled, in
-  `dist\pyfa`.
+  `dist\pyfa`. With `-Zip` it also packs that into `dist\pyfa-<version>-cppfa-win64.zip`, the
+  portable pyfa that goes on a GitHub release.
 - After pulling in a new pyfa, `update_cpp_data.ps1 -NoCopy` regenerates `eve.db` and the
   optimizer's data from it, then rebuilds the exe.
 
