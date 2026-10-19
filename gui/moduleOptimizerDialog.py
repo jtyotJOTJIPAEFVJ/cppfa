@@ -246,6 +246,11 @@ class ModuleOptimizerDialog(wx.Frame):
         self.allowAncillary.SetToolTip(_t('Allow ancillary shield boosters and armor repairers (local and remote). '
                                           'Their sustained repair counts the reload.'))
         constraints.Add(self.allowAncillary, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+        self.allowCapBoosters = wx.CheckBox(panel, label=_t('Cap boosters'))
+        self.allowCapBoosters.SetValue(self.settings.get('allowCapBoosters'))
+        self.allowCapBoosters.SetToolTip(_t('Allow capacitor boosters in the selected slots. Turn off for a tank '
+                                            'that runs without cap charges. Fitted ones outside the selection stay.'))
+        constraints.Add(self.allowCapBoosters, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
 
         repsLabel = wx.StaticText(panel, label=_t('Max repairers:'))
         constraints.Add(repsLabel, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
@@ -365,6 +370,7 @@ class ModuleOptimizerDialog(wx.Frame):
         self.settings.set('priceCap', max(0.0, self.priceCap.GetValue()) * 1e6)
         self.settings.set('allowOfficer', self.allowOfficer.GetValue())
         self.settings.set('allowAncillary', self.allowAncillary.GetValue())
+        self.settings.set('allowCapBoosters', self.allowCapBoosters.GetValue())
         self.settings.set('maxReps', self.maxReps.GetValue())
         self.settings.set('requireCapStable', self.requireCapStable.GetValue())
         self.settings.set('minCapRecharge', max(0.0, self.minCapRecharge.GetValue()))
@@ -398,7 +404,8 @@ class ModuleOptimizerDialog(wx.Frame):
                 fit, positions, goal, priceCap=self.settings.get('priceCap'),
                 allowOfficer=self.settings.get('allowOfficer'), results=self.settings.get('results'),
                 threads=self.settings.get('threads'), timeBudget=self.settings.get('timeBudget'),
-                allowAncillary=self.settings.get('allowAncillary'), maxReps=self.settings.get('maxReps'),
+                allowAncillary=self.settings.get('allowAncillary'),
+                allowCapBoosters=self.settings.get('allowCapBoosters'), maxReps=self.settings.get('maxReps'),
                 requireCapStable=self.settings.get('requireCapStable'),
                 minCapRecharge=self.settings.get('minCapRecharge'), remoteWeight=self.settings.get('remoteWeight'))
         except Exception as e:
@@ -479,7 +486,7 @@ class ModuleOptimizerDialog(wx.Frame):
         self.runButton.Enable(not running)
         self.cancelButton.Enable(running)
         for control in (self.goalChoice, self.priceCap, self.allowOfficer, self.resultCount, self.timeBudget,
-                        self.allowAncillary, self.maxReps, self.requireCapStable, self.minCapRecharge,
+                        self.allowAncillary, self.allowCapBoosters, self.maxReps, self.requireCapStable, self.minCapRecharge,
                         self.exeButton):
             control.Enable(not running)
         self.updateGoalControls(running)

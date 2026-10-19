@@ -14,7 +14,7 @@ Options:
     positions=1,2,3    fit.modules positions to optimize (default: every high/mid/low/rig slot)
     slots=high,med,..  racks to optimize when positions isn't given
     time=S             time budget (default 10)
-    maxReps=N capStable=0|1 ancillary=0|1 minCap=GJ/s weight=W priceCap=MISK
+    maxReps=N capStable=0|1 ancillary=0|1 capBoosters=0|1 minCap=GJ/s weight=W priceCap=MISK
     apply=ROW          apply this list row (0 = the original modules) and print the slots after
 """
 import os
@@ -97,6 +97,7 @@ with config.logging_setup:
         dlg.maxReps.SetValue(int(OPTS.get('maxReps', 0)))
         dlg.requireCapStable.SetValue(OPTS.get('capStable') == '1')
         dlg.allowAncillary.SetValue(OPTS.get('ancillary', '1') == '1')
+        dlg.allowCapBoosters.SetValue(OPTS.get('capBoosters', '1') == '1')
         dlg.minCapRecharge.SetValue(float(OPTS.get('minCap', 0)))
         dlg.timeBudget.SetValue(int(OPTS.get('time', 10)))
         dlg.remoteWeight.SetValue(float(OPTS.get('weight', 4)))
@@ -117,7 +118,7 @@ with config.logging_setup:
             return fail('the optimizer did not run (see the log)')
         print('slots:', dlg.slotsText.GetLabel())
         print('request:', {k: dlg.request.get(k) for k in (
-            'goal', 'allowAncillary', 'maxReps', 'requireCapStable', 'minCapRecharge', 'remoteWeight', 'priceCap')})
+            'goal', 'allowAncillary', 'allowCapBoosters', 'maxReps', 'requireCapStable', 'minCapRecharge', 'remoteWeight', 'priceCap')})
         print('phase:', dlg.phaseText.GetLabel())
         print('warnings:', dlg.warningText.GetLabel())
         lst = dlg.list

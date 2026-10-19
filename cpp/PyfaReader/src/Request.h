@@ -42,6 +42,7 @@ struct Request
     double priceCap = 0;
     bool allowOfficer = false;
     bool allowAncillary = true;     // Options::allowAncillary
+    bool allowCapBoosters = true;   // Options::allowCapBoosters
     int maxReps = 0;                // Options::maxReps (0 = no limit)
     bool requireCapStable = false;  // Options::requireCapStable
     double minCapRecharge = 0;      // Options::minCapRecharge (GJ/s)

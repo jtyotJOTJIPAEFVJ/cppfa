@@ -426,6 +426,7 @@ Request parse(const json::Value& doc, const GameData& gd)
     req.priceCap = getNumber(doc, "priceCap", 0, "request");
     req.allowOfficer = getBool(doc, "allowOfficer", false, "request");
     req.allowAncillary = getBool(doc, "allowAncillary", true, "request");
+    req.allowCapBoosters = getBool(doc, "allowCapBoosters", true, "request");
     req.maxReps = getInt(doc, "maxReps", 0, "request");
     if (req.maxReps < 0)
         throw std::runtime_error("request.maxReps must be >= 0 (0 = no limit)");
@@ -487,6 +488,7 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
     o.priceCap = req.priceCap;
     o.allowOfficer = req.allowOfficer;
     o.allowAncillary = req.allowAncillary;
+    o.allowCapBoosters = req.allowCapBoosters;
     o.maxReps = req.maxReps;
     o.requireCapStable = req.requireCapStable;
     o.remoteWeight = req.remoteWeight;
@@ -773,6 +775,7 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
     st["refineImproved"] = res.stats.refineImproved;
     st["refineExact"] = res.stats.refineExact;
     st["refineStop"] = res.stats.refineStop;
+    st["stage1Stopped"] = res.stats.stage1Stopped;
     if (!res.stats.modelSkipped.empty())
         st["modelSkipped"] = res.stats.modelSkipped;
     out["stats"] = std::move(st);

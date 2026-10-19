@@ -131,14 +131,15 @@ def buildModuleEntry(position, mod, optimize):
 
 
 def buildRequest(fit, positions, goal, priceCap=0, allowOfficer=False, results=10, threads=0,
-                 prices=None, allSkillsV=False, timeBudget=60, allowAncillary=True, maxReps=0,
+                 prices=None, allSkillsV=False, timeBudget=60, allowAncillary=True, allowCapBoosters=True, maxReps=0,
                  requireCapStable=False, minCapRecharge=0, remoteWeight=4):
     """
     The request dict for fit, with the modules (or empty slots) at positions (indices in
     fit.modules) open. prices: {typeID: ISK}; None reads pyfa's price cache.
     timeBudget: seconds the optimizer may spend improving its results, 0 for no limit.
     allSkillsV sends no character (all skills at V), for tests.
-    Constraints: allowAncillary False leaves out ancillary repairers; maxReps limits the
+    Constraints: allowAncillary False leaves out ancillary repairers, allowCapBoosters False
+    capacitor boosters; maxReps limits the
     goal's repairers in the fit (active and remote goals, 0 for no limit);
     requireCapStable and minCapRecharge (GJ/s, peak recharge plus cap boosters) are
     capacitor requirements. An option that misses one doesn't count as fitting.
@@ -167,6 +168,7 @@ def buildRequest(fit, positions, goal, priceCap=0, allowOfficer=False, results=1
     request['priceCap'] = float(priceCap or 0)
     request['allowOfficer'] = bool(allowOfficer)
     request['allowAncillary'] = bool(allowAncillary)
+    request['allowCapBoosters'] = bool(allowCapBoosters)
     request['maxReps'] = max(0, int(maxReps or 0))
     request['requireCapStable'] = bool(requireCapStable)
     request['minCapRecharge'] = max(0.0, float(minCapRecharge or 0))
