@@ -174,4 +174,8 @@ effectID	effectName	effectType	runTime	contexts	operation	domain	target	targetAt
 2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusMBC2	warfareBuffValue	buff	1	0	0				0				
 2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusMBC3	warfareBuffValue	buff	1	0	0				0				
 2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusMBC4	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusPBC1	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusPBC2	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusPBC3	warfareBuffValue	buff	1	0	0				0				
+2544	warfareBuff2544	gang	normal	*	boost	ship	item	shipBonusPBC4	warfareBuffValue	buff	1	0	0				0				
 2545	warfareBuff2545	gang	normal	*	increase	ship	item	proximityDbuffEffectTacticalDestroyerHP	warfareBuffValue	buff	1	0	0				0		pre		
