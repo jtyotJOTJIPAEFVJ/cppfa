@@ -52,11 +52,9 @@ if ($Zip) {
     $zipPath = Join-Path $repo "dist\pyfa-$version-cppfa-win64.zip"
     Write-Host "== Zip dist\pyfa -> $zipPath"
     if (Test-Path $zipPath) { Remove-Item $zipPath }
-    # .NET's ZipFile rather than Compress-Archive: Windows PowerShell's Compress-Archive writes
-    # backslashes into entry names, which other unzip tools take as part of the file name.
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::CreateFromDirectory((Join-Path $repo 'dist\pyfa'), $zipPath,
-        [System.IO.Compression.CompressionLevel]::Optimal, $true)
+    # Windows' own tar (bsdtar, Windows 10 1803 and later): Compress-Archive and .NET Framework's
+    # ZipFile write backslashes into entry names, which other unzip tools take as part of the name.
+    Invoke-Step 'Zip' { & (Join-Path $env:SystemRoot 'System32\tar.exe') -a -c -f $zipPath -C dist pyfa }
 }
 
 if ($NoCopy) { return }
