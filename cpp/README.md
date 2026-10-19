@@ -5,9 +5,8 @@ a module optimizer built on it. pyfa's "Optimize Modules..." dialog runs it as a
 Documentation:
 
 - `FIT_ENGINE.md`: the engine, its data and how it is checked against pyfa
-- `OPTIMIZER_PLAN.md`, `OPTIMIZER_STATUS.md`: how the optimizer works, what was measured
+- `OPTIMIZER.md`: how the optimizer works, its pyfa integration, performance and known limits
 - `OPTIMIZER_CLI.md`: the command line and the JSON request/response format
-- `OPTIMIZER_STUDY.md`, `OPTIMIZER_PERF_PLAN.md`: the refine study and the stage 1 speedups
 
 ## Building
 
