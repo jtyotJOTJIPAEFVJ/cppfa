@@ -127,5 +127,8 @@ gitversion
 *.fsdbinary
 /locale/progress.json
 
+# Visual Studio workspace cache
+.vs/
+
 # vscode settings
 .vscode

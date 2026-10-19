@@ -1,6 +1,6 @@
 # Module optimizer: status and handover
 
-Companion to `OPTIMIZER_PLAN.md` (the plan) and `FIT_ENGINE.md` (the engine). This file says what exists, what was measured, what is known to be wrong or slow, and what the next steps are. Keep it current: each phase agent updates it when done.
+Companion to `OPTIMIZER_PLAN.md` (the plan) and `FIT_ENGINE.md` (the engine). This file says what exists, what was measured, what is known to be wrong or slow, and what the next steps are. Keep it current.
 
 ## 1. What exists (uncommitted work on branch `cppfa`)
 
@@ -28,8 +28,6 @@ Companion to `OPTIMIZER_PLAN.md` (the plan) and `FIT_ENGINE.md` (the engine). Th
 Build: `"I:\programs\vs\vs\MSBuild\Current\Bin\MSBuild.exe" cpp\PyfaReader.sln -p:Configuration=Release -p:Platform=x64 -m` (warning-free at /W4, warnings are errors). Exe: `cpp\bin\Release\PyfaReader.exe`.
 
 **Windows install (pyinstaller, `pyfa.spec`)**: the exe is bundled into `cpp/bin/Release` of the install when it exists at build time, so build the Release x64 exe first. It needs, next to it, **`effect_modifiers.tsv` and `warfare_buffs.tsv`** (the MSBuild build copies them from `PyfaReader/data` into `cpp/bin/Release`; `pyfa.spec` bundles both with the exe), plus the **Microsoft Visual C++ runtime** (the exe links the CRT dynamically: Release default `/MD`, toolset v145), i.e. the VC++ 2015-and-later x64 redistributable must be installed on the user's machine (or its DLLs shipped beside the exe). eve.db is found through `--game`, which pyfa passes.
-
-Shell note for agents: the Bash tool collapses backslashes inside heredocs. Write C++/Python with the Write tool (or a script file), not `cat <<EOF`, when the text contains `\n` or regex escapes.
 
 ## 2. How the optimizer works (as built)
 
@@ -145,7 +143,7 @@ These are not the prototype's test setups: the prototype searched fewer slots an
 - Group limits shared across roles are checked per set; `maxTypeFitted` for variants only in stage 2.
 - Prices come from pyfa's `prices` table; 0 or missing = no price (counts as over a price cap).
 
-## 5. Next phases (one agent each, in series)
+## 5. Next phases
 
 ### Phase A: stage 1 correctness and speed (C++) - DONE
 1. Brute-force validation: `Options::bruteForce` / `--optimize-check`, see 2. and 3. Done; 170 cases, 0 mismatches.
