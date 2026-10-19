@@ -7,17 +7,23 @@
 # Then validate (FIT_ENGINE.md, section 6), e.g. PyfaReader --search-check.
 #
 # Usage (from anywhere):
-#   powershell -ExecutionPolicy Bypass -File scripts\update_cpp_data.ps1 [-PyfaInstall I:\pelit\pyfa] [-SkipEveDb] [-NoCopy]
+#   powershell -ExecutionPolicy Bypass -File scripts\update_cpp_data.ps1 (-PyfaInstall <pyfa dir> | -NoCopy) [-SkipEveDb]
+# There is no default install: a dev build only goes over a pyfa that is named.
 #
 # Uses the same Windows environment as build_pyfa.ps1 (%LOCALAPPDATA%\pyfa-build\venv).
 
 param(
-    [string]$PyfaInstall = 'I:\pelit\pyfa',
+    [string]$PyfaInstall,
     [switch]$SkipEveDb,
     [switch]$NoCopy
 )
 
 $ErrorActionPreference = 'Stop'
+
+if (-not $NoCopy) {
+    if (-not $PyfaInstall) { throw 'Pass -PyfaInstall <pyfa dir> to copy into an installed pyfa, or -NoCopy to only build' }
+    if (-not (Test-Path (Join-Path $PyfaInstall 'pyfa.exe'))) { throw "No pyfa.exe in $PyfaInstall" }
+}
 
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
@@ -43,5 +49,9 @@ $reader = @{}
 if ($NoCopy) { $reader.NoCopy = $true } else { $reader.PyfaInstall = $PyfaInstall }
 Invoke-Step 'Build PyfaReader' { & (Join-Path $PSScriptRoot 'build_reader.ps1') @reader }
 
-Write-Host '== Changed generated files'
-git status --short -- eve.db cpp/PyfaReader/data cpp/PyfaReader/src/generated
+if (Get-Command git -ErrorAction SilentlyContinue) {
+    Write-Host '== Changed generated files'
+    git status --short -- eve.db cpp/PyfaReader/data cpp/PyfaReader/src/generated
+} else {
+    Write-Host '== Done (git not on PATH: see git status for the changed generated files)'
+}

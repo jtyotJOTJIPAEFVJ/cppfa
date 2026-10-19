@@ -2,17 +2,23 @@
 # bundled, and copies it over an installed pyfa.
 #
 # Usage (from anywhere):
-#   powershell -ExecutionPolicy Bypass -File scripts\build_pyfa.ps1 [-PyfaInstall I:\pelit\pyfa] [-NoCopy]
+#   powershell -ExecutionPolicy Bypass -File scripts\build_pyfa.ps1 (-PyfaInstall <pyfa dir> | -NoCopy)
+# There is no default install: a dev build only goes over a pyfa that is named.
 #
 # The repo's .venv is the WSL (Linux) one, so the Windows environment lives in
 # %LOCALAPPDATA%\pyfa-build\venv (uv, Python from .python-version).
 
 param(
-    [string]$PyfaInstall = 'I:\pelit\pyfa',
+    [string]$PyfaInstall,
     [switch]$NoCopy
 )
 
 $ErrorActionPreference = 'Stop'
+
+if (-not $NoCopy) {
+    if (-not $PyfaInstall) { throw 'Pass -PyfaInstall <pyfa dir> to copy into an installed pyfa, or -NoCopy to only build' }
+    if (-not (Test-Path (Join-Path $PyfaInstall 'pyfa.exe'))) { throw "No pyfa.exe in $PyfaInstall" }
+}
 
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
@@ -40,7 +46,6 @@ Copy-Item 'dist_assets\win\pyfa.exe.manifest' 'dist\pyfa\' -Force
 
 if ($NoCopy) { return }
 
-if (-not (Test-Path (Join-Path $PyfaInstall 'pyfa.exe'))) { throw "No pyfa.exe in $PyfaInstall" }
 if (Get-Process pyfa -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$PyfaInstall\*" }) {
     throw "pyfa is running from $PyfaInstall; close it first"
 }
