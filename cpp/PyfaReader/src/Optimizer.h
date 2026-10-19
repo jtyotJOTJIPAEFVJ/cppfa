@@ -1,7 +1,7 @@
 #pragma once
 
 // Module search: the best modules for the open mid, low, rig and high slots of a
-// fit for one goal (see cpp/OPTIMIZER_PLAN.md).
+// fit for one goal (see cpp/OPTIMIZER.md).
 //
 // Stage 1 searches with one representative per subgroup of similar modules and
 // a separable model of the goal, value(core modules) / damage factor(resist

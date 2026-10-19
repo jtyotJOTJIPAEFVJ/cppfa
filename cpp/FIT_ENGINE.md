@@ -1,6 +1,6 @@
 # C++ fit engine (cppfa): how it works
 
-This is a C++ reimplementation of the part of pyfa's fit calculation that tank-oriented fit optimization needs. Its results match pyfa on the user's saved fits, and it has a search mode (`SearchPlan`) that evaluates about 0.7–1M fit variations per second per thread.
+This is a C++ reimplementation of the part of pyfa's fit calculation that tank-oriented fit optimization needs. Its results match pyfa on the user's saved fits, and it has a search mode (`SearchPlan`) that evaluates about 0.6–0.9M fit variations per second per thread. The module optimizer (`OPTIMIZER.md`) is built on it.
 
 It lives in `cpp/` of the pyfa repo, on branch `cppfa`. Pyfa is the ground truth, and all validation is against pyfa's own output.
 
@@ -24,7 +24,7 @@ Active goals count only repairers (no passive shield regen). The damage profile 
 
 **Sources modeled:**
 - **Ship:** all bonuses (role, per-skill, ship-conditional).
-- **Character:** all skills at level 5 (`Character` can hold per-skill levels).
+- **Character:** all skills at level 5, or per-skill levels (an optimizer request carries pyfa's character).
 - **Implants:** including set bonuses, which work through implants' effects on each other.
 - **Boosters:** including side effects that are switched on.
 - **Modules:**
@@ -53,28 +53,36 @@ cpp/
     GameData.*        in-memory eve.db (float), character, effect tables loader
     Fit.*             saveddata.db fit loader
     Eft.*             EFT text export (matches pyfa exportEft byte for byte)
-    AttributeModifier.*  first, simple ship+skill-only engine (superseded by FitEngine)
+    Sqlite.*, PyfaPaths.*   SQLite wrapper, default pyfa paths
+    AttributeModifier.*  the first, ship+skill-only engine; superseded by FitEngine and no longer called
     FitEngine.*       the engine and SearchPlan
     PyMath.h          pyfa/Python numeric helpers (round, floatUnerr)
     generated/FitSchema.generated.h   generated attribute IDs + per-group layouts
-    main.cpp          CLI (EFT export, --engine-dump, --search-check, --bench)
+    Optimizer.*       the module optimizer (OPTIMIZER.md)
+    Request.*, Json.h the optimizer's JSON request/response (OPTIMIZER_CLI.md)
+    main.cpp          CLI (section 7)
   PyfaReader/data/
     effect_modifiers.tsv   generated from eos/effects.py (copied next to the exe on build)
     warfare_buffs.tsv      generated from eos/saveddata/fit.py (copied next to the exe)
-  PyfaReader/third_party/sqlite/   SQLite amalgamation 3.53.4
+  PyfaReader/third_party/
+    sqlite/           SQLite amalgamation 3.53.4
+    nlohmann/         nlohmann/json 3.11.3 (single header, MIT)
   tools/
     gen_effect_modifiers.py   effects.py + fit.py -> the two TSV tables
     gen_fit_schema.py         eve.db + TSV -> FitSchema.generated.h
     goal_closure.py           which attributes/modifiers each goal depends on (shared by the schema generator)
     pyfa_reference.py         runs pyfa itself to produce reference results
     compare_engine.py         engine dump vs pyfa reference
+    optimizer_dialog_test.py  drives pyfa's optimizer dialog end to end
+    sample_profile.py         stack-sampling profiler for the exe (Windows Python)
 ```
 
-**Regenerate after updating pyfa (game data or effects), in this order:**
-1. `python cpp/tools/gen_effect_modifiers.py`
-2. `python cpp/tools/gen_fit_schema.py`
-3. build
-4. validate (section 6)
+**Regenerate after updating pyfa (game data or effects)**, in this order (`scripts/update_cpp_data.ps1` does steps 1-4):
+1. eve.db (`db_update.py`), if the game data changed
+2. `python cpp/tools/gen_effect_modifiers.py`
+3. `python cpp/tools/gen_fit_schema.py`
+4. build
+5. validate (section 6)
 
 The generated files are committed, so building needs no Python.
 
@@ -96,7 +104,7 @@ eve.db says *which* effects an item has. *What* an effect does exists only as Py
 - **Undecidable `if`s:** these split the walk. Ship conditions such as "the ship requires skill X" or "the ship has attribute Y" become row conditions; anything else is marked unresolved.
 - **Contexts:** pyfa passes the owner kind as `context`, so each handler is evaluated once per context (`ship`, `skill`, `implant`, `booster`, `module`, `moduleCharge`, `drone`, `fighter`, `projected+…`). Identical results are merged.
 
-**Output:** `data/effect_modifiers.tsv`, 3,900 rows from 2,385 effects. Each row is one modifier call:
+**Output:** `data/effect_modifiers.tsv`, about 3,950 rows from 2,360 effects. Each row is one modifier call:
 
 | Column | Meaning |
 |---|---|
@@ -120,13 +128,15 @@ eve.db says *which* effects an item has. *What* an effect does exists only as Py
 
 Partly resolved rows are skipped by the engine. Inside the goals' scope only rows for unsupported or runtime-state things remain unresolved: CONCORD security status, booster self-penalties, structure rigs. The RAH is resolved by hand-written code.
 
-**Command bursts:** pyfa applies these in `Fit.__runCommandBoosts`, an `if warfareBuffID == N` chain. The same generator turns that chain into `data/warfare_buffs.tsv` (74 buffs, 176 rows, `sourceOf = buff`).
+Rows with a literal amount instead of a source attribute (`note` "no source attribute", the number in `valueExpr`) are skipped too. Only pyfa's placeholder effects for unreleased ships use them (`pyfaCustom*`, effect IDs 100100 and up, e.g. Herald and Penitence); they go away when the ships arrive in the game data.
+
+**Command bursts:** pyfa applies these in `Fit.__runCommandBoosts`, an `if warfareBuffID == N` chain. The same generator turns that chain into `data/warfare_buffs.tsv` (74 buffs, 180 rows, `sourceOf = buff`).
 
 ### Schema (`tools/gen_fit_schema.py`, `goal_closure.py`)
 `goal_closure.py` defines each goal's root attributes, plus fitting, capacitor/cycle, burst and RAH roots. It walks the modifier table backwards: any modifier targeting a needed attribute makes its source attribute needed too.
 
 `gen_fit_schema.py` turns that into `FitSchema.generated.h`:
-- **`enum class Attr : uint16_t`:** 220 attributes the engine stores, plus eve IDs and names.
+- **`enum class Attr : uint16_t`:** 222 attributes the engine stores, plus eve IDs and names.
 - **`ShipAttrs`:** 28 floats of ship attributes that can change per fit. Ship bonus amounts are excluded; they're constant per ship.
 - **Group structs:** one float-only struct per module, charge, implant or booster group (246 groups → 103 shapes, ~10 fields on average). A struct contains only the attributes the group's items have, or that relevant modifiers can actually reach on them. Each has `kFields` (`Attr` per field) and `kGroupLayouts` maps groups to layouts.
 
@@ -134,9 +144,9 @@ The engine uses these layouts generically, by field index. The named structs exi
 
 ## 4. The engine (`fitengine::Engine`)
 
-`Engine(gameData, character)` compiles the TSV rows into `Mod`s. A `Mod` holds enum operation, target and source selectors, a schema `Attr` target, resolved skill/attribute IDs, filters and conditions. Mods are stored per effect and per context. Only rows whose target attribute is in the schema are kept (~5,000).
+`Engine(gameData, character)` compiles the TSV rows into `Mod`s. A `Mod` holds enum operation, target and source selectors, a schema `Attr` target, resolved skill/attribute IDs, filters and conditions. Mods are stored per effect and per context. Only rows whose target attribute is in the schema are kept (~7,700 compiled modifiers, counting each context).
 
-`FitResult Engine::evaluate(const FitInput&)` (~40 µs per fit on the saved fits, `--engine-dump`) does the following.
+`FitResult Engine::evaluate(const FitInput&)` (~35 µs per fit on the saved fits, `--engine-dump`) does the following.
 
 **Items:** ship, mode, implants, boosters, modules, and charges as their own items. Each item has its layout's fields in a float arena, in 8 arrays:
 - base value
@@ -218,7 +228,7 @@ FitInput full = plan.fitFor(choice);   // the equivalent full fit
 
    Everything else is static: skills, ship bonuses, pinned modules, including their effects *onto* options.
 
-4. **Order check.** A dynamic instruction reading a field that a static instruction writes later in pyfa's order would see a different value than pyfa does. `stats().orderSensitive` counts such plans. 12 of ~3,000 test plans were flagged, and none of them produced a mismatch.
+4. **Order check.** A dynamic instruction reading a field that a static instruction writes later in pyfa's order would see a different value than pyfa does. `stats().orderSensitive` counts such plans. `--search-check 0` flags 16 of ~3,100 plans, and none of them produces a mismatch.
 
 5. **Baking.** Static instructions are executed once onto the superset, in order. Then:
    - Modules whose cycle, reload and capacitor inputs, or fitting inputs, aren't written by dynamic instructions get those values precomputed.
@@ -237,9 +247,9 @@ FitInput full = plan.fitFor(choice);   // the equivalent full fit
 - order sensitivity
 
 **Performance** (single thread, Release, i.e. the user's machine):
-- `--search-check` average (≤4 open slots): **~1.0 µs** per test
-- `--bench 1980 15 armorActive`: **1.5 µs** per test (~665k/s). That's a C5 Paladin with 11 open slots × up to 8 options, 152 instructions replayed per test, 5 of 110 items written, 4 of 98 modules with per-test cycle values.
-- Full `Engine::evaluate`: ~20 µs (`--search-check` fits), ~40 µs (all saved fits).
+- `--search-check` average (≤4 open slots): **~1.1 µs** per test; plan build ~0.06 ms
+- `--bench 1980 5 armorActive`: **1.7 µs** per test (~590k/s); plan build 0.24 ms. That's a C5 Paladin with 11 open slots × up to 8 options, 152 instructions replayed per test, 5 of 110 items written, 4 of 98 modules with per-test cycle values.
+- Full `Engine::evaluate`: ~22 µs (`--search-check` fits), ~35 µs (all saved fits).
 
 Profiles showed the remaining cost spread over:
 - the replay loop (amount reads and applying)
@@ -247,7 +257,7 @@ Profiles showed the remaining cost spread over:
 - `cycleOf` for the few modules with changing cycles
 - the sustainable-tank step
 
-**What the plan does *not* do (the optimizer's job):**
+**What the plan does *not* do (the optimizer's job, `OPTIMIZER.md`):**
 - **Slot validity:**
   - slot type (high/med/low/rig/subsystem/service) matching
   - slot counts and turret/launcher hardpoints (`ShipAttrs` has the counts, and subsystems change them)
@@ -259,7 +269,7 @@ Profiles showed the remaining cost spread over:
 
 ## 6. Validation
 
-**Reference.** `cpp/tools/pyfa_reference.py` runs pyfa itself, through its normal service and fit-loading path, on a temporary copy of saveddata.db. It uses pyfa's Python environment (needs wxPython). The copy is normalized:
+**Reference.** `cpp/tools/pyfa_reference.py` runs pyfa itself, through its normal service and fit-loading path, on a temporary copy of saveddata.db. It uses pyfa's Python environment (needs wxPython; under WSL run it with `scripts/wsl-python.sh`). The copy is normalized:
 - character All 5
 - uniform damage profile
 - reload factored in
@@ -276,10 +286,10 @@ Profiles showed the remaining cost spread over:
 The user's own database is never modified (hash checked).
 
 ```
-python cpp/tools/pyfa_reference.py ref.jsonl --with-implants --keep-db normalized.db   # pyfa's python
-PyfaReader --save normalized.db --engine-dump engine.tsv
-python cpp/tools/compare_engine.py ref.jsonl engine.tsv [--show N] [--key PREFIX]
-PyfaReader --save normalized.db --search-check     # SearchPlan vs Engine, random choices, all goals
+scripts/wsl-python.sh cpp/tools/pyfa_reference.py ref.jsonl --with-implants --save <saveddata.db> --keep-db <WINDOWS_DIR>/normalized.db
+PyfaReader --save <WIN_PATH>\normalized.db --engine-dump <WIN_PATH>\engine.tsv
+python3 cpp/tools/compare_engine.py ref.jsonl <WINDOWS_DIR>/engine.tsv [--show N] [--key PREFIX]
+PyfaReader --search-check [maxFits]     # SearchPlan vs Engine, random choices, all goals (0 = all fits)
 ```
 
 **Tolerances:**
@@ -287,28 +297,31 @@ PyfaReader --save normalized.db --search-check     # SearchPlan vs Engine, rando
 - module CPU/PG: 0.01 (pyfa rounds to 2 decimals)
 - fit CPU/PG totals: 0.1
 
-**Current results:**
-- **Engine vs pyfa:** 3,180 of 3,191 in-scope saved fits match on all ~200 compared values each (643,319 of 643,355 values; outgoing remote repair included on cap-stable fits). That includes 879 fits with implants, 1,458 with boosters, 425 with active command bursts and 58 with abyssal (mutated) modules, whose 773 module values all match. The differences:
-  - 9 fits with a Reactive Armor Hardener in an exact tie, which pyfa breaks by double-precision noise (≤0.8% armor EHP)
-  - 1 Enforcer (CONCORD security-status bonus, not modeled)
-  - 1 Moa: a 2e-5 relative difference on a small rep value
-  - 2 citadels excluded (out of scope)
-- **SearchPlan vs Engine:** 305,900 random combinations over 3,059 fits (up to 4 open slots × 4 options, including empty slots), all five goals: 0 mismatches.
-- **EFT export:** byte-identical to pyfa on all saved fits.
+### Engine vs pyfa
 
-Earlier, while the engine still used double, it matched pyfa exactly on every in-scope fit except the CONCORD one. The float switch introduced the RAH tie differences.
+Measured 2026-10-20 on the user's saved fits (pyfa master of October 2026, `--with-implants`): **3,202 of 3,213 in-scope fits match** on all ~200 compared values each (648,987 of 649,023 values; outgoing remote repair included on cap-stable fits). That includes 892 fits with implants, 1,479 with boosters, 426 with active command bursts and 58 with abyssal (mutated) modules. The 11 that differ:
+- 10 fits with a Reactive Armor Hardener in an exact tie, which pyfa breaks by double-precision noise (≤0.8% armor EHP). Earlier, while the engine still used double, these matched; the float switch introduced them.
+- 1 Enforcer (CONCORD security-status bonus, not modeled)
+
+2 citadels are excluded (out of scope). Any other difference is new.
+
+### Other checks
+
+- **SearchPlan vs Engine** (`--search-check 0`): 801,580 random combinations over 3,083 fits (up to 4 open slots × 4 options, including empty slots), all goals: 0 mismatches, 0 detail mismatches.
+- **EFT export:** byte-identical to pyfa on all saved fits.
 
 ## 7. CLI (`PyfaReader.exe`)
 
 | Command | |
 |---|---|
 | `PyfaReader [<fit name> \| #<fitID>]` | EFT export of a saved fit (no argument: list recent fits) |
-| `--engine-dump out.tsv` | evaluate all saved fits, `fitID<TAB>key<TAB>value` |
-| `--search-check [maxFits]` | SearchPlan vs Engine on random choices |
+| `--engine-dump out.tsv` | evaluate all saved fits (All 5, uniform damage, reload factored), `fitID<TAB>key<TAB>value` |
+| `--search-check [maxFits]` | SearchPlan vs Engine on random choices (0 = all fits) |
 | `--bench [fitID [seconds [goal]]]` | profiling case: the fit's mid and low slots become open slots, each with the fitted module + up to 7 same-group alternatives, enumerated in order on one thread |
-| `--game eve.db`, `--save saveddata.db` | override the database paths (default: eve.db above the exe, `%USERPROFILE%\.pyfa\saveddata.db`) |
+| `--optimize`, `--optimize-check`, `--optimize-request`, `--make-request` | the optimizer, see `OPTIMIZER_CLI.md` |
+| `--game eve.db`, `--save saveddata.db` | override the database paths (default: eve.db next to or above the exe, `%USERPROFILE%\.pyfa\saveddata.db`) |
 
-To profile in Visual Studio: Release|x64, Debugging → Command Arguments `--bench 1980 15 armorActive`, then Debug → Performance Profiler → CPU Usage.
+The full usage is the comment at the top of `src/main.cpp`. To profile in Visual Studio: Release|x64, Debugging → Command Arguments `--bench 1980 15 armorActive`, then Debug → Performance Profiler → CPU Usage; or `tools/sample_profile.py`.
 
 ## 8. Notes for the optimizer
 
