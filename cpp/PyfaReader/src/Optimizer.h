@@ -42,13 +42,14 @@ struct Options
     std::array<bool, RackCount> search{true, true, true, false};  // racks whose slots are searched
     bool allowOfficer = false;
     // Constraints. allowAncillary false: no ancillary repairers (local or remote) among
-    // the candidates. maxReps (active, remote and balanced goals; 0 = no limit): the
+    // the candidates; allowCapBoosters false: no capacitor boosters. maxReps (active, remote and balanced goals; 0 = no limit): the
     // goal's repairers in the fit at most (local ones of the goal's layer, remote ones,
     // or both for balanced goals), the pinned ones included. requireCapStable: capacitor use within recharge
     // (TestResult::capUsed <= capRecharge, pyfa's simplified check). minCapRecharge:
     // TestResult::capRecharge (peak recharge + cap boosters, GJ/s) at least this. A set
     // that misses a constraint doesn't count as fitting.
     bool allowAncillary = true;
+    bool allowCapBoosters = true;
     int maxReps = 0;
     bool requireCapStable = false;
     double minCapRecharge = 0;
@@ -82,7 +83,7 @@ struct Options
     // sets, then iterated local search (perturb, search again) on parallel chains
     // until the time budget is used up or the best set stops improving.
     bool refine = true;
-    double timeBudget = 60;   // seconds for the whole run; refine stops when reached (0 = no limit)
+    double timeBudget = 60;   // seconds for the whole run; refine stops when reached, stage 1 at half of it (0 = no limit)
     int refineRounds = -1;    // iterated-search rounds at most (-1 = no limit). Results are deterministic
                               // for a given thread count unless the time budget ends the run.
     int refinePatience = 800; // chain iterations without a better best set: converged
@@ -118,6 +119,7 @@ struct Stats
     size_t refineStarts = 0, refineRounds = 0, refineEvaluations = 0, refineImproved = 0;
     double refineExact = 0;  // combinations refine's exact pass evaluated (0: not run)
     std::string refineStop;  // why refine ended: "converged", "rounds", "time", "off"
+    bool stage1Stopped = false;  // stage 1 hit half the time budget: its sets are the best found, not proven
     std::string modelSkipped;  // a stage-1 model limit that was hit: stages 1 and 2 skipped, refine only
 };
 

@@ -8,7 +8,7 @@
 //   PyfaReader [--game ...] [--save ...] --bench [fitID [seconds [goal]]]   (profiling case)
 //   PyfaReader [--game ...] [--save ...] --optimize <fitID> <goal> [--racks mid,low,rig,high] [--price-cap ISK]
 //              [--allow-officer] [--top K] [--results N] [--dump-kinds] [--slots m,l,r[,h]] [--threads N]
-//              [--no-ancillary] [--max-reps N] [--cap-stable] [--min-cap-recharge GJ/s] [--remote-weight W]
+//              [--no-ancillary] [--no-cap-boosters] [--max-reps N] [--cap-stable] [--min-cap-recharge GJ/s] [--remote-weight W]
 //   PyfaReader [--game ...] [--save ...] --optimize-check <fitID>[,<fitID>...] [goal|all] [--slots m,l,r[,h]]
 //              [--verbose]   (stage 1 vs brute force; default 2 mid / 2 low / 1 rig / 2 high open, racks
 //              as --racks: mid, low and rig unless given; also the --optimize constraint options)
@@ -768,6 +768,8 @@ int wmain(int argc, wchar_t* argv[])
             optimizeOpt.allowOfficer = true;
         else if (arg == L"--no-ancillary")
             optimizeOpt.allowAncillary = false;
+        else if (arg == L"--no-cap-boosters")
+            optimizeOpt.allowCapBoosters = false;
         else if (arg == L"--max-reps" && i + 1 < argc)
             optimizeOpt.maxReps = std::stoi(toUtf8(std::wstring(argv[++i])));
         else if (arg == L"--remote-weight" && i + 1 < argc)

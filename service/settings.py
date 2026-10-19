@@ -579,9 +579,10 @@ class ModuleOptimizerSettings:
             # ISK per module, 0 for no limit
             'priceCap': 0.0,
             'allowOfficer': False,
-            # Constraints: ancillary repairers allowed; most repairers of the goal (0 for no
+            # Constraints: ancillary repairers / capacitor boosters allowed; most repairers of the goal (0 for no
             # limit); capacitor stable; least capacitor recharge (GJ/s, 0 for none)
             'allowAncillary': True,
+            'allowCapBoosters': True,
             'maxReps': 0,
             'requireCapStable': False,
             'minCapRecharge': 0.0,

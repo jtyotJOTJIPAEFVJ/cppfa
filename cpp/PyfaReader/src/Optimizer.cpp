@@ -335,6 +335,22 @@ struct KeyHash
         return static_cast<size_t>(h ^ (h >> 29));
     }
 };
+// A Key plus a tag (what is keyed: the record, a kind, the free racks).
+struct TaggedKey
+{
+    Key k;
+    uint64_t tag = 0;
+    bool operator==(const TaggedKey& o) const { return k == o.k && tag == o.tag; }
+};
+struct TaggedKeyHash
+{
+    size_t operator()(const TaggedKey& t) const
+    {
+        Key k = t.k;
+        k.b ^= t.tag * 0xC2B2AE3D27D4EB4Full;
+        return KeyHash{}(k);
+    }
+};
 Key packCounts(const std::vector<int>& list, const uint8_t* counts)
 {
     Key key;
@@ -354,10 +370,11 @@ Key packCounts(const std::vector<int>& list, const uint8_t* counts)
 // for it meanwhile wait for it. Lookups of finished entries take no lock (open
 // addressing over atomic node pointers; a grown table replaces the old one, which
 // stays readable); new entries lock the key's shard. Values never move.
-template <class V>
+template <class V, class K = Key, class H = KeyHash>
 class Cache
 {
 public:
+    using Key = K;
     template <class F>
     const V& get(const Key& k, F&& make)
     {
@@ -401,7 +418,7 @@ private:
         std::vector<std::unique_ptr<Table>> tables;  // the current one last; older ones stay readable
         std::deque<Node> nodes;
     };
-    static uint64_t hash(const Key& k) { return static_cast<uint64_t>(KeyHash{}(k)) * 0xD6E8FEB86659FD93ull; }
+    static uint64_t hash(const Key& k) { return static_cast<uint64_t>(H{}(k)) * 0xD6E8FEB86659FD93ull; }
     Shard& shard(uint64_t h) { return shards_[h >> 58 & (kShards - 1)]; }
     static Node* probe(const Table& t, uint64_t h, const Key& k)
     {
@@ -470,10 +487,12 @@ public:
     Pool& operator=(const Pool&) = delete;
     int size() const { return static_cast<int>(threads_.size()) + 1; }
 
-    void run(size_t n, size_t grain, const std::function<void(size_t, int)>& fn)
+    // guided: chunks shrink with the work left (at most `grain`, at least 1), so cheap
+    // items go in large chunks and the last ones (put the expensive items there) singly.
+    void run(size_t n, size_t grain, const std::function<void(size_t, int)>& fn, bool guided = false)
     {
         grain = std::max<size_t>(grain, 1);
-        if (threads_.empty() || n <= grain)
+        if (threads_.empty() || (n <= grain && !guided) || n <= 1)
         {
             for (size_t i = 0; i < n; ++i)
                 fn(i, 0);
@@ -484,6 +503,7 @@ public:
             job_ = &fn;
             n_ = n;
             grain_ = grain;
+            guided_ = guided;
             next_ = 0;
             busy_ = static_cast<int>(threads_.size());
             error_ = nullptr;
@@ -501,12 +521,25 @@ public:
 private:
     void work(int worker)
     {
+        const size_t parts = 4 * (threads_.size() + 1);
         for (;;)
         {
-            size_t first = next_.fetch_add(grain_);
+            size_t first, chunk = grain_;
+            if (guided_)
+            {
+                first = next_.load(std::memory_order_relaxed);
+                do
+                {
+                    if (first >= n_)
+                        return;
+                    chunk = std::clamp<size_t>((n_ - first) / parts, 1, grain_);
+                } while (!next_.compare_exchange_weak(first, first + chunk));
+            }
+            else
+                first = next_.fetch_add(grain_);
             if (first >= n_)
                 return;
-            size_t last = std::min(n_, first + grain_);
+            size_t last = std::min(n_, first + chunk);
             try
             {
                 for (size_t i = first; i < last; ++i)
@@ -545,6 +578,7 @@ private:
     std::condition_variable wake_, done_;
     const std::function<void(size_t, int)>* job_ = nullptr;
     size_t n_ = 0, grain_ = 1;
+    bool guided_ = false;
     std::atomic<size_t> next_{0};
     int busy_ = 0;
     uint64_t generation_ = 0;
@@ -722,7 +756,8 @@ private:
         double cpu = 0, power = 0, calibration = 0;
         double capUsed = 0, capRecharge = 0;  // all modules on (TestResult::capUsed / capRecharge)
     };
-    void assemble(const uint8_t* counts, CoreEval& out);
+    // costsOnly: only cpu / power / calibration (fixedFits)
+    void assemble(const uint8_t* counts, CoreEval& out, bool costsOnly = false);
     // The goal over a resist set with damage factor d and capacitor use x: V(x) / d, or
     // for balanced goals balancedScore(L(x) / d, R(x)). Both fall as x or d grow.
     double coreValue(const CoreEval& ce, double extraCap) const
@@ -831,12 +866,45 @@ private:
 
     // ---- stage 1
     void stage1();
+    Clock::time_point runStart_ = Clock::now();
     double partialBound(const uint8_t* fixed, unsigned freeMask);
     // side: 0 the goal; balanced goals 1 the local side (L / D), 2 the remote side (R).
     double partialBoundSide(const uint8_t* fixed, unsigned freeMask, int side);
     bool partialFits(const uint8_t* fixed, unsigned freeMask);
+    // Memoized inputs of partialBoundSide that depend only on the fixed counts of a
+    // few kinds and on the free racks, not on the whole fixed multiset.
+    struct ProjEntry
+    {
+        double v;                    // the record's value: capacitor budget, recharge or HP
+        std::array<double, 3> cost;  // the projection's cheapest CPU / power / calibration (as partialBoundSide)
+    };
+    struct ProjTable
+    {
+        // Per projection size (modules per rack; one group for CapRecharge): entries by
+        // value, descending. An entry costing at least as much as a better one in every
+        // resource is dropped: the best fitting entry of a group is never one of those.
+        std::vector<std::pair<std::array<int, RackCount>, std::vector<ProjEntry>>> groups;
+    };
+    enum class ProjValue
+    {
+        CapBudget,
+        CapRecharge,
+        Hp
+    };
+    const ProjTable& projTable(ProjValue what, const uint8_t* fixed, unsigned freeMask);
+    Cache<ProjTable, TaggedKey, TaggedKeyHash> projTables_;
+    // A repairer's best stats over every projection of its influencers into the free
+    // racks (kind >= 0: a core kind, else pinned module -1 - kind); side as partialBoundSide.
+    const RepItem& repItem(int kind, int side, const uint8_t* fixed, unsigned freeMask);
+    Cache<RepItem, TaggedKey, TaggedKeyHash> repItems_;
     bool fixedFits(const uint8_t* fixed, unsigned freeMask, CoreEval& scratch);
     std::array<double, 3> outputMax_{};  // most CPU / power / calibration any set can reach
+    // The same per partial set: its core modules' own output bonuses, and the free
+    // slots (left in fixed racks, all of the free racks) filled with the strongest.
+    std::array<double, 3> nodeOutputMax(const uint8_t* fixed) const;
+    std::array<std::array<std::vector<double>, RackCount>, 2> outRackMul_;  // [res][rack][n]: the n strongest compounded
+    std::array<std::vector<double>, 2> kindOutMul_;                        // [res][kind]
+    std::array<double, 2> outBase_{};
     bool noFitPrune_ = [] {
         char* e = nullptr;
         size_t n = 0;
@@ -1234,6 +1302,8 @@ void Search::gatherCandidates()
                                          g->name == "Ancillary Remote Armor Repairer");
             if (ancillary && !opt_.allowAncillary)
                 continue;
+            if (!opt_.allowCapBoosters && g && g->name == "Capacitor Booster")
+                continue;
             const bool goalRep = goalRepType(*t);
             if (goalRep && repLimit_ == 0)
                 continue;
@@ -1350,6 +1420,8 @@ void Search::addMutatedCandidates(size_t& ruleExcluded)
         const Group* g = gd_.groupOf(*t);
         const bool ancillary = g && g->name.find("Ancillary") != std::string::npos;
         if (ancillary && !opt_.allowAncillary)
+            continue;
+        if (!opt_.allowCapBoosters && g && g->name == "Capacitor Booster")
             continue;
         const bool goalRep = goalRepType(*t);
         if (goalRep && repLimit_ == 0)
@@ -2086,7 +2158,7 @@ const Search::CapRecord& Search::capRecord(const uint8_t* counts)
     });
 }
 
-void Search::assemble(const uint8_t* counts, CoreEval& out)
+void Search::assemble(const uint8_t* counts, CoreEval& out, bool costsOnly)
 {
     static thread_local std::vector<ModuleStats> stats;
     stats.clear();
@@ -2111,6 +2183,8 @@ void Search::assemble(const uint8_t* counts, CoreEval& out)
         out.power += s.power;
         out.calibration += s.calibration;
     }
+    if (costsOnly)
+        return;
     if (active_ || capConstrained_)
     {
         const int n = static_cast<int>(stats.size());
@@ -3118,6 +3192,89 @@ const std::vector<std::vector<int>>& Search::projections(const std::vector<int>&
     });
 }
 
+const Search::ProjTable& Search::projTable(ProjValue what, const uint8_t* fixed, unsigned freeMask)
+{
+    const std::vector<int>& list = what == ProjValue::Hp ? inflHp_ : capAll_;
+    const TaggedKey key{packCounts(list, fixed), static_cast<uint64_t>(what) << 8 | freeMask};
+    return projTables_.get(key, [&] {
+        std::vector<uint8_t> counts(kinds_.size(), 0);
+        for (int j : list)
+            counts[static_cast<size_t>(j)] = fixed[j];
+        ProjTable t;
+        for (const auto& proj : projections(list, freeMask))
+        {
+            std::array<int, RackCount> size{};
+            ProjEntry e{0, {}};
+            for (int k : proj)
+            {
+                ++counts[static_cast<size_t>(k)];
+                const Candidate& c = cands_[static_cast<size_t>(kinds_[static_cast<size_t>(k)].cand)];
+                e.cost[0] += c.cpu * costScale_;
+                e.cost[1] += c.power * costScale_;
+                e.cost[2] += c.calibration;
+                if (what != ProjValue::CapRecharge)
+                    ++size[static_cast<size_t>(kinds_[static_cast<size_t>(k)].rack)];
+            }
+            e.v = what == ProjValue::Hp          ? hpRecord(counts.data())
+                  : what == ProjValue::CapBudget ? capRecord(counts.data()).budget
+                                                 : capRecord(counts.data()).recharge;
+            for (int k : proj)
+                --counts[static_cast<size_t>(k)];
+            auto g = std::find_if(t.groups.begin(), t.groups.end(), [&](const auto& x) { return x.first == size; });
+            if (g == t.groups.end())
+                g = t.groups.insert(t.groups.end(), {size, {}});
+            g->second.push_back(e);
+        }
+        for (auto& [size, entries] : t.groups)
+        {
+            std::stable_sort(entries.begin(), entries.end(),
+                             [](const ProjEntry& a, const ProjEntry& b) { return a.v > b.v; });
+            std::vector<ProjEntry> kept;
+            for (const ProjEntry& e : entries)
+                if (std::none_of(kept.begin(), kept.end(), [&](const ProjEntry& k) {
+                        return k.cost[0] <= e.cost[0] && k.cost[1] <= e.cost[1] && k.cost[2] <= e.cost[2];
+                    }))
+                    kept.push_back(e);
+            entries = std::move(kept);
+        }
+        return t;
+    });
+}
+
+const RepItem& Search::repItem(int kind, int side, const uint8_t* fixed, unsigned freeMask)
+{
+    const bool pinned = kind < 0;
+    const std::vector<int>& infl =
+        pinned ? inflPinned_[static_cast<size_t>(-1 - kind)] : inflKind_[static_cast<size_t>(kind)];
+    const uint64_t id = pinned ? (uint64_t{1} << 31 | static_cast<uint64_t>(-1 - kind)) : static_cast<uint64_t>(kind);
+    const TaggedKey key{packCounts(infl, fixed), id << 8 | static_cast<uint64_t>(side) << 4 | freeMask};
+    return repItems_.get(key, [&] {
+        const bool remote = side == 2 || (side == 0 && remote_);
+        const int layer = side == 2 ? rlayer_ : layer_;
+        // A free kind's own record has at least one copy of it.
+        const int self = !pinned && (freeMask >> kinds_[static_cast<size_t>(kind)].rack & 1u) ? kind : -1;
+        std::vector<uint8_t> counts(kinds_.size(), 0);
+        for (int j : infl)
+            counts[static_cast<size_t>(j)] = fixed[j];
+        std::vector<uint8_t> tmp;
+        RepItem best{-std::numeric_limits<double>::infinity(), 0, std::numeric_limits<double>::infinity()};
+        for (const auto& proj : projections(infl, freeMask))
+        {
+            tmp = counts;
+            for (int k : proj)
+                ++tmp[static_cast<size_t>(k)];
+            if (self >= 0 && tmp[static_cast<size_t>(self)] == 0)
+                tmp[static_cast<size_t>(self)] = 1;
+            RepItem it = decompose(pinned ? pinnedRecord(-1 - kind, tmp.data()) : kindRecord(kind, tmp.data()),
+                                   layer, remote);
+            best.fixed = std::max(best.fixed, it.fixed);
+            best.gain = std::max(best.gain, it.gain);
+            best.capUse = std::min(best.capUse, it.capUse);
+        }
+        return best;
+    });
+}
+
 // Upper bound of every core that extends `fixed` (the core kinds of the racks
 // outside freeMask) with core modules in the free racks.
 //
@@ -3177,17 +3334,6 @@ double Search::partialBoundSide(const uint8_t* fixed, unsigned freeMask, int sid
             room[1] -= base[k] * c.power * costScale_;
             room[2] -= base[k] * c.calibration;
         }
-    auto projectionFits = [&](const std::vector<int>& proj) {
-        std::array<double, 3> cost{};
-        for (int k : proj)
-        {
-            const Candidate& c = cands_[static_cast<size_t>(kinds_[static_cast<size_t>(k)].cand)];
-            cost[0] += c.cpu * costScale_;
-            cost[1] += c.power * costScale_;
-            cost[2] += c.calibration;
-        }
-        return cost[0] <= room[0] + 0.01 && cost[1] <= room[1] + 0.01 && cost[2] <= room[2] + 0.01;
-    };
     // Size vectors over the free racks, encoded 4 bits per rack.
     auto sizeCode = [&](const std::vector<int>& proj) {
         std::array<int, RackCount> n{};
@@ -3215,14 +3361,18 @@ double Search::partialBoundSide(const uint8_t* fixed, unsigned freeMask, int sid
     // Value side, passive: HP per projection size.  Active: budget per size, and
     // the repairer items.
     std::vector<std::pair<std::array<int, RackCount>, double>> valueBySize;  // size -> best value input
-    auto keepMax = [&](const std::array<int, RackCount>& size, double v) {
-        for (auto& [s, best] : valueBySize)
-            if (s == size)
-            {
-                best = std::max(best, v);
-                return;
-            }
-        valueBySize.push_back({size, v});
+    auto costFits = [&](const std::array<double, 3>& cost) {
+        return cost[0] <= room[0] + 0.01 && cost[1] <= room[1] + 0.01 && cost[2] <= room[2] + 0.01;
+    };
+    // Per projection size, the best value of a projection that fits.
+    auto bestBySize = [&](const ProjTable& t) {
+        for (const auto& [size, entries] : t.groups)
+            for (const ProjEntry& e : entries)
+                if (costFits(e.cost))
+                {
+                    valueBySize.push_back({size, e.v});
+                    break;
+                }
     };
     struct Item
     {
@@ -3236,27 +3386,14 @@ double Search::partialBoundSide(const uint8_t* fixed, unsigned freeMask, int sid
     if (!active_)
     {
         if (inflHp_.empty())
-            keepMax({}, baseHp_);
+            valueBySize.push_back({{}, baseHp_});
         else
-            for (const auto& proj : projections(inflHp_, freeMask))
-                if (projectionFits(proj))
-                    keepMax(sizeCode(proj), hpRecord(withProjection(proj)));
+            bestBySize(projTable(ProjValue::Hp, fixed, freeMask));
     }
     else
     {
-        auto addItem = [&](const std::vector<int>& infl, const std::function<ModuleStats(const uint8_t*)>& record,
-                           int count, int self, int rack) {
-            RepItem best{-std::numeric_limits<double>::infinity(), 0, std::numeric_limits<double>::infinity()};
-            for (const auto& proj : projections(infl, freeMask))
-            {
-                const uint8_t* counts = withProjection(proj);
-                if (self >= 0 && tmp[static_cast<size_t>(self)] == 0)
-                    tmp[static_cast<size_t>(self)] = 1;
-                RepItem it = decompose(record(counts), layer, remote);
-                best.fixed = std::max(best.fixed, it.fixed);
-                best.gain = std::max(best.gain, it.gain);
-                best.capUse = std::min(best.capUse, it.capUse);
-            }
+        auto addItem = [&](int kind, int count, int rack) {
+            const RepItem& best = repItem(kind, side, fixed, freeMask);
             if (!std::isfinite(best.fixed))
                 return;
             double capUse = std::isfinite(best.capUse) ? best.capUse : 0.0;
@@ -3267,7 +3404,7 @@ double Search::partialBoundSide(const uint8_t* fixed, unsigned freeMask, int sid
             }
             else  // the fixed part counts per copy too: fold it into the gain at no capacitor cost
             {
-                const Candidate& c = cands_[static_cast<size_t>(kinds_[static_cast<size_t>(self)].cand)];
+                const Candidate& c = cands_[static_cast<size_t>(kinds_[static_cast<size_t>(kind)].cand)];
                 double cpu = c.cpu * costScale_, power = c.power * costScale_;
                 if (best.fixed > 0)
                     items.push_back({best.fixed, 0.0, count, rack, cpu, power});
@@ -3282,17 +3419,12 @@ double Search::partialBoundSide(const uint8_t* fixed, unsigned freeMask, int sid
             bool free = freeMask >> kind.rack & 1u;
             if (!free && !base[k])
                 continue;
-            int kk = static_cast<int>(k);
-            addItem(inflKind_[k], [&](const uint8_t* counts) { return kindRecord(kk, counts); },
-                    free ? kind.cap : base[k], free ? kk : -1, free ? kind.rack : -1);
+            addItem(static_cast<int>(k), free ? kind.cap : base[k], free ? kind.rack : -1);
         }
         for (size_t p = 0; p < basePinned_.size(); ++p)
             if (pinnedLive_[p] && (remote ? basePinned_[p].remoteLayer == layer : basePinned_[p].repEffects != 0))
-                addItem(inflPinned_[p],
-                        [&](const uint8_t* counts) { return pinnedRecord(static_cast<int>(p), counts); }, 1, -1, -1);
-        for (const auto& proj : projections(capAll_, freeMask))
-            if (projectionFits(proj))
-                keepMax(sizeCode(proj), capRecord(withProjection(proj)).budget);
+                addItem(-1 - static_cast<int>(p), 1, -1);
+        bestBySize(projTable(ProjValue::CapBudget, fixed, freeMask));
     }
 
     // Repair with this budget and these free slots per rack (two relaxations, the
@@ -3349,9 +3481,13 @@ double Search::partialBoundSide(const uint8_t* fixed, unsigned freeMask, int sid
     if (opt_.minCapRecharge > 0)
     {
         double most = -std::numeric_limits<double>::infinity();
-        for (const auto& proj : projections(capAll_, freeMask))
-            if (projectionFits(proj))
-                most = std::max(most, capRecord(withProjection(proj)).recharge);
+        for (const auto& [size, entries] : projTable(ProjValue::CapRecharge, fixed, freeMask).groups)
+            for (const ProjEntry& e : entries)
+                if (costFits(e.cost))
+                {
+                    most = std::max(most, e.v);
+                    break;
+                }
         if (most < opt_.minCapRecharge)
             return 0;
     }
@@ -3427,7 +3563,7 @@ bool Search::fixedFits(const uint8_t* fixed, unsigned freeMask, CoreEval& scratc
     for (size_t p = 0; p < inflPinned_.size(); ++p)
         if (pinnedLive_[p] && std::any_of(inflPinned_[p].begin(), inflPinned_[p].end(), inFree))
             return true;
-    assemble(fixed, scratch);
+    assemble(fixed, scratch, true);
     std::array<int, RackCount> free = slots_;
     for (size_t k = 0; k < kinds_.size(); ++k)
         free[static_cast<size_t>(kinds_[k].rack)] -= fixed[k];
@@ -3457,10 +3593,35 @@ bool Search::partialFits(const uint8_t* fixed, unsigned freeMask)
             cost[1] += fixed[k] * c.power * costScale_;
             cost[2] += fixed[k] * c.calibration;
         }
+    const std::array<double, 3> out = nodeOutputMax(fixed);
     for (size_t i = 0; i < 3; ++i)
-        if (cost[i] > outputMax_[i] + 0.01)
+        if (cost[i] > out[i] + 0.01)
             return false;
     return true;
+}
+
+std::array<double, 3> Search::nodeOutputMax(const uint8_t* fixed) const
+{
+    std::array<int, RackCount> left = slots_;
+    for (size_t k = 0; k < kinds_.size(); ++k)
+        left[static_cast<size_t>(kinds_[k].rack)] -= fixed[k];
+    std::array<double, 3> out = outputMax_;
+    for (size_t i = 0; i < 2; ++i)
+    {
+        if (kindOutMul_[i].empty())
+            continue;  // not set up: the whole-fit bound
+        double m = 1;
+        for (size_t k = 0; k < kinds_.size(); ++k)
+            for (int c = 0; c < fixed[k]; ++c)
+                m *= kindOutMul_[i][k];
+        for (int r = 0; r < RackCount; ++r)
+        {
+            const auto& mul = outRackMul_[i][static_cast<size_t>(r)];
+            m *= mul[static_cast<size_t>(std::clamp(left[static_cast<size_t>(r)], 0, static_cast<int>(mul.size()) - 1))];
+        }
+        out[i] = std::min(outputMax_[i], outBase_[i] * m * (1 + 1e-9));
+    }
+    return out;
 }
 
 void Search::countsOf(const std::array<uint32_t, RackCount>& ms, int level, std::vector<uint8_t>& counts) const
@@ -3492,11 +3653,27 @@ void Search::stage1()
     for (int r = 0; r < RackCount; ++r)
         if (coreMs_[static_cast<size_t>(r)].size() > 1)
             rackOrder_.push_back(r);
-    auto rank = [&](int r) { return r == RackRig ? 1 : goalKinds[static_cast<size_t>(r)] > 0 ? 0 : 2; };
+    // A balanced goal has goal kinds in two racks: the second one comes after the
+    // rigs (Proteus, local + remote armor: low, rig, high, mid bounds 9x fewer
+    // partial sets than low, high, rig, mid).
+    int firstGoalRack = -1;
+    for (int r : rackOrder_)
+    {
+        const size_t ri = static_cast<size_t>(r);
+        if (r == RackRig || goalKinds[ri] == 0)
+            continue;
+        const size_t fi = static_cast<size_t>(firstGoalRack);
+        if (firstGoalRack < 0 || goalKinds[ri] > goalKinds[fi] ||
+            (goalKinds[ri] == goalKinds[fi] && coreMs_[ri].size() < coreMs_[fi].size()))
+            firstGoalRack = r;
+    }
+    auto rank = [&](int r) {
+        return r == firstGoalRack ? 0 : r == RackRig ? 1 : goalKinds[static_cast<size_t>(r)] > 0 ? 2 : 3;
+    };
     std::stable_sort(rackOrder_.begin(), rackOrder_.end(), [&](int a, int b) {
         if (rank(a) != rank(b))
             return rank(a) < rank(b);
-        if (rank(a) == 0 && goalKinds[static_cast<size_t>(a)] != goalKinds[static_cast<size_t>(b)])
+        if (rank(a) == 2 && goalKinds[static_cast<size_t>(a)] != goalKinds[static_cast<size_t>(b)])
             return goalKinds[static_cast<size_t>(a)] > goalKinds[static_cast<size_t>(b)];
         return coreMs_[static_cast<size_t>(a)].size() < coreMs_[static_cast<size_t>(b)].size();
     });
@@ -3531,8 +3708,29 @@ void Search::stage1()
                 for (int n = 0; n < slots_[static_cast<size_t>(r)] && n < static_cast<int>(deltas.size()); ++n)
                     if (deltas[static_cast<size_t>(n)] > 0 && baseRec.outputs[i] > 0)
                         out *= 1 + deltas[static_cast<size_t>(n)] / baseRec.outputs[i];
+                if (i < 2)
+                {
+                    auto& mul = outRackMul_[i][static_cast<size_t>(r)];
+                    mul.assign(1, 1.0);
+                    for (int n = 0; n < slots_[static_cast<size_t>(r)]; ++n)
+                    {
+                        double d = n < static_cast<int>(deltas.size()) ? deltas[static_cast<size_t>(n)] : 0;
+                        mul.push_back(mul.back() * (d > 0 && baseRec.outputs[i] > 0 ? 1 + d / baseRec.outputs[i] : 1.0));
+                    }
+                }
             }
             outputMax_[i] = out;
+            if (i < 2)
+            {
+                outBase_[i] = baseRec.outputs[i];
+                kindOutMul_[i].assign(kinds_.size(), 1.0);
+                for (size_t k = 0; k < kinds_.size(); ++k)
+                {
+                    double d = cands_[static_cast<size_t>(kinds_[k].cand)].outputDelta[i];
+                    if (kinds_[k].role == Role::Core && d > 0 && baseRec.outputs[i] > 0)
+                        kindOutMul_[i][k] = 1 + d / baseRec.outputs[i];
+                }
+            }
         }
         for (const Subgroup& sg : subgroups_)
             for (int m : sg.members)
@@ -3595,7 +3793,34 @@ void Search::stage1()
         int level;  // racks fixed (rackOrder_ prefix)
         bool operator<(const Node& o) const { return bound < o.bound; }
     };
-    std::priority_queue<Node> queue;
+    // A max-heap by bound. Nodes at or below the cutoff are never expanded: they are
+    // dropped when the heap has doubled since the last compaction (memory, not results).
+    struct NodeQueue
+    {
+        std::vector<Node> v;
+        size_t compacted = 1u << 20;
+        bool empty() const { return v.empty(); }
+        size_t size() const { return v.size(); }
+        const Node& top() const { return v.front(); }
+        void push(const Node& n)
+        {
+            v.push_back(n);
+            std::push_heap(v.begin(), v.end());
+        }
+        void pop()
+        {
+            std::pop_heap(v.begin(), v.end());
+            v.pop_back();
+        }
+        void compact(double cut)
+        {
+            if (v.size() < 2 * compacted)
+                return;
+            v.erase(std::remove_if(v.begin(), v.end(), [&](const Node& n) { return n.bound <= cut; }), v.end());
+            std::make_heap(v.begin(), v.end());
+            compacted = std::max<size_t>(v.size(), 1u << 20);
+        }
+    } queue;
     queue.push({std::numeric_limits<double>::infinity(), {}, 0});
 
     std::vector<std::vector<float>> boundLog(static_cast<size_t>(levels) + 1);
@@ -3696,81 +3921,185 @@ void Search::stage1()
     };
 
 
-    // Partial sets are expanded in batches: the best unexpanded ones up to the next
-    // whole core (whose scan may raise the cutoff), at most kBatchNodes nodes or
-    // kBatchChildren children. The children's bounds are computed in parallel (pure
-    // functions of the child; the caches only memoize) and queued in order. The
-    // batches don't depend on the thread count, so neither does the result.
-    constexpr size_t kBatchNodes = 64, kBatchChildren = 4096;
+    // The top of the queue is processed in batches: the best nodes, whole cores and
+    // partial sets alike, up to kBatchCores cores, kBatchNodes partial sets or
+    // kBatchChildren children. Cores are scanned against the cutoff before the batch;
+    // partial sets' children are bounded (pure functions of the child; the caches only
+    // memoize). All of it runs in one parallel loop, then scans merge into the top-K
+    // in queue order with the live cutoff and children are queued in order. A batch
+    // may expand or scan nodes that a strictly sequential search would have pruned
+    // after a scan in between: that only costs work. The batches don't depend on the
+    // thread count, so neither does the result.
+    constexpr size_t kBatchNodes = 64, kBatchChildren = 4096, kBatchCores = 512;
     struct Batch
     {
         Node node;
         std::vector<uint8_t> counts;
         unsigned freeMask;
-        size_t first;  // index of its first child
+        std::vector<uint32_t> kids;  // multisets of the next rack that may pass partialFits
+        size_t first;                // index of its first child
     };
-    // Whole cores at the top of the queue are scanned the same way, up to
-    // kBatchCores at a time, against the cutoff before the batch.
-    constexpr size_t kBatchCores = 32;
+    // partialFits' cost sums, per core multiset of each rack and for the pinned
+    // modules: a quick serial filter of children that are surely over the most output
+    // (by more than any summation order changes); partialFits decides the rest.
+    std::array<std::vector<std::array<double, 3>>, RackCount> msCost;
+    std::array<double, 3> pinnedCost{};
+    auto kindCost = [&](int k) {
+        const Candidate& c = cands_[static_cast<size_t>(kinds_[static_cast<size_t>(k)].cand)];
+        return std::array<double, 3>{c.cpu * costScale_, c.power * costScale_, c.calibration};
+    };
+    for (int r = 0; r < RackCount; ++r)
+        for (const Multiset& m : coreMs_[static_cast<size_t>(r)])
+        {
+            std::array<double, 3> c{};
+            for (int j = 0; j < m.n; ++j)
+            {
+                auto kc = kindCost(coreKinds_[static_cast<size_t>(r)][m.k[static_cast<size_t>(j)]]);
+                for (size_t i = 0; i < 3; ++i)
+                    c[i] += kc[i];
+            }
+            msCost[static_cast<size_t>(r)].push_back(c);
+        }
+    for (size_t p = 0; p < basePinned_.size(); ++p)
+        if (pinnedLive_[p])
+        {
+            pinnedCost[0] += basePinned_[p].cpu * costScale_;
+            pinnedCost[1] += basePinned_[p].power * costScale_;
+            pinnedCost[2] += basePinned_[p].calibration;
+        }
+    auto surelyOver = [&](const std::array<double, 3>& base, const std::array<double, 3>& add) {
+        if (noFitPrune_)
+            return false;
+        for (size_t i = 0; i < 3; ++i)
+            if (base[i] + add[i] > outputMax_[i] + 0.01 + 1e-6 * (1 + std::abs(base[i]) + std::abs(add[i])))
+                return true;
+        return false;
+    };
     std::vector<Batch> batch;
     std::vector<Node> cores;
     std::vector<std::vector<Found>> finds;
-    while (!queue.empty())
+    double batchSec = 0;
+    size_t batches = 0;
+    const auto stageStart = Clock::now();
+    auto lastReport = stageStart;
+    // Until K sets are found the cutoff is 0 and nothing is pruned, so best-first
+    // would bound level after level of loose partial sets first. Dive instead: depth
+    // first, best child first (a stack), so whole cores are scanned early and the
+    // cutoff rises; then the rest goes to the queue. Every node is still expanded or
+    // pruned against a true K-th score, so the top-K is the same either way.
+    std::vector<Node> dive{queue.top()};
+    queue.pop();
+    std::vector<Node> diveKids;
+    auto addPartial = [&](const Node& node, size_t& total) {
+        Batch b;
+        b.node = node;
+        b.freeMask = 0;
+        for (int l = b.node.level + 1; l < levels; ++l)
+            b.freeMask |= 1u << rackOrder_[static_cast<size_t>(l)];
+        b.counts.resize(kinds_.size());
+        countsOf(b.node.ms, b.node.level, b.counts);
+        std::array<double, 3> base = pinnedCost;
+        for (size_t k = 0; k < kinds_.size(); ++k)
+            if (b.counts[k])
+            {
+                auto kc = kindCost(static_cast<int>(k));
+                for (size_t i = 0; i < 3; ++i)
+                    base[i] += b.counts[k] * kc[i];
+            }
+        const int r = rackOrder_[static_cast<size_t>(b.node.level)];
+        const auto& costs = msCost[static_cast<size_t>(r)];
+        for (size_t i = 0; i < costs.size(); ++i)
+            if (!surelyOver(base, costs[i]))
+                b.kids.push_back(static_cast<uint32_t>(i));
+        b.first = total;
+        total += b.kids.size();
+        batch.push_back(std::move(b));
+        ++result_.stats.combosOpened;
+    };
+    // The time budget (whole run) stops stage 1 at half of it; stage 2 and refine go on
+    // from the sets found so far (refine from the empty set if none).
+    const bool timed = opt_.timeBudget > 0 && !opt_.bruteForce;
+    const auto stopAt = runStart_ + std::chrono::duration_cast<Clock::duration>(
+                                        std::chrono::duration<double>(timed ? opt_.timeBudget / 2 : 0));
+    for (;;)
     {
-        if (queue.top().bound <= cutoff())
-            break;
-        if (queue.top().level == levels)
+        if (timed && Clock::now() > stopAt)
         {
-            cores.clear();
-            while (!queue.empty() && cores.size() < kBatchCores && queue.top().level == levels &&
-                   queue.top().bound > cutoff())
-            {
-                cores.push_back(queue.top());
-                queue.pop();
-            }
-            const double cut = cutoff();
-            finds.assign(cores.size(), {});
-            pool_->run(cores.size(), 1, [&](size_t i, int worker) { scan(cores[i], cut, finds[i], worker); });
-            for (size_t i = 0; i < cores.size(); ++i)
-            {
-                if (cores[i].bound <= cutoff())
-                    continue;  // the sequential search would not have scanned it
-                ++result_.stats.coresScanned;
-                for (const Found& f : finds[i])
-                    keep(f);
-            }
-            continue;
+            result_.stats.stage1Stopped = true;
+            result_.warnings.push_back("stage 1 stopped at half the time budget (" + fmt(opt_.timeBudget / 2) +
+                                       " s): the result is the best found, not proven best");
+            logLine("stage 1 stopped at half the time budget");
+            break;
         }
+        const bool diving = top_.size() < K && !dive.empty();
+        if (!diving)
+        {
+            for (const Node& n : dive)
+                if (n.bound > cutoff())
+                    queue.push(n);
+            dive.clear();
+            if (queue.empty() || queue.top().bound <= cutoff())
+                break;
+        }
+        cores.clear();
         batch.clear();
         size_t total = 0;
-        while (!queue.empty() && batch.size() < kBatchNodes && total < kBatchChildren &&
-               queue.top().level < levels && queue.top().bound > cutoff())
+        if (diving)
         {
-            Batch b;
-            b.node = queue.top();
-            queue.pop();
-            b.freeMask = 0;
-            for (int l = b.node.level + 1; l < levels; ++l)
-                b.freeMask |= 1u << rackOrder_[static_cast<size_t>(l)];
-            b.counts.resize(kinds_.size());
-            countsOf(b.node.ms, b.node.level, b.counts);
-            b.first = total;
-            total += coreMs_[static_cast<size_t>(rackOrder_[static_cast<size_t>(b.node.level)])].size();
-            batch.push_back(std::move(b));
-            ++result_.stats.combosOpened;
+            // One partial set, or the run of whole cores on top of the stack.
+            if (dive.back().level < levels)
+            {
+                addPartial(dive.back(), total);
+                dive.pop_back();
+            }
+            else
+                while (!dive.empty() && cores.size() < kBatchCores && dive.back().level == levels)
+                {
+                    cores.push_back(dive.back());
+                    dive.pop_back();
+                }
         }
-        bool partial = false;
-        for (const Batch& b : batch)
-            partial |= b.node.level + 1 < levels;
+        else
+            while (!queue.empty() && cores.size() < kBatchCores && batch.size() < kBatchNodes &&
+                   total < kBatchChildren && queue.top().bound > cutoff())
+            {
+                if (queue.top().level == levels)
+                    cores.push_back(queue.top());
+                else
+                    addPartial(queue.top(), total);
+                queue.pop();
+            }
+        const double cut = cutoff();
+        if (log_ && Clock::now() - lastReport > std::chrono::seconds(2))
+        {
+            lastReport = Clock::now();
+            std::string lv;
+            for (size_t l = 1; l < boundLog.size(); ++l)
+                lv += " " + std::to_string(boundLog[l].size());
+            logLine("  stage 1 at " + std::to_string(std::chrono::duration<double>(lastReport - stageStart).count()) +
+                    " s: " + std::to_string(result_.stats.combosOpened) + " expanded, bounds per level" + lv +
+                    ", queue " + std::to_string(queue.size()) + ", top " + std::to_string(queue.empty() ? 0.0 : queue.top().bound) +
+                    ", cutoff " + std::to_string(cut) + ", kept " + std::to_string(top_.size()));
+            log_->flush();
+        }
+        finds.assign(cores.size(), {});
         childBound.assign(total, std::numeric_limits<double>::quiet_NaN());
-        pool_->run(total, partial ? 1 : 16, [&](size_t i, int worker) {
+        const auto tb = Clock::now();
+        ++batches;
+        // Children first (cheap, mostly), the scans last (guided chunks: one at a time).
+        pool_->run(total + cores.size(), 64, [&](size_t i, int worker) {
+            if (i >= total)
+            {
+                scan(cores[i - total], cut, finds[i - total], worker);
+                return;
+            }
             size_t bi = static_cast<size_t>(
                 std::upper_bound(batch.begin(), batch.end(), i, [](size_t x, const Batch& b) { return x < b.first; }) -
                 batch.begin() - 1);
             const Batch& b = batch[bi];
             const int r = rackOrder_[static_cast<size_t>(b.node.level)];
             const int level = b.node.level + 1;
-            const Multiset& m = coreMs_[static_cast<size_t>(r)][i - b.first];
+            const Multiset& m = coreMs_[static_cast<size_t>(r)][b.kids[i - b.first]];
             const auto& list = coreKinds_[static_cast<size_t>(r)];
             std::vector<uint8_t>& ch = childCounts[static_cast<size_t>(worker)];
             ch = b.counts;
@@ -3796,26 +4125,48 @@ void Search::stage1()
             else if (partialFits(ch.data(), b.freeMask) &&
                      fixedFits(ch.data(), b.freeMask, childEval[static_cast<size_t>(worker)]))
                 childBound[i] = partialBound(ch.data(), b.freeMask);
-        });
+        }, true);
+        batchSec += std::chrono::duration<double>(Clock::now() - tb).count();
+        for (size_t i = 0; i < cores.size(); ++i)
+        {
+            if (cores[i].bound <= cutoff())
+                continue;  // the sequential search would not have scanned it
+            ++result_.stats.coresScanned;
+            for (const Found& f : finds[i])
+                keep(f);
+        }
         for (const Batch& b : batch)
         {
             const int r = rackOrder_[static_cast<size_t>(b.node.level)];
-            const size_t n = coreMs_[static_cast<size_t>(r)].size();
-            for (size_t i = 0; i < n; ++i)
+            for (size_t i = 0; i < b.kids.size(); ++i)
             {
                 double bound = childBound[b.first + i];
                 if (std::isnan(bound))
                     continue;
                 Node c = b.node;
-                c.ms[static_cast<size_t>(r)] = static_cast<uint32_t>(i);
+                c.ms[static_cast<size_t>(r)] = b.kids[i];
                 c.level = b.node.level + 1;
                 c.bound = bound;
                 if (c.bound > cutoff())
-                    queue.push(c);
-                boundLog[static_cast<size_t>(c.level)].push_back(static_cast<float>(c.bound));
+                {
+                    if (top_.size() < K)
+                        diveKids.push_back(c);
+                    else
+                        queue.push(c);
+                }
+                if (log_)
+                    boundLog[static_cast<size_t>(c.level)].push_back(static_cast<float>(c.bound));
             }
         }
+        queue.compact(cutoff());
+        // Best child on top of the stack (ties: the lower multiset index first).
+        std::stable_sort(diveKids.begin(), diveKids.end(), [](const Node& x, const Node& y) { return x.bound < y.bound; });
+        dive.insert(dive.end(), diveKids.begin(), diveKids.end());
+        diveKids.clear();
     }
+    logLine("stage 1 wall " + std::to_string(std::chrono::duration<double>(Clock::now() - stageStart).count()) +
+            " s, " + std::to_string(batches) + " batches (" + std::to_string(batchSec) + " s in parallel loops), " +
+            std::to_string(queue.size()) + " nodes left in the queue");
     for (size_t b : bounded)
         result_.stats.coresBounded += b;
     for (size_t n : scored)
@@ -5820,6 +6171,7 @@ void Search::noGoalWarning()
 Result Search::run()
 {
     auto t0 = Clock::now();
+    runStart_ = t0;
     {
         int threads = opt_.threads > 0 ? opt_.threads : static_cast<int>(std::thread::hardware_concurrency());
         pool_ = std::make_unique<Pool>(std::max(1, threads));
