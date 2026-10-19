@@ -2,15 +2,18 @@
 # bundled, and copies it over an installed pyfa.
 #
 # Usage (from anywhere):
-#   powershell -ExecutionPolicy Bypass -File scripts\build_pyfa.ps1 (-PyfaInstall <pyfa dir> | -NoCopy)
+#   powershell -ExecutionPolicy Bypass -File scripts\build_pyfa.ps1 (-PyfaInstall <pyfa dir> | -NoCopy) [-Zip]
 # There is no default install: a dev build only goes over a pyfa that is named.
+# -Zip also packs dist\pyfa into dist\pyfa-<version>-cppfa-win64.zip (a portable pyfa, for a
+# GitHub release), version from version.yml.
 #
 # The repo's .venv is the WSL (Linux) one, so the Windows environment lives in
 # %LOCALAPPDATA%\pyfa-build\venv (uv, Python from .python-version).
 
 param(
     [string]$PyfaInstall,
-    [switch]$NoCopy
+    [switch]$NoCopy,
+    [switch]$Zip
 )
 
 $ErrorActionPreference = 'Stop'
@@ -43,6 +46,18 @@ if (-not (Test-Path 'eve.db')) {
 Invoke-Step 'PyInstaller' { uv run --no-sync python -m PyInstaller --clean -y pyfa.spec }
 # See pyfa-org/pyfa#1622
 Copy-Item 'dist_assets\win\pyfa.exe.manifest' 'dist\pyfa\' -Force
+
+if ($Zip) {
+    $version = (Select-String -Path 'version.yml' -Pattern '^version:\s*(\S+)').Matches[0].Groups[1].Value
+    $zipPath = Join-Path $repo "dist\pyfa-$version-cppfa-win64.zip"
+    Write-Host "== Zip dist\pyfa -> $zipPath"
+    if (Test-Path $zipPath) { Remove-Item $zipPath }
+    # .NET's ZipFile rather than Compress-Archive: Windows PowerShell's Compress-Archive writes
+    # backslashes into entry names, which other unzip tools take as part of the file name.
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [System.IO.Compression.ZipFile]::CreateFromDirectory((Join-Path $repo 'dist\pyfa'), $zipPath,
+        [System.IO.Compression.CompressionLevel]::Optimal, $true)
+}
 
 if ($NoCopy) { return }
 
