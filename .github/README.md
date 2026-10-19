@@ -59,16 +59,33 @@ short, with [uv](https://docs.astral.sh/uv/):
     uv run python db_update.py
     uv run python pyfa.py
 
-The optimizer needs Windows and Visual Studio (C++, x64). From the repository root, in PowerShell:
+### Requirements for the optimizer (Windows)
 
-- `scripts\build_reader.ps1 -NoCopy` builds `cpp\bin\Release\PyfaReader.exe`, where pyfa looks for
-  it (the dialog can also point to another path).
-- `scripts\build_pyfa.ps1 -NoCopy` builds the Windows pyfa (PyInstaller) with the optimizer
-  bundled, in `dist\pyfa`.
-- After pulling in a new pyfa, `scripts\update_cpp_data.ps1 -NoCopy` regenerates `eve.db` and the
+- **Visual Studio 2026** (any edition) or the free **Build Tools for Visual Studio 2026**, with the
+  **Desktop development with C++** workload (it brings the v145 compiler and a Windows SDK).
+  Visual Studio 2022 doesn't have the v145 toolset and can't build the project as it is.
+- **[uv](https://docs.astral.sh/uv/)**, a recent version, on the Windows `PATH`. It installs the
+  Python version and packages the build uses; nothing else Python-related is needed.
+- **Git for Windows** is optional: `update_cpp_data.ps1` uses it at the end to list the
+  regenerated files.
+
+The built exe needs nothing installed: it links the C runtime statically.
+
+### Build scripts
+
+Run them from the repository root. PowerShell doesn't run scripts by default, so either call them
+as `powershell -ExecutionPolicy Bypass -File scripts\<script>.ps1 ...`, or allow local scripts once
+with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` and call `scripts\<script>.ps1 ...`.
+
+- `build_reader.ps1 -NoCopy` builds `cpp\bin\Release\PyfaReader.exe`, where pyfa looks for it
+  (the dialog can also point to another path).
+- `build_pyfa.ps1 -NoCopy` builds the Windows pyfa (PyInstaller) with the optimizer bundled, in
+  `dist\pyfa`.
+- After pulling in a new pyfa, `update_cpp_data.ps1 -NoCopy` regenerates `eve.db` and the
   optimizer's data from it, then rebuilds the exe.
 
-Without `-NoCopy` the scripts also copy the result into an installed pyfa (`-PyfaInstall <dir>`).
+Each script needs either `-NoCopy` or `-PyfaInstall <dir>`, which also copies the result into
+the pyfa installed there. There is no default, so a dev build never lands on a pyfa by accident.
 To run pyfa under WSL, see `scripts/setup-wsl-venv.sh` and [`cpp/README.md`](../cpp/README.md).
 
 ## License

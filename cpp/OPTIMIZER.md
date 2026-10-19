@@ -89,7 +89,7 @@ Files:
 - `service/settings.py`: `ModuleOptimizerSettings` (`exePath` ('' = `<pyfa root>/cpp/bin/Release/PyfaReader.exe`), `goal`, the constraints, `results`, `timeBudget` (60), `threads` (0 = all; no UI), `timeout` (300 s; raised to at least the budget + 120 s, none with no budget)).
 - `cpp/tools/optimizer_dialog_test.py`: drives the dialog end to end with pyfa's real MainFrame on a temporary copy of saveddata.db.
 
-**Windows install** (`scripts/build_pyfa.ps1`, `pyfa.spec`): the exe is bundled into `cpp/bin/Release` of the install when it exists at build time. It needs `effect_modifiers.tsv` and `warfare_buffs.tsv` next to it (the MSBuild build copies them; `pyfa.spec` bundles them) and the Visual C++ 2015-and-later x64 runtime (the exe links the CRT dynamically). eve.db is passed with `--game`.
+**Windows install** (`scripts/build_pyfa.ps1`, `pyfa.spec`): the exe is bundled into `cpp/bin/Release` of the install when it exists at build time. It needs `effect_modifiers.tsv` and `warfare_buffs.tsv` next to it (the MSBuild build copies them; `pyfa.spec` bundles them) The Release build links the C runtime statically (`/MT`), so no Visual C++ redistributable is needed. eve.db is passed with `--game`.
 
 **WSL**: pyfa running under WSL runs the Windows exe through interop; paths given to the exe are converted with `wslpath -w`. SQLite can't open a database inside the WSL file system from Windows (`\\wsl.localhost\...` gives "database is locked"), so when pyfa's eve.db isn't under `/mnt/`, `--game` is left out and the exe uses the eve.db it finds next to/above itself (the repo's `eve.db` for `cpp/bin/Release`). It should be the same game data version as pyfa's.
 
