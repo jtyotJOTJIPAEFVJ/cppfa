@@ -143,7 +143,7 @@ Report stage 1 time, partial sets expanded, cores bounded/scanned, and the best 
 Acceptance for every item:
 
 - Same results: diff the option lines against the previous build (`--refine-rounds 15
-  --time-budget 0 --threads 8`, see AGENTS.md); items 3 and 4 may change which top-K sets
+  --time-budget 0 --threads 8`, see README.md); items 3 and 4 may change which top-K sets
   stage 1 keeps, so for them require the same or better best set on every case.
 - `--optimize-check <fits> all` (and with `--racks mid,low,rig,high` on logi fits):
   0 mismatches. `--search-check 400`: 0 mismatches (engine untouched, but cheap to run).
