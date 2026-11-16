@@ -202,7 +202,6 @@ effectID	effectName	effectType	runTime	contexts	operation	domain	target	targetAt
 996	eliteBonusGunshipHybridTracking2	passive	normal	*	boost	modules	item	trackingSpeed	eliteBonusGunship2	owner	1	0	0	Assault Frigates	skill:Small Hybrid Turret		0				
 998	eliteBonusGunshipProjectileFalloff2	passive	normal	*	boost	modules	item	falloff	eliteBonusGunship2	owner	1	0	0	Assault Frigates	skill:Small Projectile Turret		0				
 999	eliteBonusGunshipShieldBoost2	passive	normal	*	boost	modules	item	shieldBonus	eliteBonusGunship2	owner	1	0	0	Assault Frigates	skill:Shield Operation		0				
-1001	eliteBonusGunshipCapRecharge2	passive	normal	*	boost	ship	item	rechargeRate	eliteBonusGunship2	owner	1	0	0	Assault Frigates			0				
 1003	selfT2SmallLaserPulseDamageBonus	passive	normal	*	boost	modules	item	damageMultiplier	damageMultiplierBonus	owner	1	0	1		skill:Small Pulse Laser Specialization		0				
 1004	selfT2SmallLaserBeamDamageBonus	passive	normal	*	boost	modules	item	damageMultiplier	damageMultiplierBonus	owner	1	0	1		skill:Small Beam Laser Specialization		0				
 1005	selfT2SmallHybridBlasterDamageBonus	passive	normal	*	boost	modules	item	damageMultiplier	damageMultiplierBonus	owner	1	0	1		skill:Small Blaster Specialization		0				
@@ -2549,10 +2548,10 @@ effectID	effectName	effectType	runTime	contexts	operation	domain	target	targetAt
 6658	moduleBonusBastionModule	active	early	*	multiply	ship	item	armorThermalDamageResonance	armorThermalDamageResonance	owner	1	0	0				1	preMul			
 6658	moduleBonusBastionModule	active	early	*	multiply	ship	item	armorExplosiveDamageResonance	armorExplosiveDamageResonance	owner	1	0	0				1	preMul			
 6658	moduleBonusBastionModule	active	early	*	multiply	ship	item	armorEmDamageResonance	armorEmDamageResonance	owner	1	0	0				1	preMul			
-6658	moduleBonusBastionModule	active	early	*	multiply	ship	item	kineticDamageResonance	hullKineticDamageResonance	owner	1	0	0				0				
-6658	moduleBonusBastionModule	active	early	*	multiply	ship	item	thermalDamageResonance	hullThermalDamageResonance	owner	1	0	0				0				
-6658	moduleBonusBastionModule	active	early	*	multiply	ship	item	explosiveDamageResonance	hullExplosiveDamageResonance	owner	1	0	0				0				
-6658	moduleBonusBastionModule	active	early	*	multiply	ship	item	emDamageResonance	hullEmDamageResonance	owner	1	0	0				0				
+6658	moduleBonusBastionModule	active	early	*	multiply	ship	item	kineticDamageResonance	hullKineticDamageResonance	owner	1	0	0				1	preMul			
+6658	moduleBonusBastionModule	active	early	*	multiply	ship	item	thermalDamageResonance	hullThermalDamageResonance	owner	1	0	0				1	preMul			
+6658	moduleBonusBastionModule	active	early	*	multiply	ship	item	explosiveDamageResonance	hullExplosiveDamageResonance	owner	1	0	0				1	preMul			
+6658	moduleBonusBastionModule	active	early	*	multiply	ship	item	emDamageResonance	hullEmDamageResonance	owner	1	0	0				1	preMul			
 6658	moduleBonusBastionModule	active	early	*	boost	modules	item	maxRange	maxRangeBonus	owner	1	0	0		skill:Large Energy Turret|skill:Large Hybrid Turret|skill:Large Projectile Turret|skill:Large Precursor Weapon		1	default			
 6658	moduleBonusBastionModule	active	early	*	boost	modules	item	falloff	falloffBonus	owner	1	0	0		skill:Large Energy Turret|skill:Large Hybrid Turret|skill:Large Projectile Turret		1	default			
 6658	moduleBonusBastionModule	active	early	*	boost	modules	item	speed	bastionTurretROFBonus	owner	1	0	0		skill:Large Energy Turret|skill:Large Hybrid Turret|skill:Large Projectile Turret|skill:Large Precursor Weapon		1	postPerc			
@@ -2689,19 +2688,32 @@ effectID	effectName	effectType	runTime	contexts	operation	domain	target	targetAt
 6694	npcEntityWeaponDisruptor	projected|active	normal	ship|skill|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	trackingSpeed	trackingSpeedBonus	owner	1	0	0		skill:Gunnery	unparsed:not (fit.ship.getModifiedItemAttr('disallowOffensiveModifiers'))&unparsed:not (container.getModifiedItemAttr('maxRange', 0) < (projectionRange or 0))	1	default			
 6694	npcEntityWeaponDisruptor	projected|active	normal	ship|skill|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	maxRange	maxRangeBonus	owner	1	0	0		skill:Gunnery	unparsed:not (fit.ship.getModifiedItemAttr('disallowOffensiveModifiers'))&unparsed:not (container.getModifiedItemAttr('maxRange', 0) < (projectionRange or 0))	1	default			
 6694	npcEntityWeaponDisruptor	projected|active	normal	ship|skill|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	falloff	falloffBonus	owner	1	0	0		skill:Gunnery	unparsed:not (fit.ship.getModifiedItemAttr('disallowOffensiveModifiers'))&unparsed:not (container.getModifiedItemAttr('maxRange', 0) < (projectionRange or 0))	1	default			
-6697	rigDrawbackReductionArmor	passive	normal	*	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Armor		0				
-6697	rigDrawbackReductionArmor	passive	normal	*	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Resource Processing		0				
-6698	rigDrawbackReductionAstronautics	passive	normal	*	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Navigation		0				
-6698	rigDrawbackReductionAstronautics	passive	normal	*	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Anchor		0				
-6699	rigDrawbackReductionDrones	passive	normal	*	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Drones		0				
-6700	rigDrawbackReductionElectronic	passive	normal	*	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Electronic Systems		0				
-6700	rigDrawbackReductionElectronic	passive	normal	*	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Scanning		0				
-6700	rigDrawbackReductionElectronic	passive	normal	*	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Targeting		0				
-6701	rigDrawbackReductionProjectile	passive	normal	*	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Projectile Weapon		0				
-6702	rigDrawbackReductionEnergyWeapon	passive	normal	*	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Energy Weapon		0				
-6703	rigDrawbackReductionHybrid	passive	normal	*	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Hybrid Weapon		0				
-6704	rigDrawbackReductionLauncher	passive	normal	*	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Launcher		0				
-6705	rigDrawbackReductionShield	passive	normal	*	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Shield		0				
+6697	rigDrawbackReductionArmor	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Armor		0				
+6697	rigDrawbackReductionArmor	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Resource Processing		0				
+6697	rigDrawbackReductionArmor	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Armor		0				
+6697	rigDrawbackReductionArmor	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Resource Processing		0				
+6698	rigDrawbackReductionAstronautics	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Navigation		0				
+6698	rigDrawbackReductionAstronautics	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Anchor		0				
+6698	rigDrawbackReductionAstronautics	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Navigation		0				
+6698	rigDrawbackReductionAstronautics	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Anchor		0				
+6699	rigDrawbackReductionDrones	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Drones		0				
+6699	rigDrawbackReductionDrones	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Drones		0				
+6700	rigDrawbackReductionElectronic	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Electronic Systems		0				
+6700	rigDrawbackReductionElectronic	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Scanning		0				
+6700	rigDrawbackReductionElectronic	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Targeting		0				
+6700	rigDrawbackReductionElectronic	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Electronic Systems		0				
+6700	rigDrawbackReductionElectronic	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Scanning		0				
+6700	rigDrawbackReductionElectronic	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Targeting		0				
+6701	rigDrawbackReductionProjectile	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Projectile Weapon		0				
+6701	rigDrawbackReductionProjectile	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Projectile Weapon		0				
+6702	rigDrawbackReductionEnergyWeapon	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Energy Weapon		0				
+6702	rigDrawbackReductionEnergyWeapon	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Energy Weapon		0				
+6703	rigDrawbackReductionHybrid	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Hybrid Weapon		0				
+6703	rigDrawbackReductionHybrid	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Hybrid Weapon		0				
+6704	rigDrawbackReductionLauncher	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Launcher		0				
+6704	rigDrawbackReductionLauncher	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Launcher		0				
+6705	rigDrawbackReductionShield	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Shield		0				
+6705	rigDrawbackReductionShield	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Shield		0				
 6706	setBonusAsklepian	passive	early	*	multiply	appliedImplants	item	armorRepairBonus	implantSetSerpentis2	owner	1	0	0		skill:Cybernetics		0				
 6708	armorRepairAmountBonusSubcap	passive	normal	*	boost	modules	item	armorDamageAmount	armorRepairBonus	owner	1	0	0		skill:Repair Systems		0				
 6709	shipBonusRole1CapitalHybridDamageBonus	passive	normal	*	boost	modules	item	damageMultiplier	shipBonusRole1	owner	1	0	0		skill:Capital Hybrid Turret		0				
@@ -3352,8 +3364,6 @@ effectID	effectName	effectType	runTime	contexts	operation	domain	target	targetAt
 8263	industrialCommandBonusFuelConsuptionCompactIndustrialCore	passive	normal	*	boost	modules	item	consumptionQuantity	industrialCommandBonusFuelConsuptionCompactIndustrialCore	owner	1	0	0	Industrial Command Ships	skill:Industrial Reconfiguration		0				
 8264	industrialCommandBonusMiningForemanBurstRange	passive	normal	*	boost	modules	item	maxRange	industrialCommandBonusMiningForemanBurstRange	owner	1	0	0	Industrial Command Ships	skill:Mining Foreman		0				
 8267	weaponDisruptorResistanceBonusPassive	passive	normal	*	boost	ship	item	weaponDisruptionResistance	weaponDisruptionResistanceBonus	owner	1	0	0				0				
-8268	nosferatuDurationBonusPassive	passive	normal	*	boost	modules	item	duration	durationBonus	owner	1	0	0		group:Energy Nosferatu		0				
-8269	stasisWebifierMaxRangeAddPassive	passive	normal	*	increase	modules	item	maxRange	stasisWebRangeAdd	owner	1	0	0		group:Stasis Web		0		pre		
 8270	capacitorWarfareResistanceBonusPassive	passive	normal	*	boost	ship	item	energyWarfareResistance	energyWarfareResistanceBonus	owner	1	0	0				0				
 8275	minmatarIndustrialBonusGasHoldCapacity	passive	normal	*	boost	ship	item	specialGasHoldCapacity	minmatarIndustrialBonusGasHoldCapacity	owner	1	0	0	Minmatar Hauler			0				
 8278	industrialCommandBonusGeneralMiningHoldCapacity	passive	normal	*	boost	ship	item	generalMiningHoldCapacity	industrialCommandBonusGeneralMiningHoldCapacity	owner	1	0	0	Industrial Command Ships			0				
@@ -3755,6 +3765,10 @@ effectID	effectName	effectType	runTime	contexts	operation	domain	target	targetAt
 12597	moduleBonusIntegratedSensorArray	active	normal	*	boost	fighters	item	scanRadarStrength	scanRadarStrengthPercent	owner	1	0	0		skill:Fighters		1	default			
 12597	moduleBonusIntegratedSensorArray	active	normal	*	boost	modules	item	duration	siegeLocalLogisticsDurationBonus	owner	1	0	0		skill:Capital Shield Operation|skill:Capital Repair Systems		0				
 12597	moduleBonusIntegratedSensorArray	active	normal	*	boost	modules	item	capacitorNeed	siegeLocalLogisticsCapacitorNeedBonus	owner	1	0	0		skill:Capital Shield Operation|skill:Capital Repair Systems		0				
+12597	moduleBonusIntegratedSensorArray	active	normal	*	multiply	fighters	item	fighterAbilityMissilesExplosionRadius	ISAFighterExplosionRadiusReductionBonusActive	owner	1	0	0		skill:Fighters		1	preMul			
+12597	moduleBonusIntegratedSensorArray	active	normal	*	multiply	fighters	item	fighterAbilityAttackMissileExplosionRadius	ISAFighterExplosionRadiusReductionBonusActive	owner	1	0	0		skill:Fighters		1	preMul			
+12597	moduleBonusIntegratedSensorArray	active	normal	*	multiply	fighters	item	fighterAbilityMissilesExplosionVelocity	ISAFighterExplosionVelocityBonusActive	owner	1	0	0		skill:Fighters		1	preMul			
+12597	moduleBonusIntegratedSensorArray	active	normal	*	multiply	fighters	item	fighterAbilityAttackMissileExplosionVelocity	ISAFighterExplosionVelocityBonusActive	owner	1	0	0		skill:Fighters		1	preMul			
 12739	shipBonusEnergyNeutOptimalAC2	passive	normal	*	boost	modules	item	maxRange	shipBonusAC2	owner	1	0	0	Amarr Cruiser	group:Energy Neutralizer		0				
 12740	shipBonusEnergyNosOptimalAC2	passive	normal	*	boost	modules	item	maxRange	shipBonusAC2	owner	1	0	0	Amarr Cruiser	group:Energy Nosferatu		0				
 12753	shipRoleBonusOREExecutiveIssueMiningCriticalHitChanceBonus	passive	normal	*	boost	modules	item	miningCritChance	shipRoleBonusOREExecutiveIssueMiningCriticalHitChance	owner	1	0	0		skill:Mining		0				
@@ -3892,6 +3906,17 @@ effectID	effectName	effectType	runTime	contexts	operation	domain	target	targetAt
 12924	proximityDbuffTacticalDestroyerHPAddEffect	passive	normal	*	increase	ship	item	shieldCapacity	proximityDbuffEffectTacticalDestroyerHP	owner	1	0	0				0		pre		
 12924	proximityDbuffTacticalDestroyerHPAddEffect	passive	normal	*	increase	ship	item	armorHP	proximityDbuffEffectTacticalDestroyerHP	owner	1	0	0				0		pre		
 12924	proximityDbuffTacticalDestroyerHPAddEffect	passive	normal	*	increase	ship	item	hp	proximityDbuffEffectTacticalDestroyerHP	owner	1	0	0				0		pre		
+12925	shipLargeLaserRangeBonusABC3	passive	normal	*	boost	modules	item	maxRange	shipBonusABC3	owner	1	0	0	Amarr Battlecruiser	skill:Large Energy Turret		0				
+12926	shipBonusArmorPlateMassGBC3	passive	normal	*	boost	modules	item	massAddition	shipBonusGBC3	owner	1	0	0	Gallente Battlecruiser	group:Armor Plate		0				
+12927	shipBonusLargeHybridTurretHybridFallOffGBC1	passive	normal	*	boost	modules	item	falloff	shipBonusGBC1	owner	1	0	0	Gallente Battlecruiser	skill:Large Hybrid Turret		0				
+12928	shipBonusMWDSignatureRadiusMBC3	passive	normal	*	boost	modules	item	signatureRadiusBonus	shipBonusMBC3	owner	1	0	0	Minmatar Battlecruiser	skill:High Speed Maneuvering		0				
+12932	shipRoleBonusAttackBattlecruiserLargeMissilePowerFittingBonus	passive	normal	*	multiply	modules	item	power	bcLargeLauncherPower	owner	1	0	0		group:Missile Launcher Cruise|group:Missile Launcher Torpedo		0				
+12933	shipRoleBonusAttackBattlecruiserLargeMissileCPUFittingBonus	passive	normal	*	multiply	modules	item	cpu	bcLargeLauncherCPU	owner	1	0	0		group:Missile Launcher Cruise|group:Missile Launcher Torpedo		0				
+12934	shipBonusCruiseMissileAndTorpedoKineticCBC1	passive	normal	*	boost	modules	charge	kineticDamage	shipBonusCBC1	owner	1	0	0	Caldari Battlecruiser	charge.skill:Cruise Missiles|charge.skill:Torpedoes		0				
+12935	shipBonusCruiseMissileAndTorpedoEMThermalExplosiveCBC2	passive	normal	*	boost	modules	charge	emDamage	shipBonusCBC2	owner	1	0	0	Caldari Battlecruiser	charge.skill:Cruise Missiles|charge.skill:Torpedoes		0				
+12935	shipBonusCruiseMissileAndTorpedoEMThermalExplosiveCBC2	passive	normal	*	boost	modules	charge	explosiveDamage	shipBonusCBC2	owner	1	0	0	Caldari Battlecruiser	charge.skill:Cruise Missiles|charge.skill:Torpedoes		0				
+12935	shipBonusCruiseMissileAndTorpedoEMThermalExplosiveCBC2	passive	normal	*	boost	modules	charge	thermalDamage	shipBonusCBC2	owner	1	0	0	Caldari Battlecruiser	charge.skill:Cruise Missiles|charge.skill:Torpedoes		0				
+12936	shipBonusCruiseMissileAndTorpedoMaximumVelocityCBC3	passive	normal	*	boost	modules	charge	maxVelocity	shipBonusCBC3	owner	1	0	0	Caldari Battlecruiser	charge.skill:Cruise Missiles|charge.skill:Torpedoes		0				
 12940	capNeedBonusEffectLasersOnline	passive	normal	*	boost	modules	item	capacitorNeed	capNeedBonus	owner	1	0	0		group:Energy Weapon		0				
 12949	shipLaserDamagePirateAttackBattlecruiser	passive	normal	*	boost	modules	item	damageMultiplier	shipBonusRole7	owner	1	0	0		skill:Large Energy Turret		0				
 12950	shipBloodRaiderEnergyNeutralizerNosferatuTransferAmountBonusABC1	passive	normal	*	boost	modules	item	energyNeutralizerAmount	shipBonusABC1	owner	1	0	0	Amarr Battlecruiser	group:Energy Neutralizer		0				
@@ -3899,55 +3924,114 @@ effectID	effectName	effectType	runTime	contexts	operation	domain	target	targetAt
 12951	shipBloodRaiderEnergyNeutralizerNosferatuOptimalRangeBonusABC2	passive	normal	*	boost	modules	item	maxRange	shipBonusABC2	owner	1	0	0	Amarr Battlecruiser	group:Energy Neutralizer|group:Energy Nosferatu		0				
 12952	shipBloodRaiderEnergyNeutralizerNosferatuFalloffRangeBonusABC3	passive	normal	*	boost	modules	item	falloffEffectiveness	shipBonusABC3	owner	1	0	0	Amarr Battlecruiser	group:Energy Neutralizer|group:Energy Nosferatu		0				
 12953	shipBloodRaiderWebRangeBonusMBC1	passive	normal	*	boost	modules	item	maxRange	shipBonusMBC1	owner	1	0	0	Minmatar Battlecruiser	group:Stasis Web		0				
+12963	rigSetAmarrNavyBonusModAddSetRigGroup	offline	earliest	*	increase	modules	item	rigSetAmarrNavyBonus	rigSetAmarrNavyModule	owner	1	0	0		group:Rig Synchronizer&hasAttr:rigSetAmarrNavyBonus		0		pre		
+12964	rigSetCaldariNavyBonusModAddSetRigGroup	offline	earliest	*	increase	modules	item	rigSetCaldariNavyBonus	rigSetCaldariNavyModule	owner	1	0	0		group:Rig Synchronizer&hasAttr:rigSetCaldariNavyBonus		0		pre		
+12965	rigSetGallenteNavyBonusModAddSetRigGroup	offline	earliest	*	increase	modules	item	rigSetGallenteNavyBonus	rigSetGallenteNavyModule	owner	1	0	0		group:Rig Synchronizer&hasAttr:rigSetGallenteNavyBonus		0		pre		
+12966	rigSetMinmatarFleetBonusModAddSetRigGroup	offline	earliest	*	increase	modules	item	rigSetMinmatarFleetBonus	rigSetMinmatarFleetModule	owner	1	0	0		group:Rig Synchronizer&hasAttr:rigSetMinmatarFleetBonus		0		pre		
+12968	rigHybridWeaponDamageMultiplyPostPercent	passive	normal	module	boost	self	item	rigHiddenTurretDamageMultiplier	rigHybridTurretDamageBonus	owner	1	0	0				1	default			
+12969	gallenteRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigHybridTurretDamageBonus	rigSetGallenteNavyBonus	owner	1	0	0				0		pre		
+12969	gallenteRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	hullHpBonus	rigSetGallenteNavyBonus	owner	1	0	0				0		pre		
+12969	gallenteRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	repairBonus	rigSetGallenteNavyBonus	owner	1	0	0				0		pre		
+12969	gallenteRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	trackingSpeedBonus	rigSetGallenteNavyBonus	owner	1	0	0				0		pre		
 12975	skillConduitPassengerBonusModAddPassive	passive	normal	*	increase	ship	item	conduitPassengerBonusModAdd	conduitPassengerBonusModAddSkill	owner	1	0	0	Capital Jump Portal Generation			0		pre		
+12978	rigDrawbackReductionModuleSet	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	0		group:Rig Synchronizer		0				
+12978	rigDrawbackReductionModuleSet	passive	normal	skill	boost	modules	item	drawback	rigDrawbackBonus	owner	1	0	1		group:Rig Synchronizer		0				
+12980	rigEnergyWeaponDamageMultiplyPostPercent	passive	normal	module	boost	self	item	rigHiddenTurretDamageMultiplier	rigEnergyTurretDamageBonus	owner	1	0	0				1	default			
+12981	rigProjectileWeaponDamageMultiplyPostPercent	passive	normal	module	boost	self	item	rigHiddenTurretDamageMultiplier	rigProjectileTurretDamageBonus	owner	1	0	0				1	default			
+12982	amarrRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigEnergyTurretDamageBonus	rigSetAmarrNavyBonus	owner	1	0	0				0		pre		
+12982	amarrRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	capacitorCapacityBonus	rigSetAmarrNavyBonus	owner	1	0	0				0		pre		
+12982	amarrRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	armorHpBonus	rigSetAmarrNavyBonus	owner	1	0	0				0		pre		
+12982	amarrRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	capNeedBonus	rigSetAmarrNavyBonus	owner	-1	0	0				0		pre		
+12984	minmatarRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigProjectileTurretDamageBonus	rigSetMinmatarFleetBonus	owner	1	0	0				0		pre		
+12984	minmatarRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	velocityBonus	rigSetMinmatarFleetBonus	owner	1	0	0				0		pre		
+12984	minmatarRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	trackingSpeedBonus	rigSetMinmatarFleetBonus	owner	1	0	0				0		pre		
+12984	minmatarRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	durationSkillBonus	rigSetMinmatarFleetBonus	owner	-1	0	0				0		pre		
+12985	caldariRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	speedFactor	rigSetCaldariNavyBonus	owner	1	0	0				0		pre		
+12985	caldariRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigMissileLauncherDamageBonus	rigSetCaldariNavyBonus	owner	1	0	0				0		pre		
+12985	caldariRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	shieldCapacityBonus	rigSetCaldariNavyBonus	owner	1	0	0				0		pre		
+12985	caldariRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	maxTargetRangeBonus	rigSetCaldariNavyBonus	owner	1	0	0				0		pre		
+12989	rigSetDarkBloodBonusModAddSetRigGroup	offline	earliest	*	increase	modules	item	rigSetDarkBloodBonus	rigSetDarkBloodModule	owner	1	0	0		group:Rig Synchronizer&hasAttr:rigSetDarkBloodBonus		0		pre		
+12990	rigSetTrueSanshaBonusModAddSetRigGroup	offline	earliest	*	increase	modules	item	rigSetTrueSanshaBonus	rigSetTrueSanshaModule	owner	1	0	0		group:Rig Synchronizer&hasAttr:rigSetTrueSanshaBonus		0		pre		
+12991	rigSetDreadGuristasBonusModAddSetRigGroup	offline	earliest	*	increase	modules	item	rigSetDreadGuristasBonus	rigSetDreadGuristasModule	owner	1	0	0		group:Rig Synchronizer&hasAttr:rigSetDreadGuristasBonus		0		pre		
+12992	rigSetShadowSerpentisBonusModAddSetRigGroup	offline	earliest	*	increase	modules	item	rigSetShadowSerpentisBonus	rigSetShadowSerpentisModule	owner	1	0	0		group:Rig Synchronizer&hasAttr:rigSetShadowSerpentisBonus		0		pre		
+12993	rigSetDominationBonusModAddSetRigGroup	offline	earliest	*	increase	modules	item	rigSetDominationAngelBonus	rigSetDominationAngelModule	owner	1	0	0		group:Rig Synchronizer&hasAttr:rigSetDominationAngelBonus		0		pre		
+12996	rigNosferatuNeutralizerDrainAmountBonusPostPercentPassive	passive	normal	*	boost	modules	item	powerTransferAmount	rigNosferatuNeutralizerDrainAmount	owner	1	0	0		group:Energy Nosferatu		0				
+12996	rigNosferatuNeutralizerDrainAmountBonusPostPercentPassive	passive	normal	*	boost	modules	item	energyNeutralizerAmount	rigNosferatuNeutralizerDrainAmount	owner	1	0	0		group:Energy Neutralizer		0				
+12997	rigNosferatuNeutralizerOverloadAmountBonusPostPercentPassive	passive	normal	*	boost	modules	item	overloadSelfDurationBonus	rigNosferatuNeutralizerDrainAmountOverheatingBonus	owner	1	0	0		group:Energy Nosferatu		0				
+12997	rigNosferatuNeutralizerOverloadAmountBonusPostPercentPassive	passive	normal	*	boost	modules	item	overloadSelfDurationBonus	rigNosferatuNeutralizerDrainAmountOverheatingBonus	owner	1	0	0		group:Energy Neutralizer		0				
+12998	rigNosferatuNeutralizerMaxRangeBonusPostPercentPassive	passive	normal	*	boost	modules	item	maxRange	rigNosferatuNeutralizerOptimalRange	owner	1	0	0		group:Energy Nosferatu		1	default			
+12998	rigNosferatuNeutralizerMaxRangeBonusPostPercentPassive	passive	normal	*	boost	modules	item	maxRange	rigNosferatuNeutralizerOptimalRange	owner	1	0	0		group:Energy Neutralizer		1	default			
+12999	rigNosferatuNeutralizerFalloffRangeBonusPostPercentPassive	passive	normal	*	boost	modules	item	falloffEffectiveness	rigNosferatuNeutralizerFalloffRange	owner	1	0	0		group:Energy Nosferatu		1	default			
+12999	rigNosferatuNeutralizerFalloffRangeBonusPostPercentPassive	passive	normal	*	boost	modules	item	falloffEffectiveness	rigNosferatuNeutralizerFalloffRange	owner	1	0	0		group:Energy Neutralizer		1	default			
+13000	bloodRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigNosferatuNeutralizerDrainAmount	rigSetDarkBloodBonus	owner	1	0	0				0		pre		
+13000	bloodRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigNosferatuNeutralizerDrainAmountOverheatingBonus	rigSetDarkBloodBonus	owner	1	0	0				0		pre		
+13000	bloodRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigNosferatuNeutralizerOptimalRange	rigSetDarkBloodBonus	owner	1	0	0				0		pre		
+13000	bloodRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigNosferatuNeutralizerFalloffRange	rigSetDarkBloodBonus	owner	1	0	0				0		pre		
+13000	bloodRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigEnergyTurretDamageBonus	rigSetDarkBloodBonus	owner	1	0	0				0		pre		
+13001	rigCapacitorRechargeTimeBonusPostPercentPassive	passive	normal	*	boost	ship	item	rechargeRate	rigCapRechargeTimePenalty	owner	1	0	0				0				
+13002	rigAfterburnerSpeedAmountPostPercentPassive	passive	normal	*	boost	modules	item	speedFactor	rigAfterburnerSpeedBonus	owner	1	0	0		skill:Afterburner		1	default			
+13003	rigAfterburnerOverloadAmountPostPercentPassive	passive	normal	*	boost	modules	item	overloadSpeedFactorBonus	rigAfterburnerOverloadingBonus	owner	1	0	0		skill:Afterburner		0				
+13005	rigAfterburnerActivationCostPenaltyPostPercentPassive	passive	normal	*	boost	modules	item	capacitorNeed	rigAfterburnerCapacitorCostPenalty	owner	1	0	0		skill:Afterburner		0				
+13006	sanshaRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigEnergyTurretDamageBonus	rigSetTrueSanshaBonus	owner	1	0	0				0		pre		
+13006	sanshaRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigAfterburnerSpeedBonus	rigSetTrueSanshaBonus	owner	1	0	0				0		pre		
+13006	sanshaRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigAfterburnerOverloadingBonus	rigSetTrueSanshaBonus	owner	1	0	0				0		pre		
+13006	sanshaRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	trackingSpeedBonus	rigSetTrueSanshaBonus	owner	1	0	0				0		pre		
+13007	RigModifyWebResistancePostPercentPassive	passive	normal	*	boost	ship	item	stasisWebifierResistance	rigStasisWebResistance	owner	1	0	0				0				
+13008	serpentisRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	falloffBonus	rigSetShadowSerpentisBonus	owner	1	0	0				0		pre		
+13008	serpentisRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigHybridTurretDamageBonus	rigSetShadowSerpentisBonus	owner	1	0	0				0		pre		
+13008	serpentisRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	velocityBonus	rigSetShadowSerpentisBonus	owner	1	0	0				0		pre		
+13008	serpentisRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigStasisWebResistance	rigSetShadowSerpentisBonus	owner	-1	0	0				0		pre		
+13009	rigMaxTargetingRangePenaltyPostPercentPassive	passive	normal	*	boost	ship	item	maxTargetRange	rigTargetingRangePenalty	owner	1	0	0				1	default			
+13010	rigBonusDroneDamagePostPercentPassive	passive	normal	*	boost	drones	item	damageMultiplier	droneDamageBonus	owner	1	0	0		skill:Drones		1	default			
+13011	rigDroneControlRangePenaltyPassivePostPercent	passive	normal	*	boost	extraAttributes	item	droneControlRange	rigDroneControlRangePenalty	owner	1	0	0				0				
+13012	guristasRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	droneDamageBonus	rigSetDreadGuristasBonus	owner	1	0	0				0		pre		
+13012	guristasRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rangeSkillBonus	rigSetDreadGuristasBonus	owner	1	0	0				0		pre		
+13012	guristasRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	scanSkillEwStrengthBonus	rigSetDreadGuristasBonus	owner	1	0	0				0		pre		
+13012	guristasRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	hullHpBonus	rigSetDreadGuristasBonus	owner	1	0	0				0		pre		
+13012	guristasRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	emDamageResistanceBonus	rigSetDreadGuristasBonus	owner	-1	0	0				0		pre		
+13012	guristasRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	explosiveDamageResistanceBonus	rigSetDreadGuristasBonus	owner	-1	0	0				0		pre		
+13012	guristasRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	kineticDamageResistanceBonus	rigSetDreadGuristasBonus	owner	-1	0	0				0		pre		
+13012	guristasRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	thermalDamageResistanceBonus	rigSetDreadGuristasBonus	owner	-1	0	0				0		pre		
+13015	rigSignatureRadiusReductionBonusPostPercentPassive	passive	normal	*	boost	ship	item	signatureRadius	rigSignatureRadiusBonus	owner	1	0	0				1	default			
+13016	angelRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigProjectileTurretDamageBonus	rigSetDominationAngelBonus	owner	1	0	0				0		pre		
+13016	angelRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	falloffBonus	rigSetDominationAngelBonus	owner	1	0	0				0		pre		
+13016	angelRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	WarpSBonus	rigSetDominationAngelBonus	owner	1	0	0				0		pre		
+13016	angelRigSetBonusEffectmodAdd	passive	early	*	increase	self	item	rigSignatureRadiusBonus	rigSetDominationAngelBonus	owner	-1	0	0				0		pre		
+13017	rigShieldArmorHullHitpointsPenaltyPostPercentPassive	passive	normal	*	boost	ship	item	shieldCapacity	rigShieldArmorHullHitpointsPenalty	owner	1	0	0				0				
+13017	rigShieldArmorHullHitpointsPenaltyPostPercentPassive	passive	normal	*	boost	ship	item	armorHP	rigShieldArmorHullHitpointsPenalty	owner	1	0	0				0				
+13017	rigShieldArmorHullHitpointsPenaltyPostPercentPassive	passive	normal	*	boost	ship	item	hp	rigShieldArmorHullHitpointsPenalty	owner	1	0	0				0				
+13020	rigMissileDamageBonusAllDamageTypesPostPercent	passive	normal	module	boost	self	item	rigHiddenMissileDamageMultiplier	rigMissileLauncherDamageBonus	owner	1	0	0				1	default			
 13021	hybridDroneDamageMultiplierBonus	passive	normal	ship|implant|booster|module|moduleCharge|drone|fighter|projected+module|projected+drone|projected+fighter	boost	drones	item	damageMultiplier	damageMultiplierBonus	owner	1	0	0		skill:Advanced Drone Avionics		0				
 13021	hybridDroneDamageMultiplierBonus	passive	normal	skill	boost	drones	item	damageMultiplier	damageMultiplierBonus	owner	1	0	1		skill:Advanced Drone Avionics		0				
 13024	eliteBonusGunshipHybridTracking1	passive	normal	*	boost	modules	item	trackingSpeed	eliteBonusGunship1	owner	1	0	0	Assault Frigates	skill:Small Hybrid Turret		0				
-13025	shipMissileDamageCF	passive	normal	*	boost	modules	charge	emDamage	shipBonusCF	owner	1	0	0	Caldari Frigate	charge.skill:Missile Launcher Operation		0				
-13025	shipMissileDamageCF	passive	normal	*	boost	modules	charge	kineticDamage	shipBonusCF	owner	1	0	0	Caldari Frigate	charge.skill:Missile Launcher Operation		0				
-13025	shipMissileDamageCF	passive	normal	*	boost	modules	charge	explosiveDamage	shipBonusCF	owner	1	0	0	Caldari Frigate	charge.skill:Missile Launcher Operation		0				
-13025	shipMissileDamageCF	passive	normal	*	boost	modules	charge	thermalDamage	shipBonusCF	owner	1	0	0	Caldari Frigate	charge.skill:Missile Launcher Operation		0				
 13026	shipBonusDroneTrackingGF2	passive	normal	*	boost	drones	item	trackingSpeed	shipBonusGF2	owner	1	0	0	Gallente Frigate	skill:Drones		0				
 13027	shipMissileDamageAF	passive	normal	*	boost	modules	charge	emDamage	shipBonusAF	owner	1	0	0	Amarr Frigate	charge.skill:Missile Launcher Operation		0				
 13027	shipMissileDamageAF	passive	normal	*	boost	modules	charge	kineticDamage	shipBonusAF	owner	1	0	0	Amarr Frigate	charge.skill:Missile Launcher Operation		0				
 13027	shipMissileDamageAF	passive	normal	*	boost	modules	charge	explosiveDamage	shipBonusAF	owner	1	0	0	Amarr Frigate	charge.skill:Missile Launcher Operation		0				
 13027	shipMissileDamageAF	passive	normal	*	boost	modules	charge	thermalDamage	shipBonusAF	owner	1	0	0	Amarr Frigate	charge.skill:Missile Launcher Operation		0				
-100100	pyfaCustomHeraldAsfSetOptimal	passive	normal	*	boost	modules	item	maxRange			1	0	0	Assault Frigates	skill:Small Energy Turret		0			20	no source attribute
-100101	pyfaCustomHeraldAsfSetDmg	passive	normal	*	boost	modules	item	damageMultiplier			1	0	0	Assault Frigates	skill:Small Energy Turret		0			40	no source attribute
-100102	pyfaCustomHeraldAsfArmorRes	passive	normal	*	boost	ship	item	armorEmDamageResonance			-1	0	0	Assault Frigates			0			4	no source attribute
-100102	pyfaCustomHeraldAsfArmorRes	passive	normal	*	boost	ship	item	armorThermalDamageResonance			-1	0	0	Assault Frigates			0			4	no source attribute
-100102	pyfaCustomHeraldAsfArmorRes	passive	normal	*	boost	ship	item	armorKineticDamageResonance			-1	0	0	Assault Frigates			0			4	no source attribute
-100102	pyfaCustomHeraldAsfArmorRes	passive	normal	*	boost	ship	item	armorExplosiveDamageResonance			-1	0	0	Assault Frigates			0			4	no source attribute
-100103	pyfaCustomHeraldEafCapRech	passive	normal	*	boost	ship	item	rechargeRate			-1	0	0	Electronic Attack Ships			0			5	no source attribute
-100104	pyfaCustomHeraldAmfWdStr	passive	normal	*	boost	modules	item	trackingSpeedBonus			1	0	0	Amarr Frigate	skill:Weapon Disruption		0			12.5	no source attribute
-100104	pyfaCustomHeraldAmfWdStr	passive	normal	*	boost	modules	item	explosionDelayBonus			1	0	0	Amarr Frigate	skill:Weapon Disruption		0			12.5	no source attribute
-100104	pyfaCustomHeraldAmfWdStr	passive	normal	*	boost	modules	item	maxRangeBonus			1	0	0	Amarr Frigate	skill:Weapon Disruption		0			12.5	no source attribute
-100104	pyfaCustomHeraldAmfWdStr	passive	normal	*	boost	modules	item	falloffBonus			1	0	0	Amarr Frigate	skill:Weapon Disruption		0			12.5	no source attribute
-100104	pyfaCustomHeraldAmfWdStr	passive	normal	*	boost	modules	item	missileVelocityBonus			1	0	0	Amarr Frigate	skill:Weapon Disruption		0			12.5	no source attribute
-100104	pyfaCustomHeraldAmfWdStr	passive	normal	*	boost	modules	item	aoeVelocityBonus			1	0	0	Amarr Frigate	skill:Weapon Disruption		0			12.5	no source attribute
-100104	pyfaCustomHeraldAmfWdStr	passive	normal	*	boost	modules	item	aoeCloudSizeBonus			1	0	0	Amarr Frigate	skill:Weapon Disruption		0			12.5	no source attribute
-100105	pyfaCustomHeraldAmfSetRof	passive	normal	*	boost	modules	item	speed			-1	0	0	Amarr Frigate	skill:Small Energy Turret		0			5	no source attribute
-100106	pyfaCustomHeraldRoleMwdSigBlow	passive	normal	*	boost	modules	item	signatureRadiusBonus			-1	0	0		skill:High Speed Maneuvering		0			50	no source attribute
-100200	pyfaCustomPenitenceRecEneOptimal	passive	normal	*	boost	modules	item	maxRange			1	0	0	Recon Ships	group:Energy Neutralizer|group:Energy Nosferatu		0			50	no source attribute
-100201	pyfaCustomPenitenceRecEneFalloff	passive	normal	*	boost	modules	item	falloffEffectiveness			1	0	0	Recon Ships	group:Energy Neutralizer|group:Energy Nosferatu		0			30	no source attribute
-100202	pyfaCustomPenitenceRecEneAmount	passive	normal	*	boost	modules	item	energyNeutralizerAmount			1	0	0	Recon Ships	group:Energy Neutralizer		0			40	no source attribute
-100202	pyfaCustomPenitenceRecEneAmount	passive	normal	*	boost	modules	item	powerTransferAmount			1	0	0	Recon Ships	group:Energy Nosferatu		0			40	no source attribute
-100203	pyfaCustomPenitenceHicWdfgOptimal	passive	normal	*	boost	modules	item	warpScrambleRange			1	0	0	Heavy Interdiction Cruisers	group:Warp Disrupt Field Generator		0			10	no source attribute
-100204	pyfaCustomPenitenceAmcWdStr	passive	normal	*	boost	modules	item	trackingSpeedBonus			1	0	0	Amarr Cruiser	skill:Weapon Disruption		0			10	no source attribute
-100204	pyfaCustomPenitenceAmcWdStr	passive	normal	*	boost	modules	item	explosionDelayBonus			1	0	0	Amarr Cruiser	skill:Weapon Disruption		0			10	no source attribute
-100204	pyfaCustomPenitenceAmcWdStr	passive	normal	*	boost	modules	item	maxRangeBonus			1	0	0	Amarr Cruiser	skill:Weapon Disruption		0			10	no source attribute
-100204	pyfaCustomPenitenceAmcWdStr	passive	normal	*	boost	modules	item	falloffBonus			1	0	0	Amarr Cruiser	skill:Weapon Disruption		0			10	no source attribute
-100204	pyfaCustomPenitenceAmcWdStr	passive	normal	*	boost	modules	item	missileVelocityBonus			1	0	0	Amarr Cruiser	skill:Weapon Disruption		0			10	no source attribute
-100204	pyfaCustomPenitenceAmcWdStr	passive	normal	*	boost	modules	item	aoeVelocityBonus			1	0	0	Amarr Cruiser	skill:Weapon Disruption		0			10	no source attribute
-100204	pyfaCustomPenitenceAmcWdStr	passive	normal	*	boost	modules	item	aoeCloudSizeBonus			1	0	0	Amarr Cruiser	skill:Weapon Disruption		0			10	no source attribute
-100205	pyfaCustomPenitenceAmcDroneHpDmg	passive	normal	*	boost	drones	item	shieldCapacity			1	0	0	Amarr Cruiser	skill:Drones		0			25	no source attribute
-100205	pyfaCustomPenitenceAmcDroneHpDmg	passive	normal	*	boost	drones	item	armorHP			1	0	0	Amarr Cruiser	skill:Drones		0			25	no source attribute
-100205	pyfaCustomPenitenceAmcDroneHpDmg	passive	normal	*	boost	drones	item	hp			1	0	0	Amarr Cruiser	skill:Drones		0			25	no source attribute
-100205	pyfaCustomPenitenceAmcDroneHpDmg	passive	normal	*	boost	drones	item	damageMultiplier			1	0	0	Amarr Cruiser	skill:Drones		0			25	no source attribute
-100206	pyfaCustomPenitenceAmcDroneControl	passive	normal	*	increase	extraAttributes	item	droneControlRange			1	0	0	Amarr Cruiser			0		pre	7500	no source attribute
-100207	pyfaCustomPenitenceRoleArmorRes	passive	normal	*	boost	ship	item	armorEmDamageResonance			-1	0	0				0			20	no source attribute
-100207	pyfaCustomPenitenceRoleArmorRes	passive	normal	*	boost	ship	item	armorThermalDamageResonance			-1	0	0				0			20	no source attribute
-100207	pyfaCustomPenitenceRoleArmorRes	passive	normal	*	boost	ship	item	armorKineticDamageResonance			-1	0	0				0			20	no source attribute
-100207	pyfaCustomPenitenceRoleArmorRes	passive	normal	*	boost	ship	item	armorExplosiveDamageResonance			-1	0	0				0			20	no source attribute
-100208	pyfaCustomPenitenceRoleDroneSpeed	passive	normal	*	boost	drones	item	maxVelocity			1	0	0		skill:Drones		0			12.5	no source attribute
-100209	pyfaCustomPenitenceRoleWdfgSig	passive	early	*	boost	modules	item	signatureRadiusBonus			-1	0	0		group:Warp Disrupt Field Generator		0			50	no source attribute
+13042	eliteBonusGunshipLaserOptimal2	passive	normal	*	boost	modules	item	maxRange	eliteBonusGunships	owner	1	0	0	Assault Frigates	skill:Small Energy Turret		0				
+13045	eliteBonusHeavyGunshipDroneControlRange2	passive	normal	*	increase	extraAttributes	item	droneControlRange	eliteBonusHeavyGunship3	owner	1	0	0	Amarr Cruiser			0		pre		
+13048	moduleAberrantOverdriveInjectorSystemActiveSpeedBurstEffect	active	normal	*	boost	ship	item	maxVelocity	moduleAberrantOverdriveActiveSpeedBoostAmount	owner	1	0	0				1	default			
+13049	moduleAberrantShieldBoostAmplifierShieldBoosterBonusEffectActivation	active	normal	*	boost	modules	item	shieldBonus	moduleAberrantShieldBoostAmplifierShieldBoosterBonusEffect	owner	1	0	0		skill:Shield Operation|skill:Capital Shield Operation		1	default			
+13050	moduleAberrantDroneNavigationComputerBonusEffectActivation	active	normal	*	boost	fighters	item	maxVelocity	moduleAberrantDroneNavigationComputerBonusEffect	owner	1	0	0		skill:Fighters		1	default			
+13050	moduleAberrantDroneNavigationComputerBonusEffectActivation	active	normal	*	boost	drones	item	maxVelocity	moduleAberrantDroneNavigationComputerBonusEffect	owner	1	0	0		skill:Drones		1	default			
+13051	moduleAberrantCapRechargerBonusEffectActivation	active	normal	*	multiply	ship	item	rechargeRate	moduleAberrantCapRechargerBonusEffect	owner	1	0	0				0				
+13053	eliteBonusGunshipArmorHitpoints2	passive	normal	*	boost	ship	item	armorHP	eliteBonusGunship2	owner	1	0	0	Assault Frigates			0				
+13054	subsystemBonusGallenteCore3WeaponAndSensorResistance	passive	normal	*	boost	ship	item	sensorDampenerResistance	subsystemBonusGallenteCore3	owner	1	0	0	Gallente Core Systems			0				
+13054	subsystemBonusGallenteCore3WeaponAndSensorResistance	passive	normal	*	boost	ship	item	weaponDisruptionResistance	subsystemBonusGallenteCore3	owner	1	0	0	Gallente Core Systems			0				
+13055	subsystemBonusCaldariCore3WeaponAndSensorResistance	passive	normal	*	boost	ship	item	sensorDampenerResistance	subsystemBonusCaldariCore3	owner	1	0	0	Caldari Core Systems			0				
+13055	subsystemBonusCaldariCore3WeaponAndSensorResistance	passive	normal	*	boost	ship	item	weaponDisruptionResistance	subsystemBonusCaldariCore3	owner	1	0	0	Caldari Core Systems			0				
+13056	shipMissileKineticDamageCC3	passive	normal	*	boost	modules	charge	kineticDamage	shipBonusCC3	owner	1	0	0	Caldari Cruiser	charge.skill:Missile Launcher Operation		0				
+13057	boosterDirectionalScannerRangeBonusPassive	passive	normal	*	boost	ship	item	maxDirectionalScanRange	boosterDirectionalScannerRangeBonus	owner	1	0	0				0				
+13058	boosterOverheatMicrowarpScramBenefitsPassive	passive	normal	*	boost	modules	item	overloadRangeBonus	boosterOverheatMicrowarpScramBenefits	owner	1	0	0		skill:Navigation		0				
+13058	boosterOverheatMicrowarpScramBenefitsPassive	passive	normal	*	boost	modules	item	overloadSpeedFactorBonus	boosterOverheatMicrowarpScramBenefits	owner	1	0	0		skill:High Speed Maneuvering		0				
+13070	synchronizerRigHybridWeaponDamageMultiplyPostMulPassive	passive	late	*	multiply	modules	item	damageMultiplier	rigHiddenTurretDamageMultiplier	owner	1	0	0		group:Hybrid Weapon		1	default			
+13071	synchronizerRigEnergyWeaponDamageMultiplyPostMulPassive	passive	late	*	multiply	modules	item	damageMultiplier	rigHiddenTurretDamageMultiplier	owner	1	0	0		group:Energy Weapon		1	default			
+13072	synchronizerRigProjectileWeaponDamageMultiplyPostMulPassive	passive	late	*	multiply	modules	item	damageMultiplier	rigHiddenTurretDamageMultiplier	owner	1	0	0		group:Projectile Weapon		1	default			
+13073	synchronizerRigMissileDMGBonusPreMulPassive	passive	late	*	multiply	modules	charge	emDamage	rigHiddenMissileDamageMultiplier	owner	1	0	0		charge.skill:Missile Launcher Operation		1	default			
+13073	synchronizerRigMissileDMGBonusPreMulPassive	passive	late	*	multiply	modules	charge	kineticDamage	rigHiddenMissileDamageMultiplier	owner	1	0	0		charge.skill:Missile Launcher Operation		1	default			
+13073	synchronizerRigMissileDMGBonusPreMulPassive	passive	late	*	multiply	modules	charge	explosiveDamage	rigHiddenMissileDamageMultiplier	owner	1	0	0		charge.skill:Missile Launcher Operation		1	default			
+13073	synchronizerRigMissileDMGBonusPreMulPassive	passive	late	*	multiply	modules	charge	thermalDamage	rigHiddenMissileDamageMultiplier	owner	1	0	0		charge.skill:Missile Launcher Operation		1	default			
+13074	shipSmallMissileEMDmgCF	passive	normal	*	boost	modules	charge	emDamage	shipBonusCF	owner	1	0	0	Caldari Frigate	charge.skill:Light Missiles|charge.skill:Rockets		0				
+13075	shipSmallMissileExplosiveDmgCF	passive	normal	*	boost	modules	charge	explosiveDamage	shipBonusCF	owner	1	0	0	Caldari Frigate	charge.skill:Light Missiles|charge.skill:Rockets		0				
+13076	shipSmallMissileThermalDmgCF	passive	normal	*	boost	modules	charge	thermalDamage	shipBonusCF	owner	1	0	0	Caldari Frigate	charge.skill:Light Missiles|charge.skill:Rockets		0				

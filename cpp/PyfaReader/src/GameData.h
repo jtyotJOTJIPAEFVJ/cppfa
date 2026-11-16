@@ -124,7 +124,7 @@ struct EffectModifier
     int effectID = 0;
     std::string effectName;
     std::string effectType;  // passive | active | projected | ... ('|'-joined)
-    std::string runTime;     // early | normal | late: the pass pyfa runs the effect in
+    std::string runTime;     // earliest | early | normal | late: the pass pyfa runs the effect in
     // Owner kinds (pyfa handler contexts) this row applies to: ship, skill, implant,
     // booster, module, drone, fighter, projected+module, ... Empty = all.
     std::vector<std::string> contexts;

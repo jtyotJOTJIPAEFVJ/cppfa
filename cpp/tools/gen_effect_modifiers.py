@@ -672,6 +672,36 @@ def warfare_buff_rows(fit_py_path):
     return rows
 
 
+SYNCHRONIZER_FILTER = 'group:Rig Synchronizer'
+
+
+def narrow_synchronizer_rows(rows):
+    """Narrow pyfa's synchronizer rig handlers to the items that can read what they write.
+
+    pyfa's handlers address every 'Rig Synchronizer' item in the fit. The engine's results don't
+    change, but its search plans put every candidate in the fit at once, so every synchronizer
+    would seem to modify every other one, and through them every set module would seem to modify
+    all turrets and launchers (SearchPlan::influence), which wrecks the optimizer's module roles.
+      - Set counters (a set's modules -> rigSet*Bonus): only that set's synchronizer has the
+        attribute and reads it, so the row also requires it (hasAttr). Same results as pyfa.
+      - A synchronizer's boosts of its rigHidden*DamageMultiplier: a fit holds one synchronizer
+        (maxGroupFitted 1), so they hit only the rig itself (self; only rigs have these effects,
+        so only the module context). Differs from pyfa only for fits with two synchronizers,
+        which the game doesn't allow.
+    """
+    for r in rows:
+        if r['domain'] != 'modules' or r['target'] != 'item' or r['filter'] != SYNCHRONIZER_FILTER:
+            continue
+        attr = r['targetAttr']
+        if attr.startswith('rigSet') and attr.endswith('Bonus'):
+            r['filter'] = f'{SYNCHRONIZER_FILTER}&hasAttr:{attr}'
+        elif attr.startswith('rigHidden'):
+            r['domain'] = 'self'
+            r['filter'] = ''
+            r['contexts'] = 'module'
+    return rows
+
+
 def write_rows(path, rows):
     def clean(v):
         return str(v).replace('\t', ' ').replace('\n', ' ')
@@ -702,6 +732,7 @@ def main():
             continue
         effects += 1
         rows.extend(handler_rows(cls, handler))
+    narrow_synchronizer_rows(rows)
     flagged = write_rows(output_path, rows)
     print(f'{effects} effects -> {len(rows)} modifiers ({flagged} only partly resolved) -> {output_path}')
 

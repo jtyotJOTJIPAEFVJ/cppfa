@@ -111,13 +111,13 @@ eve.db says *which* effects an item has. *What* an effect does exists only as Py
 - **Undecidable `if`s:** these split the walk. Ship conditions such as "the ship requires skill X" or "the ship has attribute Y" become row conditions; anything else is marked unresolved.
 - **Contexts:** pyfa passes the owner kind as `context`, so each handler is evaluated once per context (`ship`, `skill`, `implant`, `booster`, `module`, `moduleCharge`, `drone`, `fighter`, `projected+…`). Identical results are merged.
 
-**Output:** `data/effect_modifiers.tsv`, about 3,950 rows from 2,360 effects. Each row is one modifier call:
+**Output:** `data/effect_modifiers.tsv`, about 4,040 rows from 2,450 effects. Each row is one modifier call:
 
 | Column | Meaning |
 |---|---|
 | `effectID`, `effectName` | the effect the call belongs to |
 | `effectType` | passive/active/overheat/offline/boosterSideEffect/… |
-| `runTime` | pyfa pass: early/normal/late |
+| `runTime` | pyfa pass: earliest/early/normal/late |
 | `contexts` | owner kinds the row applies to |
 | `operation` | boost (%), multiply, increase (pre/post), force, preAssign |
 | `domain` | ship, `modules`, `appliedImplants`, `boosters`, self (the owner itself, or for charges the module), extraAttributes (= ship in pyfa) |
@@ -135,7 +135,9 @@ eve.db says *which* effects an item has. *What* an effect does exists only as Py
 
 Partly resolved rows are skipped by the engine. Inside the goals' scope only rows for unsupported or runtime-state things remain unresolved: CONCORD security status, booster self-penalties, structure rigs. The RAH is resolved by hand-written code.
 
-Rows with a literal amount instead of a source attribute (`note` "no source attribute", the number in `valueExpr`) are skipped too. Only pyfa's placeholder effects for unreleased ships use them (`pyfaCustom*`, effect IDs 100100 and up, e.g. Herald and Penitence); they go away when the ships arrive in the game data.
+Rows with a literal amount instead of a source attribute (`note` "no source attribute", the number in `valueExpr`) are skipped too. None of them is in the goals' scope: gas cloud harvesting, warp disruption bubbles, structure rigs, CONCORD security status, and the RAH (hand-written code).
+
+**Synchronizer rigs** (`narrow_synchronizer_rows`): pyfa's synchronizer handlers address every `Rig Synchronizer` in the fit. The generator narrows them to what can be read, because a search plan holds every candidate at once and would otherwise link every synchronizer and set module to every other one, and through them to every weapon (`SearchPlan::influence`), which breaks the optimizer's module roles. Set counters (`rigSet*Bonus`) also require the attribute (`hasAttr`), which only that set's synchronizer has; results are unchanged. A synchronizer's `rigHidden*DamageMultiplier` boosts target the rig itself (`self`); that differs from pyfa only for fits with two synchronizers, which `maxGroupFitted` 1 rules out.
 
 **Command bursts:** pyfa applies these in `Fit.__runCommandBoosts`, an `if warfareBuffID == N` chain. The same generator turns that chain into `data/warfare_buffs.tsv` (74 buffs, 180 rows, `sourceOf = buff`).
 
@@ -143,9 +145,9 @@ Rows with a literal amount instead of a source attribute (`note` "no source attr
 `goal_closure.py` defines each goal's root attributes, plus fitting, capacitor/cycle, burst and RAH roots. It walks the modifier table backwards: any modifier targeting a needed attribute makes its source attribute needed too.
 
 `gen_fit_schema.py` turns that into `FitSchema.generated.h`:
-- **`enum class Attr : uint16_t`:** 358 attributes the engine stores, plus eve IDs and names. pyfa-only ship attributes (`Ship.EXTRA_ATTRIBUTES` not in eve.db: `droneControlRange`, `PSEUDO_ATTRS` in the generator) get eve ID 0; the engine sets pyfa's base value (20000 m).
+- **`enum class Attr : uint16_t`:** 397 attributes the engine stores, plus eve IDs and names. pyfa-only ship attributes (`Ship.EXTRA_ATTRIBUTES` not in eve.db: `droneControlRange`, `PSEUDO_ATTRS` in the generator) get eve ID 0; the engine sets pyfa's base value (20000 m).
 - **`ShipAttrs`:** 31 floats of ship attributes that can change per fit. Ship bonus amounts are excluded; they're constant per ship.
-- **Group structs:** one float-only struct per module, charge, implant, booster or drone group (254 groups → 166 shapes, ~19 fields on average, at most 63; the engine's per-item field masks (`FieldMask`) hold 127). A struct contains only the attributes the group's items have, or that relevant modifiers can actually reach on them. Each has `kFields` (`Attr` per field) and `kGroupLayouts` maps groups to layouts.
+- **Group structs:** one float-only struct per module, charge, implant, booster or drone group (256 groups → 180 shapes, ~23 fields on average, at most 86; the engine's per-item field masks (`FieldMask`) hold 127). A struct contains only the attributes the group's items have, or that relevant modifiers can actually reach on them. Each has `kFields` (`Attr` per field) and `kGroupLayouts` maps groups to layouts.
 
 The damage roots (`DPS` in `goal_closure.py`) are the damage attributes of modules, charges and drones, the multipliers, cycle and reload inputs, turret range and tracking, missile flight and explosion attributes, the ship's radius, lock range and drone control range, and the tackle attributes (web `speedFactor`, painter `signatureRadiusBonus`, `falloffEffectiveness`, `activationBlockedStrenght`, `warpScrambleRange`).
 
@@ -153,7 +155,7 @@ The engine uses these layouts generically, by field index. The named structs exi
 
 ## 4. The engine (`fitengine::Engine`)
 
-`Engine(gameData, character)` compiles the TSV rows into `Mod`s. A `Mod` holds enum operation, target and source selectors, a schema `Attr` target, resolved skill/attribute IDs, filters and conditions. Mods are stored per effect and per context. Only rows whose target attribute is in the schema are kept (~7,700 compiled modifiers, counting each context).
+`Engine(gameData, character)` compiles the TSV rows into `Mod`s. A `Mod` holds enum operation, target and source selectors, a schema `Attr` target, resolved skill/attribute IDs, filters and conditions. Mods are stored per effect and per context. Only rows whose target attribute is in the schema are kept (~20,000 compiled modifiers, counting each context).
 
 `FitResult Engine::evaluate(const FitInput&)` (~35 µs per fit on the saved fits, `--engine-dump`) does the following.
 
@@ -169,7 +171,7 @@ The engine uses these layouts generically, by field index. The named structs exi
 
 The base value is the type's attribute. For abyssal modules it's the mutator value, else the mutated type's, else the base item's (pyfa's merge). Otherwise it's the dgmattribs default (pyfa never returns "missing").
 
-**Evaluation order (pyfa's):** three passes (early/normal/late). Each pass runs:
+**Evaluation order (pyfa's):** four passes (earliest/early/normal/late). Each pass runs:
 1. all skills (passive effects)
 2. ship (passive)
 3. drones (passive effects, once per drone in space; in practice only mining drones have any)
@@ -178,6 +180,8 @@ The base value is the type's attribute. For abyssal modules it's the mutator val
 6. modules in order: the charge's effects (context `moduleCharge`, with the module as owner), then overheat effects if overheated, then the effects the module's state allows (offline effects always, passive if ≥ online, active if ≥ active)
 7. T3D mode
 8. this pass's command buffs
+
+Only synchronizer rig sets use the earliest pass: each module of a set (an `offline` effect, so offline modules count too) adds its `rigSet*Module` to the fitted synchronizer's `rigSet*Bonus`, and in the early pass the rig adds that count to its own bonus attributes. Mutated modules have the abyssal type's effects, so they don't count, as in pyfa.
 
 **Applying a modifier:**
 - **Conditions:** checked against the ship type or owner.

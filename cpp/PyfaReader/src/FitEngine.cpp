@@ -28,6 +28,16 @@ constexpr int kMaxFields = widestLayout();  // from the generated layouts
 static_assert(kMaxFields <= 127, "field masks hold 128 fields, Layout::fieldOf is int8_t");
 static_assert(std::size(fitschema::ShipAttrs::kFields) <= 64, "Influence::shipFields is 64-bit");
 
+// pyfa's runTimes, the passes of Fit.calculateModifiedAttributes in order
+enum Pass : uint8_t
+{
+    kPassEarliest,
+    kPassEarly,
+    kPassNormal,
+    kPassLate,
+    kPassCount,
+};
+
 // One bit per field of an item's layout.
 struct FieldMask
 {
@@ -132,7 +142,7 @@ struct Mod
 
 struct EffectInfo
 {
-    uint8_t runTime = 1;  // 0 early, 1 normal, 2 late
+    uint8_t runTime = kPassNormal;  // Pass
     bool passive = false, active = false, overheat = false, offline = false;
     bool sideEffect = false;  // booster side effect: runs only when switched on
     std::array<std::vector<Mod>, CtxCount> mods;
@@ -338,7 +348,15 @@ struct Scratch
 
 uint8_t runTimeIndex(const std::string& rt)
 {
-    return rt == "early" ? 0 : rt == "late" ? 2 : 1;
+    if (rt == "earliest")
+        return kPassEarliest;
+    if (rt == "early")
+        return kPassEarly;
+    if (rt == "normal" || rt.empty())
+        return kPassNormal;
+    if (rt == "late")
+        return kPassLate;
+    throw std::runtime_error("unknown effect runTime: " + rt);
 }
 
 bool hasWord(const std::string& list, const char* word)
@@ -383,7 +401,7 @@ struct Engine::Impl
     uint8_t preMulGroup = 0;  // the Reactive Armor Hardener's penalty group
     std::vector<const Type*> skills;
     // Per pass: the skills' passive modifiers in traversal order (constant for the character).
-    std::array<std::vector<std::pair<const Mod*, const Type*>>, 3> skillMods;
+    std::array<std::vector<std::pair<const Mod*, const Type*>>, kPassCount> skillMods;
     size_t compiled = 0;
     // Item prototypes per type, built on first use (thread-safe: search plans run in parallel).
     mutable std::shared_mutex protoM;
@@ -547,7 +565,7 @@ struct Engine::Impl
         for (const Type* s : ch.skills)
             if (!s->effects.empty())
                 skills.push_back(s);
-        for (uint8_t pass = 0; pass < 3; ++pass)
+        for (uint8_t pass = 0; pass < kPassCount; ++pass)
             for (const Type* skill : skills)
                 for (int eid : skill->effects)
                     if (const EffectInfo* e = effect(eid); e && e->passive && e->runTime == pass)
@@ -696,12 +714,12 @@ struct Engine::Impl
                 info.runTime = runTime;
             }
         };
-        ensure(kEffCapBooster, 1);
+        ensure(kEffCapBooster, kPassNormal);
         for (int eid = kEffWarfareLinkFirst; eid <= kEffWarfareLinkLast; ++eid)
-            ensure(eid, 1);
+            ensure(eid, kPassNormal);
         for (int eid : {kEffShieldBoosting, kEffStructureRepair, kEffArmorRepair, kEffFueledShieldBoosting,
                         kEffFueledArmorRepair, kEffRAH})
-            ensure(eid, 2);
+            ensure(eid, kPassLate);
     }
 
     // ------------------------------------------------------------ item setup
@@ -1329,7 +1347,7 @@ struct Engine::Impl
             {
                 int id = static_cast<int>(read(s, it.charge, eveWarfareBuffID[x], 0));
                 if (id)
-                    addCommandBonus(s, id, read(s, module, eveWarfareBuffValue[x], 0), 1);
+                    addCommandBonus(s, id, read(s, module, eveWarfareBuffValue[x], 0), kPassNormal);
             }
             return;
         }
@@ -1488,7 +1506,7 @@ struct Engine::Impl
     template <typename Sink>
     void traverse(Scratch& s, Sink& sink) const
     {
-        for (uint8_t pass = 0; pass < 3; ++pass)
+        for (uint8_t pass = 0; pass < kPassCount; ++pass)
         {
             for (const auto& [m, skill] : skillMods[pass])
                 sink.apply(s, *m, -1, skill);

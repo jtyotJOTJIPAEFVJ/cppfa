@@ -12,7 +12,7 @@
 // Matches pyfa with: All-5 style character, uniform damage profile (tank goals);
 // reload and spool-up as FitInput says (pyfa's fit setting and default).
 //
-// Evaluation keeps pyfa's order (early/normal/late passes; skills, ship,
+// Evaluation keeps pyfa's order (earliest/early/normal/late passes; skills, ship,
 // modules, mode) and lazy attribute reads, so effects that read attributes
 // other effects modify see the same values pyfa does. Values are float (pyfa
 // uses double): results match pyfa to ~1e-4 relative, see cpp/FIT_ENGINE.md.
