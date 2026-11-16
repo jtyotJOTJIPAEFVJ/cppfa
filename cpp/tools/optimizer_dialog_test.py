@@ -15,6 +15,13 @@ Options:
     slots=high,med,..  racks to optimize when positions isn't given
     time=S             time budget (default 10)
     maxReps=N capStable=0|1 ancillary=0|1 capBoosters=0|1 minCap=GJ/s weight=W priceCap=MISK
+    target=profile:NAME|fit:ID   add this target to the fit's Target tab first (enabled when it's
+                       the first; appliedDps needs one)
+    distance=KM speed=PERCENT    the engagement (set as the Target tab sets it)
+    pricesUpdate=N     first run the dialog's price update, limited to N stale types (real requests
+                       to the price source), and print the price label before and after
+    skewPrices=F       multiply the prices sent to the optimizer by F, so the dialog's check of
+                       pyfa's current prices against them should warn
     apply=ROW          apply this list row (0 = the original modules) and print the slots after
 """
 import os
@@ -81,6 +88,12 @@ with config.logging_setup:
         print(message)
         quit(1)
 
+    def selectFit():
+        # Open the fit so the stats pane (Firepower) shows it
+        from gui.builtinShipBrowser.events import FitSelected
+        wx.PostEvent(mf, FitSelected(fitID=FIT))
+        wx.CallLater(2000, start)
+
     def start():
         fit = Fit.getInstance().getFit(FIT)
         if fit is None:
@@ -91,7 +104,31 @@ with config.logging_setup:
             racks = {'high': FittingSlot.HIGH, 'med': FittingSlot.MED, 'low': FittingSlot.LOW, 'rig': FittingSlot.RIG}
             want = [racks[r] for r in OPTS.get('slots', 'high,med,low,rig').split(',')]
             positions = [p for p, m in enumerate(fit.modules) if m.slot in want]
+        if 'target' in OPTS:
+            import gui.fitCommands as cmd
+            from service.targetProfile import TargetProfile as SvcTargetProfile
+            kind, _, value = OPTS['target'].partition(':')
+            if kind == 'fit':
+                key = ('fit', int(value))
+            else:
+                svc = SvcTargetProfile.getInstance()
+                profiles = svc.getBuiltinTargetProfileList() + svc.getUserTargetProfileList()
+                match = [p for p in profiles if p.rawName == value or p.fullName == value or p.shortName == value]
+                if not match:
+                    return fail('no target profile {!r}; built-in: {}'.format(
+                        value, ', '.join(p.fullName for p in svc.getBuiltinTargetProfileList())))
+                key = ('profile', match[0].ID)
+            mf.command.Submit(cmd.GuiAddFitTargetsCommand(fitID=FIT, targetKeys=[key]))
         dlg = ModuleOptimizerDialog.open(mf, FIT, positions)
+        from service import appliedDamage
+        appliedDamage.setEngagement(distance=float(OPTS.get('distance', 10)) * 1000,
+                                    speedFactor=int(OPTS.get('speed', 100)) / 100)
+        tab = mf.additionsPane.targetPage
+        tab.distance.SetValue(float(OPTS.get('distance', 10)))
+        tab.speed.SetValue(int(OPTS.get('speed', 100)))
+        dlg.updateTargetText()
+        import gui.globalEvents as GE
+        wx.PostEvent(mf, GE.FitChanged(fitIDs=(FIT,)))
         dlg.goalChoice.SetSelection(mo.GOALS.index(GOAL))
         dlg.onGoalChanged(None)
         dlg.maxReps.SetValue(int(OPTS.get('maxReps', 0)))
@@ -103,6 +140,34 @@ with config.logging_setup:
         dlg.remoteWeight.SetValue(float(OPTS.get('weight', 4)))
         dlg.priceCap.SetValue(float(OPTS.get('priceCap', 0)))
         state['dlg'] = dlg
+        if 'skewPrices' in OPTS:
+            factor = float(OPTS['skewPrices'])
+            original = mo.buildRequest
+
+            def skewed(*args, **kwargs):
+                request = original(*args, **kwargs)
+                request['prices'] = {k: v * factor for k, v in request['prices'].items()}
+                return request
+            mo.buildRequest = skewed
+        if 'pricesUpdate' in OPTS:
+            print('prices before:', dlg.priceText.GetLabel())
+            stale = mo.stalePriceTypes()[:int(OPTS['pricesUpdate'])]
+            print('updating', len(stale), 'stale types')
+            dlg.priceUpdate = mo.PriceUpdate(stale, progress=dlg.onPriceProgress, finished=dlg.onPricesFinished)
+            dlg.setRunning(True, prices=True)
+            dlg.priceUpdate.start()
+            wx.CallLater(1000, waitPrices)
+            return
+        dlg.onRun(None)
+        wx.CallLater(1000, poll)
+
+    def waitPrices():
+        dlg = state['dlg']
+        if dlg.priceUpdate is not None:
+            wx.CallLater(1000, waitPrices)
+            return
+        print('price update:', dlg.phaseText.GetLabel())
+        print('prices after:', dlg.priceText.GetLabel())
         dlg.onRun(None)
         wx.CallLater(1000, poll)
 
@@ -119,7 +184,15 @@ with config.logging_setup:
         print('slots:', dlg.slotsText.GetLabel())
         print('request:', {k: dlg.request.get(k) for k in (
             'goal', 'allowAncillary', 'allowCapBoosters', 'maxReps', 'requireCapStable', 'minCapRecharge', 'remoteWeight', 'priceCap')})
+        print('target:', dlg.targetText.GetLabel(), dlg.request.get('target'), 'drones:', dlg.request.get('drones'))
         print('phase:', dlg.phaseText.GetLabel())
+        for view in mf.statsPane.views:
+            if hasattr(view, 'labelAppliedTotal'):
+                for name in ('Weapon', 'Drone', 'Total'):
+                    label = getattr(view, 'labelApplied' + name)
+                    tip = label.GetToolTip()
+                    print('firepower applied {}: {!r} shown={} tooltip={!r}'.format(
+                        name, label.GetLabel(), label.IsShown(), tip.GetTip() if tip else None))
         print('warnings:', dlg.warningText.GetLabel())
         lst = dlg.list
         print(' | '.join(lst.GetColumn(c).GetText() for c in range(lst.GetColumnCount())))
@@ -136,8 +209,13 @@ with config.logging_setup:
                 if not m.isEmpty and m.isMutated:
                     text += ' (mutated: mutaplasmid {}, {} mutators)'.format(m.mutaplasmidID, len(m.mutators))
                 print('after apply: position {}: {}'.format(pos, text))
-        # Let pyfa handle the fit-changed events first.
-        wx.CallLater(2000, quit, 0)
+        # Let pyfa handle the fit-changed events first, and the price check fetch its prices.
+        wx.CallLater(8000, lateReport)
 
-    wx.CallLater(3000, start)
+    def lateReport():
+        dlg = state['dlg']
+        print('price check:', dlg.priceWarning or '(no warning)')
+        quit(0)
+
+    wx.CallLater(3000, selectFit)
     app.MainLoop()

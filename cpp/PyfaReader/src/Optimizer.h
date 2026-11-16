@@ -30,7 +30,7 @@ enum Rack
     RackMid,
     RackLow,
     RackRig,
-    RackHigh,  // remote repairers (other high slot modules are rarely useful to a goal)
+    RackHigh,  // remote repairers; weapons for Goal::AppliedDps
     RackCount
 };
 const char* rackName(int rack);
@@ -39,6 +39,7 @@ struct Options
 {
     Goal goal = Goal::ArmorActive;
     double remoteWeight = 4;  // balanced goals (Objective::remoteWeight): EHP/s per remote HP/s
+    DamageTarget target;      // Goal::AppliedDps (Objective::target)
     std::array<bool, RackCount> search{true, true, true, false};  // racks whose slots are searched
     bool allowOfficer = false;
     // Constraints. allowAncillary false: no ancillary repairers (local or remote) among
@@ -50,6 +51,9 @@ struct Options
     // that misses a constraint doesn't count as fitting.
     bool allowAncillary = true;
     bool allowCapBoosters = true;
+    // Damage goal: no polarized weapons among the candidates (they zero the ship's resists;
+    // pinned ones stay)
+    bool excludePolarized = false;
     int maxReps = 0;
     bool requireCapStable = false;
     double minCapRecharge = 0;

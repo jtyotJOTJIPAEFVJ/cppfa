@@ -69,10 +69,22 @@ class StatsPane(wx.Panel):
         else:
             pyfalog.error("Unknown setting for view: {0}", aView)
 
+    @staticmethod
+    def targetFitChanged(activeFitID, event):
+        """The active fit's enabled target (Target tab) is a fit that changed: the applied damage
+        shown against it changes too."""
+        try:
+            from service.target import getActiveFitTarget
+            fitTarget = getActiveFitTarget(activeFitID)
+            targetFit = getattr(fitTarget, 'targetFit', None) if fitTarget is not None else None
+            return targetFit is not None and targetFit.ID in event.fitIDs
+        except Exception:
+            return False
+
     def fitChanged(self, event):
         event.Skip()
         activeFitID = self.mainFrame.getActiveFit()
-        if activeFitID is not None and activeFitID not in event.fitIDs:
+        if activeFitID is not None and activeFitID not in event.fitIDs and not self.targetFitChanged(activeFitID, event):
             return
         sFit = Fit.getInstance()
         fit = sFit.getFit(activeFitID)

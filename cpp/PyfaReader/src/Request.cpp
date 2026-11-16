@@ -99,7 +99,8 @@ const std::pair<const char*, Goal> kGoals[] = {{"shieldPassive", Goal::ShieldPas
                                                {"localShieldRemoteShield", Goal::LocalShieldRemoteShield},
                                                {"localShieldRemoteArmor", Goal::LocalShieldRemoteArmor},
                                                {"localArmorRemoteShield", Goal::LocalArmorRemoteShield},
-                                               {"localArmorRemoteArmor", Goal::LocalArmorRemoteArmor}};
+                                               {"localArmorRemoteArmor", Goal::LocalArmorRemoteArmor},
+                                               {"appliedDps", Goal::AppliedDps}};
 
 const std::pair<const char*, Slot> kSlots[] = {{"low", Slot::Low},   {"med", Slot::Med},
                                                {"high", Slot::High}, {"rig", Slot::Rig},
@@ -229,6 +230,8 @@ json::Value statsJson(const TestResult& r, Goal goal)
         s["localRep"] = num(r.localRep);
         s["remoteRep"] = num(r.remoteRep);
     }
+    if (goal == Goal::AppliedDps)
+        s["dps"] = num(r.dps);  // raw: no resists, no application
     s["cpuUsed"] = num(r.cpuUsed);
     s["cpuOutput"] = num(r.cpuOutput);
     s["powerUsed"] = num(r.powerUsed);
@@ -325,6 +328,32 @@ Request parse(const json::Value& doc, const GameData& gd)
             req.fit.implants.push_back(in);
         }
     }
+    if (const json::Value* drones = get(doc, "drones"); drones && !drones->is_null())
+    {
+        const auto& list = asArray(*drones, "request.drones");
+        for (size_t i = 0; i < list.size(); ++i)
+        {
+            std::string w = "request.drones[" + std::to_string(i) + "]";
+            asObject(list[i], w);
+            fitengine::DroneInput in;
+            in.typeID = getInt(list[i], "typeID", 0, w);
+            requireType(gd, in.typeID, w + ".typeID");
+            in.amount = getInt(list[i], "amount", 0, w);
+            if (in.amount < 0)
+                throw std::runtime_error(w + ".amount must be >= 0");
+            in.baseTypeID = getInt(list[i], "baseTypeID", 0, w);
+            if (in.baseTypeID)
+                requireType(gd, in.baseTypeID, w + ".baseTypeID");
+            if (const json::Value* mu = get(list[i], "mutators"); mu && !mu->is_null())
+            {
+                for (const auto& [attr, v] : idMap(*mu, w + ".mutators"))
+                    in.mutators.emplace_back(attr, static_cast<float>(v));
+                std::sort(in.mutators.begin(), in.mutators.end());
+            }
+            if (in.amount > 0)
+                req.fit.drones.push_back(std::move(in));
+        }
+    }
     if (const json::Value* boosters = get(doc, "boosters"); boosters && !boosters->is_null())
     {
         const auto& list = asArray(*boosters, "request.boosters");
@@ -382,6 +411,12 @@ Request parse(const json::Value& doc, const GameData& gd)
                 e.input.state = st && !st->is_null() ? parseState(*st, w + ".state") : State::Online;
                 e.input.baseTypeID = getInt(m, "baseTypeID", 0, w);
                 e.mutaplasmidID = getInt(m, "mutaplasmidID", 0, w);
+                // pyfa Module.spoolType / spoolAmount; missing / null = the fit's default
+                const int spoolType = getInt(m, "spoolType", -1, w);
+                if (spoolType < -1 || spoolType > 3)
+                    throw std::runtime_error(w + ".spoolType must be 0..3 (eos.const.SpoolType) or null");
+                e.input.spoolType = static_cast<fitengine::SpoolType>(spoolType);
+                e.input.spoolAmount = static_cast<float>(getNumber(m, "spoolAmount", 0, w));
                 if (e.input.baseTypeID)
                     requireType(gd, e.input.baseTypeID, w + ".baseTypeID");
                 if (const json::Value* mu = get(m, "mutators"); mu && !mu->is_null())
@@ -427,6 +462,7 @@ Request parse(const json::Value& doc, const GameData& gd)
     req.allowOfficer = getBool(doc, "allowOfficer", false, "request");
     req.allowAncillary = getBool(doc, "allowAncillary", true, "request");
     req.allowCapBoosters = getBool(doc, "allowCapBoosters", true, "request");
+    req.excludePolarized = getBool(doc, "excludePolarized", false, "request");
     req.maxReps = getInt(doc, "maxReps", 0, "request");
     if (req.maxReps < 0)
         throw std::runtime_error("request.maxReps must be >= 0 (0 = no limit)");
@@ -434,6 +470,48 @@ Request parse(const json::Value& doc, const GameData& gd)
     req.remoteWeight = getNumber(doc, "remoteWeight", 4, "request");
     if (!(req.remoteWeight > 0))
         throw std::runtime_error("request.remoteWeight must be > 0");
+    if (const json::Value* t = get(doc, "target"); t && !t->is_null())
+    {
+        const std::string w = "request.target";
+        asObject(*t, w);
+        fitengine::DamageTarget& dt = req.target;
+        const char* resists[4] = {"em", "thermal", "kinetic", "explosive"};
+        float* fields[4] = {&dt.em, &dt.thermal, &dt.kinetic, &dt.explosive};
+        for (int k = 0; k < 4; ++k)
+        {
+            double v = getNumber(*t, resists[k], 0, w);
+            if (!(v <= 1))
+                throw std::runtime_error(w + "." + resists[k] + " must be at most 1 (a resist, 0..1)");
+            *fields[k] = static_cast<float>(v);
+        }
+        // null / missing / <= 0: no signature radius (pyfa: infinite)
+        double sig = getNumber(*t, "signatureRadius", 0, w);
+        dt.signatureRadius = sig > 0 ? static_cast<float>(sig) : std::numeric_limits<float>::infinity();
+        dt.maxVelocity = static_cast<float>(std::max(0.0, getNumber(*t, "maxVelocity", 0, w)));
+        dt.radius = static_cast<float>(std::max(0.0, getNumber(*t, "radius", 0, w)));
+        dt.distance = static_cast<float>(getNumber(*t, "distance", 0, w));
+        if (!(dt.distance >= 0))
+            throw std::runtime_error(w + ".distance must be >= 0 (m)");
+        dt.speedFactor = static_cast<float>(getNumber(*t, "speedFactor", 1, w));
+        if (!(dt.speedFactor >= 0 && dt.speedFactor <= 1))
+            throw std::runtime_error(w + ".speedFactor must be 0..1");
+        // Tackle: speed and signature with the MWD off (missing: unchanged), web / painter
+        // resistances (1 = none), immunity
+        dt.maxVelocityScrammed = static_cast<float>(getNumber(*t, "maxVelocityScrammed", -1, w));
+        double sigScrammed = getNumber(*t, "signatureRadiusScrammed", -1, w);
+        dt.signatureRadiusScrammed = sigScrammed > 0 ? static_cast<float>(sigScrammed) : -1.0f;
+        dt.webResistance = static_cast<float>(getNumber(*t, "webResistance", 1, w));
+        dt.painterResistance = static_cast<float>(getNumber(*t, "painterResistance", 1, w));
+        if (!(dt.webResistance >= 0 && dt.painterResistance >= 0))
+            throw std::runtime_error(w + ".webResistance / painterResistance must be >= 0");
+        dt.immune = getBool(*t, "immune", false, w);
+    }
+    else if (req.goal == Goal::AppliedDps)
+        throw std::runtime_error("request.target is missing (required for goal appliedDps)");
+    req.fit.factorReload = getBool(doc, "factorReload", true, "request");
+    req.fit.spoolup = static_cast<float>(getNumber(doc, "spoolup", 1, "request"));
+    if (!(req.fit.spoolup >= 0 && req.fit.spoolup <= 1))
+        throw std::runtime_error("request.spoolup must be 0..1 (pyfa's default spool-up)");
     req.minCapRecharge = getNumber(doc, "minCapRecharge", 0, "request");
     if (!(req.minCapRecharge >= 0))
         throw std::runtime_error("request.minCapRecharge must be >= 0 (GJ/s, 0 = none)");
@@ -489,9 +567,11 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
     o.allowOfficer = req.allowOfficer;
     o.allowAncillary = req.allowAncillary;
     o.allowCapBoosters = req.allowCapBoosters;
+    o.excludePolarized = req.excludePolarized;
     o.maxReps = req.maxReps;
     o.requireCapStable = req.requireCapStable;
     o.remoteWeight = req.remoteWeight;
+    o.target = req.target;
     o.minCapRecharge = req.minCapRecharge;
     o.results = req.results;
     o.threads = req.threads;
@@ -739,7 +819,10 @@ json::Value run(const GameData& gd, const Request& req, const std::unordered_map
             changed += unchanged ? 0 : 1;
             slots.push_back(std::move(s));
         }
-        TestResult again = fitengine::toTestResult(engine.evaluate(full), {o.goal, static_cast<float>(o.remoteWeight)});
+        fitengine::Objective objective(o.goal, static_cast<float>(o.remoteWeight));
+        objective.target = o.target;
+        TestResult again = fitengine::toTestResult(
+            engine.evaluate(full, o.goal == Goal::AppliedDps ? &o.target : nullptr), objective);
         if (std::abs(again.goal - f.exact.goal) > 1e-4 * std::max(1.0f, std::abs(f.exact.goal)))
             warnings.push_back("option " + std::to_string(fi + 1) + ": goal " + std::to_string(f.exact.goal) +
                           " but the assembled fit evaluates to " + std::to_string(again.goal));
@@ -868,6 +951,25 @@ json::Value makeRequest(const GameData& gd, const fitengine::Engine& engine, con
     for (const FitItem& b : fit.boosters)
         in.boosters.push_back({b.itemID, b.active, b.sideEffects});
     fitengine::FitResult fr = engine.evaluate(in);
+    json::Value drones = json::Value::array();
+    for (const FitDrone& d : fit.drones)
+    {
+        if (d.amountActive <= 0)
+            continue;
+        json::Value v = json::Value::object();
+        v["typeID"] = d.itemID;
+        v["amount"] = d.amountActive;
+        if (d.isMutated())
+            v["baseTypeID"] = *d.baseItemID;
+        if (!d.mutators.empty())
+        {
+            json::Value mu = json::Value::object();
+            for (const auto& [attr, val] : d.mutators)
+                mu[std::to_string(attr)] = val;
+            v["mutators"] = std::move(mu);
+        }
+        drones.push_back(std::move(v));
+    }
 
     // Which rack indices are open.
     const Slot* rackSlot = kRackSlots;
@@ -958,6 +1060,7 @@ json::Value makeRequest(const GameData& gd, const fitengine::Engine& engine, con
         boosters.push_back(std::move(v));
     }
     doc["boosters"] = std::move(boosters);
+    doc["drones"] = std::move(drones);
     json::Value mods = json::Value::array();
     for (const Entry& e : entries)
     {
@@ -970,6 +1073,11 @@ json::Value makeRequest(const GameData& gd, const fitengine::Engine& engine, con
             v["typeID"] = *m.itemID;
             v["chargeID"] = m.chargeID.value_or(0);
             v["state"] = stateName(static_cast<State>(static_cast<int>(m.state)));
+            if (m.spoolType)
+            {
+                v["spoolType"] = *m.spoolType;
+                v["spoolAmount"] = m.spoolAmount;
+            }
             if (m.isMutated())
             {
                 v["baseTypeID"] = *m.baseItemID;
@@ -989,7 +1097,23 @@ json::Value makeRequest(const GameData& gd, const fitengine::Engine& engine, con
         mods.push_back(std::move(v));
     }
     doc["modules"] = std::move(mods);
+    doc["factorReload"] = true;
+    doc["spoolup"] = 1;
     doc["goal"] = goalName(goal);
+    if (goal == Goal::AppliedDps)
+    {
+        // A cruiser-like target at 15 km (edit for other cases)
+        json::Value t = json::Value::object();
+        t["em"] = 0.5;
+        t["thermal"] = 0.45;
+        t["kinetic"] = 0.4;
+        t["explosive"] = 0.35;
+        t["signatureRadius"] = 125;
+        t["maxVelocity"] = 900;
+        t["radius"] = 120;
+        t["distance"] = 15000;
+        doc["target"] = std::move(t);
+    }
     doc["priceCap"] = 0;
     doc["allowOfficer"] = false;
     doc["results"] = 10;

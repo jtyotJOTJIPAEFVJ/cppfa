@@ -241,6 +241,11 @@ struct Candidate
 
     bool useful = false;
     bool goalRep = false;  // counts toward Options::maxReps
+    // Goal::AppliedDps: the hardpoint it takes (turret, launcher) and whether it changes
+    // the lock range or drone control range (it can matter without measuring a gain alone).
+    int8_t hardpoint = -1;
+    bool rangeSupport = false;
+    double rawGain = 0;  // raw damage per second it adds alone (no resists, no application)
     int copies = 0;        // mutated (abyssal) modules from opened slots: copies owned (0: catalog, any number)
     Role role = Role::Core;
     int subgroup = -1;
@@ -652,8 +657,13 @@ public:
           layer_(layerOf(opt.goal)), rlayer_(isBalancedGoal(opt.goal) ? balancedRemoteLayer(opt.goal) : -1),
           balanced_(isBalancedGoal(opt.goal)),
           active_(isActiveGoal(opt.goal)), resistOnly_(isResistGoal(opt.goal)), remote_(isRemoteGoal(opt.goal)),
-          capConstrained_(opt.requireCapStable || opt.minCapRecharge > 0)
+          dps_(opt.goal == Goal::AppliedDps), capConstrained_(opt.requireCapStable || opt.minCapRecharge > 0)
     {
+        obj_.target = opt.target;
+        // Drones matter only to the damage goal (none changes the ship's tank, fitting or
+        // capacitor); without them the tank goals' plans stay as small as before.
+        if (!dps_)
+            fit_.drones.clear();
     }
 
     Result run();
@@ -705,6 +715,7 @@ private:
     // Options::maxReps counts these: the goal layer's local repairers (active goals) or
     // remote repairers (remote goals), by group.
     bool goalRepType(const Type& t) const;
+    int hardpointOf(const Type& t) const;
     int pinnedReps_ = 0;
     int repLimit_ = -1;  // goal repairers allowed in the open slots; -1: no limit
     int repCount(const std::vector<int>& ids) const
@@ -975,9 +986,11 @@ private:
         size_t fitting = 0;
         Scored best;           // the best fitting set (goal, then cheaper)
         std::vector<int> ids;  // its modules
+        // keep > 1: the best `keep` fitting sets, best first (ties by enumeration order)
+        std::vector<std::pair<Scored, std::vector<int>>> top;
     };
     Enumerated enumerate(const std::array<std::vector<int>, RackCount>& lists, double limit,
-                         double maxPlans = std::numeric_limits<double>::infinity());
+                         double maxPlans = std::numeric_limits<double>::infinity(), size_t keep = 1);
     void memberBrute();
 
     // ---- validation (Options::bruteForce)
@@ -1015,7 +1028,12 @@ private:
     bool active_;
     bool resistOnly_;  // isResistGoal: layer HP counts as 1
     bool remote_;      // isRemoteGoal: no resists (D = 1), the profile is makeRemoteProfile
+    bool dps_;         // Goal::AppliedDps: no stage-1 model, refine searches alone (from the open slots' modules)
     bool capConstrained_;  // Options::requireCapStable or minCapRecharge
+    // AppliedDps: turret / launcher hardpoints left for the open slots (ship's minus pinned weapons)
+    std::array<int, 2> hardpointsFree_{-1, -1};
+    // Full evaluation, with the damage target for AppliedDps.
+    FitResult evaluateFull(const FitInput& f) const { return engine_.evaluate(f, dps_ ? &obj_.target : nullptr); }
     Result result_;
 
     FitInput base_;  // the pinned part
@@ -1123,6 +1141,17 @@ std::optional<int> rackOf(const GameData& gd, int typeID)
     return std::nullopt;
 }
 
+// The hardpoint a module takes: 0 turret, 1 launcher, -1 none (pyfa Module.hardpoint).
+int Search::hardpointOf(const Type& t) const
+{
+    static const int turret = gd_.effectID("turretFitted"), launcher = gd_.effectID("launcherFitted");
+    if (turret && t.hasEffect(turret))
+        return 0;
+    if (launcher && t.hasEffect(launcher))
+        return 1;
+    return -1;
+}
+
 bool Search::goalRepType(const Type& t) const
 {
     const Group* g = gd_.groupOf(t);
@@ -1208,7 +1237,7 @@ void Search::setup()
             result_.warnings.push_back(std::to_string(pinnedReps_) + " active repairers outside the selection already "
                                        "exceed the limit of " + std::to_string(opt_.maxReps));
     }
-    FitResult b = engine_.evaluate(base_);
+    FitResult b = evaluateFull(base_);
     {
         const TestResult tb = toTestResult(b, obj_);
         pinnedUsed_ = {tb.cpuUsed, tb.powerUsed, tb.calibrationUsed};
@@ -1226,7 +1255,19 @@ void Search::setup()
             slots_[ri] = opt_.search[ri] ? std::clamp(rackSize, 0, limit) : 0;
     }
     result_.openSlots = slots_;
-    result_.start = toTestResult(engine_.evaluate(fit_), obj_);
+    if (dps_)
+    {
+        // pyfa Fit.getHardpointsFree: the ship's turret / launcher hardpoints (subsystems
+        // change them) less the pinned modules that take one.
+        hardpointsFree_ = {static_cast<int>(std::lround(b.shipAttr(Attr::turretSlotsLeft))),
+                           static_cast<int>(std::lround(b.shipAttr(Attr::launcherSlotsLeft)))};
+        for (const ModuleInput& m : base_.modules)
+            if (const Type* t = gd_.type(m.typeID); t && hardpointOf(*t) >= 0)
+                --hardpointsFree_[static_cast<size_t>(hardpointOf(*t))];
+        for (int& h : hardpointsFree_)
+            h = std::max(0, h);
+    }
+    result_.start = toTestResult(evaluateFull(fit_), obj_);
     logLine(std::string("ship ") + ship_->name + ": searching " + std::to_string(slots_[RackMid]) + " mid / " +
             std::to_string(slots_[RackLow]) + " low / " + std::to_string(slots_[RackRig]) + " rig / " +
             std::to_string(slots_[RackHigh]) + " high slots, " + std::to_string(base_.modules.size()) +
@@ -1249,14 +1290,14 @@ void Search::gatherCandidates()
     const int aVolume = gd_.attributeID("volume"), aRigSize = gd_.attributeID("rigSize"),
               aIsCapital = gd_.attributeID("isCapitalSize"), aMeta = gd_.attributeID("metaGroupID"),
               aMaxGroup = gd_.attributeID("maxGroupFitted"), aMaxType = gd_.attributeID("maxTypeFitted"),
-              aCapacity = gd_.attributeID("capacity"), aChargeSize = gd_.attributeID("chargeSize");
+              aCapacity = gd_.attributeID("capacity"), aChargeSize = gd_.attributeID("chargeSize"),
+              aResistanceKiller = gd_.attributeID("resistanceKiller");
     std::vector<int> chargeGroupAttrs;
     for (int i = 1; i <= 5; ++i)
         if (int id = gd_.attributeID("chargeGroup" + std::to_string(i)))
             chargeGroupAttrs.push_back(id);
 
     const bool shipCapital = ship_->attr(aIsCapital).value_or(0) == 1;
-    const int effTurret = gd_.effectID("turretFitted"), effLauncher = gd_.effectID("launcherFitted");
     const float shipRigSize = ship_->attr(aRigSize).value_or(0);
 
     size_t ruleExcluded = 0;
@@ -1289,10 +1330,16 @@ void Search::gatherCandidates()
                 continue;
             if (r == RackRig && t->attr(aRigSize).value_or(0) != shipRigSize)
                 continue;
-            // High slots: no weapons (hardpoints aren't tracked; nothing that needs one helps a goal).
-            if (r == RackHigh && ((effTurret && t->hasEffect(effTurret)) || (effLauncher && t->hasEffect(effLauncher))))
+            // High slots: weapons only for the damage goal (nothing that needs a hardpoint helps
+            // the others), and only while a hardpoint of their kind is free.
+            const int hardpoint = hardpointOf(*t);
+            if (r == RackHigh && hardpoint >= 0 &&
+                (!dps_ || hardpointsFree_[static_cast<size_t>(hardpoint)] <= 0))
                 continue;
             if (!opt_.allowOfficer && (t->metaGroupID == 5 || t->attr(aMeta).value_or(0) == 5))
+                continue;
+            // Polarized weapons: the only types with resistanceKiller
+            if (opt_.excludePolarized && aResistanceKiller && t->attr(aResistanceKiller))
                 continue;
             const Group* g = gd_.groupOf(*t);
             if ((goal_ == Goal::ShieldActive || (balanced_ && layer_ == Shield)) && g && g->name == "Capacitor Power Relay")
@@ -1326,8 +1373,12 @@ void Search::gatherCandidates()
             if (opt_.priceCap > 0 && (!hasPrice || price > opt_.priceCap))
                 continue;
             Engine::Reach reach = engine_.reach(id);
+            const bool weapon = dps_ && reach.weapon != WeaponKind::None && reach.weapon != WeaponKind::Other;
+            // Damage goal: webs, target painters and scramblers act on the target (projected
+            // effects, not compiled), so reach doesn't see them.
+            const bool tackle = dps_ && reach.tackle;
             // Remote repairers' own effects are projected (not compiled): they count through ModuleStats.
-            if (!reach.ship && !reach.others && !reach.special && !goalRep)
+            if (!reach.ship && !reach.others && !reach.special && !goalRep && !weapon && !tackle)
                 continue;
 
             Candidate c;
@@ -1340,16 +1391,26 @@ void Search::gatherCandidates()
             c.hasPrice = hasPrice;
             c.reach = reach;
             c.goalRep = goalRep;
+            c.hardpoint = static_cast<int8_t>(hardpoint);
             c.input.typeID = id;
-            c.input.state = reach.activatable || goalRep ? State::Active : State::Online;
+            c.input.state = reach.activatable || goalRep || weapon || tackle ? State::Active : State::Online;
 
             // Modules that only work with a charge: one candidate per valid charge,
-            // the best one is kept after measuring.
-            bool needsCharge = ancillary || (g && g->name == "Capacitor Booster");
+            // the best one is kept after measuring. Weapons (damage goal): each charge
+            // they can load; smartbombs take none.
+            bool needsCharge = ancillary || (g && g->name == "Capacitor Booster") ||
+                               (weapon && reach.weapon != WeaponKind::Smartbomb);
+            // Damage goal: modules that take scripts (tracking / guidance computers, sensor
+            // boosters) also with each script.
+            bool scripted = false;
+            if (dps_ && !needsCharge)
+                for (int ga : chargeGroupAttrs)
+                    scripted |= t->attr(ga).value_or(0) != 0;
             if (!needsCharge)
             {
                 cands_.push_back(c);
-                continue;
+                if (!scripted)
+                    continue;
             }
             float capacity = t->attr(aCapacity).value_or(0);
             float size = t->attr(aChargeSize).value_or(0);
@@ -1427,7 +1488,8 @@ void Search::addMutatedCandidates(size_t& ruleExcluded)
         if (goalRep && repLimit_ == 0)
             continue;
         Engine::Reach reach = engine_.reach(m.typeID);
-        if (!reach.ship && !reach.others && !reach.special && !goalRep)
+        if (!reach.ship && !reach.others && !reach.special && !goalRep &&
+            !(dps_ && (reach.weapon != WeaponKind::None || reach.tackle)))
             continue;
         Candidate c;
         c.type = t;
@@ -1443,8 +1505,13 @@ void Search::addMutatedCandidates(size_t& ruleExcluded)
         c.reach = reach;
         c.goalRep = goalRep;
         c.copies = copies;
+        c.hardpoint = static_cast<int8_t>(hardpointOf(*t));
         c.input = m;
-        c.input.state = reach.activatable || goalRep ? State::Active : State::Online;
+        const bool weapon = dps_ && ((reach.weapon != WeaponKind::None && reach.weapon != WeaponKind::Other) ||
+                                     reach.tackle);
+        if (c.hardpoint >= 0 && (!dps_ || hardpointsFree_[static_cast<size_t>(c.hardpoint)] <= 0))
+            continue;
+        c.input.state = reach.activatable || goalRep || weapon ? State::Active : State::Online;
         cands_.push_back(c);
         logLine("owned mutated module offered: " + std::to_string(copies) + "x " + t->name);
     }
@@ -1489,6 +1556,7 @@ void Search::measure()
             calls_.fetch_add(1, std::memory_order_relaxed);
             Candidate& c = cands_[i];
             c.goalGain = r.goal - r0.goal;
+            c.rawGain = r.dps - r0.dps;
             c.dividerDrop = remote_ ? 0.0 : d0.divider[static_cast<size_t>(layer_)] - d.divider[static_cast<size_t>(layer_)];
             c.hpGain = resistOnly_ ? 0.0 : d.hp[static_cast<size_t>(layer_)] - d0.hp[static_cast<size_t>(layer_)];
             c.capGain = (r.capRecharge - r.capUsed) - (r0.capRecharge - r0.capUsed);
@@ -1518,6 +1586,14 @@ void Search::measure()
             for (size_t f = 0; f < std::size(fitschema::ShipAttrs::kFields); ++f)
                 if (std::abs(d.ship[f] - d0.ship[f]) > 1e-6f * std::max(std::abs(d0.ship[f]), 1e-6f))
                     c.shipChanged |= uint64_t{1} << f;
+            if (dps_)
+            {
+                // Tank measurements mean nothing to the damage goal; a longer lock or drone
+                // control range can (weapons fitted later may need it).
+                c.dividerDrop = c.hpGain = c.rep = 0;
+                c.rangeSupport = (c.shipChanged >> shipField(Attr::maxTargetRange) & 1) ||
+                                 (c.shipChanged >> shipField(Attr::droneControlRange) & 1);
+            }
             c.resMask = 0;
             int bit = 0;
             for (size_t f = 0; f < std::size(fitschema::ShipAttrs::kFields); ++f)
@@ -1532,10 +1608,30 @@ void Search::measure()
         first = last;
     }
 
+    // OPT_TRACE=<name part> (debugging): the measurements of matching candidates
+    {
+        char* e = nullptr;
+        size_t n = 0;
+        std::string trace;
+        if (_dupenv_s(&e, &n, "OPT_TRACE") == 0 && e)
+            trace = e;
+        free(e);
+        if (!trace.empty() && log_)
+            for (size_t i = 0; i < cands_.size(); ++i)
+                if (candName(static_cast<int>(i)).find(trace) != std::string::npos)
+                    *log_ << "  measured " << rackName(cands_[i].rack) << ": " << candName(static_cast<int>(i))
+                          << " | goal " << cands_[i].goalGain << " state " << static_cast<int>(cands_[i].input.state)
+                          << " out " << cands_[i].outputGain << "\n";
+    }
+
     // Keep each charge-needing module's best charge.
     std::vector<Candidate> kept;
     std::unordered_map<int, size_t> best;  // typeID -> index in kept
     auto better = [&](const Candidate& a, const Candidate& b) {
+        if (dps_ && a.goalGain != b.goalGain)
+            return a.goalGain > b.goalGain;
+        if (dps_ && a.rawGain != b.rawGain)
+            return a.rawGain > b.rawGain;
         if (a.rep != b.rep)
             return a.rep > b.rep;
         if (a.capGain != b.capGain)
@@ -1571,16 +1667,22 @@ void Search::measure()
 
 namespace
 {
-bool directlyUseful(const Candidate& c, bool active)
+bool directlyUseful(const Candidate& c, bool active, bool dps = false)
 {
-    if (c.dividerDrop > 1e-9 || c.outputGain > kTiny || c.goalGain > kTiny)
+    if (c.dividerDrop > 1e-9 || c.outputGain > kTiny || c.goalGain > kTiny || c.rangeSupport)
         return true;
+    if (dps)
+        return false;
     return active ? (c.rep > kTiny || c.capGain > kTiny) : c.hpGain > kTiny;
 }
 
 // Strongest first by what a module does on its own; ties to the cheaper one.
-bool directlyStronger(const Candidate& x, const Candidate& y, bool active)
+bool directlyStronger(const Candidate& x, const Candidate& y, bool active, bool dps = false)
 {
+    if (dps && x.goalGain != y.goalGain)
+        return x.goalGain > y.goalGain;
+    if (dps && x.rawGain != y.rawGain)
+        return x.rawGain > y.rawGain;
     const double a[4] = {x.rep + (active ? 0.0 : x.hpGain), active ? x.capGain : 0.0, x.dividerDrop, x.outputGain};
     const double b[4] = {y.rep + (active ? 0.0 : y.hpGain), active ? y.capGain : 0.0, y.dividerDrop, y.outputGain};
     for (int k = 0; k < 4; ++k)
@@ -1598,7 +1700,9 @@ void Search::interactions()
     for (size_t i = 0; i < cands_.size(); ++i)
     {
         Candidate& c = cands_[i];
-        if (!directlyUseful(c, active_) && !c.reach.others)
+        // (damage goal: tackle acts on the target, not on other modules, and alone can gain nothing;
+        // a weapon can apply nothing until tackle slows the target)
+        if (!directlyUseful(c, active_, dps_) && !c.reach.others && !(dps_ && (c.reach.tackle || c.rawGain > kTiny)))
             continue;
         const Group* g = gd_.groupOf(*c.type);
         std::string key = std::string(rackName(c.rack)) + "|";
@@ -1626,7 +1730,7 @@ void Search::interactions()
     }
     for (Subgroup& sg : subgroups_)
         std::stable_sort(sg.members.begin(), sg.members.end(), [&](int a, int b) {
-            return directlyStronger(cands_[static_cast<size_t>(a)], cands_[static_cast<size_t>(b)], active_);
+            return directlyStronger(cands_[static_cast<size_t>(a)], cands_[static_cast<size_t>(b)], active_, dps_);
         });
 
     // Influence between representatives.
@@ -1653,7 +1757,7 @@ void Search::interactions()
         bool any = false;
         for (const auto& [t, attr] : subgroups_[s].influence.optionFields)
             if (t != static_cast<int>(s) &&
-                directlyUseful(cands_[static_cast<size_t>(subgroups_[static_cast<size_t>(t)].members.front())], active_))
+                directlyUseful(cands_[static_cast<size_t>(subgroups_[static_cast<size_t>(t)].members.front())], active_, dps_))
             {
                 targetSet.insert(t);
                 any = true;
@@ -1735,7 +1839,9 @@ void Search::classify()
         for (int m : sg.members)
         {
             Candidate& c = cands_[static_cast<size_t>(m)];
-            c.useful = directlyUseful(c, active_) || c.pairGain > kTiny || c.costGain > kTiny;
+            c.useful = directlyUseful(c, active_, dps_) || c.pairGain > kTiny || c.costGain > kTiny ||
+                       (dps_ && (c.reach.tackle || c.rawGain > kTiny));  // tackle works in stacks, and some
+                                                                         // weapons only hit with it
             if (c.useful)
                 kept.push_back(m);
         }
@@ -4537,11 +4643,12 @@ void Search::buildPool()
         free(e);
         return on;
     }();
+    // (rawGain: damage goal only, else 0 - a weapon that applies nothing yet can after tackle)
     auto gains = [&](const Candidate& c) {
-        return std::array<double, 15>{c.goalGain,      c.dividerDrop,    c.hpGain,         c.capGain,
+        return std::array<double, 16>{c.goalGain,      c.dividerDrop,    c.hpGain,         c.capGain,
                                       c.outputGain,    c.rep,            c.pairGain,       c.costGain,
                                       c.outputDelta[0], c.outputDelta[1], c.outputDelta[2], c.pinnedDrop[0],
-                                      c.pinnedDrop[1], c.pinnedDrop[2],  -c.capUse};
+                                      c.pinnedDrop[1], c.pinnedDrop[2],  -c.capUse,       dps_ ? c.rawGain : 0.0};
     };
     auto costs = [&](const Candidate& c) { return std::array<double, 4>{c.cpu, c.power, c.calibration, c.price}; };
     auto limitOk = [](int a, int b) { return a == 0 || (b != 0 && a >= b); };  // a's limit no tighter than b's
@@ -4557,7 +4664,12 @@ void Search::buildPool()
             const Candidate& b = cands_[static_cast<size_t>(list[i])];
             allChoices_[static_cast<size_t>(b.rack)].push_back(list[i]);
             bool dominated = false;
-            for (size_t j = 0; j < list.size() && !dominated && !noPrune; ++j)
+            // Damage goal: scripts (charges of non-weapons) are never dropped. Measured alone, the
+            // tracking script beats the range one, but with a web on the target range can win.
+            const bool keepScript = dps_ && ((isAlt[static_cast<size_t>(list[i])] && b.hardpoint < 0 &&
+                                              (b.goalGain > kTiny || b.pairGain > kTiny || b.rangeSupport)) ||
+                                             b.reach.tackle);  // measured alone a web gains nothing
+            for (size_t j = 0; j < list.size() && !dominated && !noPrune && !keepScript; ++j)
             {
                 if (i == j)
                     continue;
@@ -4582,6 +4694,21 @@ void Search::buildPool()
                 choices_[static_cast<size_t>(b.rack)].push_back(list[i]);
         }
     }
+    // OPT_LIST_CHOICES (debugging): every choice per rack with its measured gains
+    {
+        char* e = nullptr;
+        size_t n = 0;
+        const bool list = _dupenv_s(&e, &n, "OPT_LIST_CHOICES") == 0 && e;
+        free(e);
+        if (list && log_)
+            for (int r = 0; r < RackCount; ++r)
+                for (int c : choices_[static_cast<size_t>(r)])
+                {
+                    const Candidate& cd = cands_[static_cast<size_t>(c)];
+                    *log_ << "  choice " << rackName(r) << ": " << candName(c) << " | goal " << cd.goalGain << " pair "
+                          << cd.pairGain << " out " << cd.outputGain << " range " << cd.rangeSupport << "\n";
+                }
+    }
     logLine("refine: " + std::to_string(choices_[RackMid].size()) + " mid, " + std::to_string(choices_[RackLow].size()) +
             " low, " + std::to_string(choices_[RackRig].size()) + " rig, " + std::to_string(choices_[RackHigh].size()) +
             " high choices (" + std::to_string(pruned) + " dominated dropped)");
@@ -4602,6 +4729,15 @@ bool Search::validIds(const std::vector<int>& ids) const
 {
     if (repLimit_ >= 0 && repCount(ids) > repLimit_)
         return false;
+    if (dps_)
+    {
+        std::array<int, 2> used{};
+        for (int id : ids)
+            if (int h = cands_[static_cast<size_t>(id)].hardpoint; h >= 0)
+                ++used[static_cast<size_t>(h)];
+        if (used[0] > hardpointsFree_[0] || used[1] > hardpointsFree_[1])
+            return false;
+    }
     for (size_t i = 0; i < ids.size(); ++i)
     {
         const Candidate& c = cands_[static_cast<size_t>(ids[i])];
@@ -4670,7 +4806,7 @@ Scored Search::canonical(RSet& x)
     s.price = priceOf(x);
     if (s.valid)
     {
-        s.r = toTestResult(engine_.evaluate(fitOf(x)), obj_);
+        s.r = toTestResult(evaluateFull(fitOf(x)), obj_);
         s.goal = s.r.goal;
         s.bucket = goalBucket(s.goal);
         judge(s);
@@ -5092,12 +5228,41 @@ void Search::refine(Clock::time_point t0)
         starts.push_back(toRSet(finals_[order[i]].cands));
     if (!best.fits || fromEmpty)
         starts.push_back(RSet{});
+    // Damage goal (no stage 2): the open slots' own modules are a start too, when they
+    // are choices (weapons with their charge, damage modules); the others stay empty.
+    if (dps_ && !fromEmpty)
+    {
+        std::vector<int> ids;
+        for (size_t i = 0; i < fit_.modules.size(); ++i)
+        {
+            const ModuleInput& m = fit_.modules[i];
+            const auto rack = rackOf(gd_, m.typeID);
+            if (!rack || !(opt_.partial ? opt_.openModules[i] != 0 : opt_.search[static_cast<size_t>(*rack)]))
+                continue;
+            for (int r = 0; r < RackCount; ++r)
+                for (int c : choices_[static_cast<size_t>(r)])
+                {
+                    const ModuleInput& ci = cands_[static_cast<size_t>(c)].input;
+                    if (ci.typeID == m.typeID && ci.chargeID == m.chargeID && ci.baseTypeID == m.baseTypeID &&
+                        ci.mutators == m.mutators)
+                    {
+                        ids.push_back(c);
+                        r = RackCount;
+                        break;
+                    }
+                }
+        }
+        RSet x = toRSet(ids);
+        if (validSet(x))
+            starts.push_back(x);
+    }
     // Small requests: every combination of the choices, exactly, when there are at most
     // Options::refineExact; its best set is a start (and an end set) too.
     if (opt_.refineExact > 0 && !fromEmpty)
     {
         // Plan builds (~1-2 ms each) cost more than the evaluations beyond ~20k plans.
-        const Enumerated e = enumerate(choices_, opt_.refineExact, 20000);
+        const Enumerated e = enumerate(choices_, opt_.refineExact, 20000,
+                                       dps_ ? static_cast<size_t>(std::max(1, opt_.results)) : 1);
         if (e.ran)
         {
             logLine("refine: exact pass over " + std::to_string(e.combinations) + " combinations (" +
@@ -5110,7 +5275,113 @@ void Search::refine(Clock::time_point t0)
                 canonical(x);
                 starts.insert(starts.begin(), x);
             }
+            // Damage goal (no stage 2 sets): the next best sets are results too.
+            for (size_t k = 1; k < e.top.size(); ++k)
+            {
+                RSet x = toRSet(e.top[k].second);
+                canonical(x);
+                add(x);
+            }
         }
+    }
+    // Damage goal: starts single and pair moves can't reach. Tackle works in stacks (one
+    // web can gain nothing where three treble the damage), and a better weapon system can
+    // need that tackle before it pays, so a set of small guns can be a local optimum next to
+    // big guns with webs. Seeds: the open highs filled with each leading weapon (top raw and
+    // top applied damage per subgroup), and every start and seed also with its open mids
+    // refilled greedily with tackle (best next module, even at no gain, until the rack is full).
+    if (dps_ && !fromEmpty)
+    {
+        std::vector<RSet> seeds;
+        const int highs = slots_[RackHigh];
+        if (highs > 0)
+        {
+            std::map<int, std::pair<int, int>> bestOf;  // subgroup -> (best raw, best applied) candidate
+            for (int c : choices_[RackHigh])
+            {
+                const Candidate& cd = cands_[static_cast<size_t>(c)];
+                if (cd.hardpoint < 0)
+                    continue;
+                auto [it, inserted] = bestOf.emplace(cd.subgroup, std::make_pair(c, c));
+                if (!inserted)
+                {
+                    if (cd.rawGain > cands_[static_cast<size_t>(it->second.first)].rawGain)
+                        it->second.first = c;
+                    if (cd.goalGain > cands_[static_cast<size_t>(it->second.second)].goalGain)
+                        it->second.second = c;
+                }
+            }
+            std::vector<int> picks;
+            for (int which = 0; which < 2; ++which)
+            {
+                std::vector<int> v;
+                for (const auto& [g, top] : bestOf)
+                    v.push_back(which ? top.second : top.first);
+                std::stable_sort(v.begin(), v.end(), [&](int a, int b) {
+                    const Candidate &x = cands_[static_cast<size_t>(a)], &y = cands_[static_cast<size_t>(b)];
+                    return which ? x.goalGain > y.goalGain : x.rawGain > y.rawGain;
+                });
+                for (size_t k = 0; k < v.size() && k < 6; ++k)
+                    addUnique(picks, v[k]);
+            }
+            if (log_)
+                for (int c : picks)
+                    logLine("refine: weapon seed " + candName(c) + " (raw " + fmt(cands_[static_cast<size_t>(c)].rawGain) +
+                            ", applied " + fmt(cands_[static_cast<size_t>(c)].goalGain) + ")");
+            for (int c : picks)
+            {
+                const int n = std::min(highs, hardpointsFree_[static_cast<size_t>(cands_[static_cast<size_t>(c)].hardpoint)]);
+                RSet x;
+                x.m[RackHigh].assign(static_cast<size_t>(std::max(0, n)), c);
+                if (!x.m[RackHigh].empty() && validSet(x))
+                    seeds.push_back(std::move(x));
+            }
+        }
+        std::vector<int> tackle;
+        for (int c : choices_[RackMid])
+            if (cands_[static_cast<size_t>(c)].reach.tackle)
+                tackle.push_back(c);
+        std::vector<RSet> bases = seeds;
+        bases.insert(bases.end(), starts.begin(), starts.end());
+        std::vector<RSet> filled(bases.size());
+        if (!tackle.empty() && slots_[RackMid] > 0)
+            pool_->run(bases.size(), 1, [&](size_t i, int) {
+                RSet y = bases[i];
+                y.m[RackMid].clear();
+                bool any = false;
+                while (static_cast<int>(y.m[RackMid].size()) < slots_[RackMid])
+                {
+                    RSet next;
+                    bool found = false;
+                    for (int t : tackle)
+                    {
+                        RSet z = y;
+                        auto& v = z.m[RackMid];
+                        v.insert(std::upper_bound(v.begin(), v.end(), t), t);
+                        if (!validSet(z))
+                            continue;
+                        canonical(z);
+                        if (!found || better(z.s, next.s))
+                            next = std::move(z), found = true;
+                    }
+                    if (!found)
+                        break;
+                    y = std::move(next);
+                    any = true;
+                }
+                if (any)
+                    filled[i] = std::move(y);
+            });
+        size_t added = seeds.size();
+        starts.insert(starts.end(), seeds.begin(), seeds.end());
+        for (RSet& y : filled)
+            if (!y.m[RackMid].empty())
+            {
+                starts.push_back(std::move(y));
+                ++added;
+            }
+        logLine("refine: " + std::to_string(added) + " damage seeds (" + std::to_string(seeds.size()) +
+                " weapon, " + std::to_string(added - seeds.size()) + " with tackle)");
     }
     stats.refineStarts = starts.size();
     pool_->run(starts.size(), 1, [&](size_t i, int w) {
@@ -5285,7 +5556,7 @@ void Search::refine(Clock::time_point t0)
 // other racks are pinned into the plan's base, one plan per outer combination. The
 // layout with the fewest plans that stays within the plan's item limit is used.
 Search::Enumerated Search::enumerate(const std::array<std::vector<int>, RackCount>& lists, double limit,
-                                     double maxPlans)
+                                     double maxPlans, size_t keep)
 {
     Enumerated mc;
     const auto t0 = Clock::now();
@@ -5516,6 +5787,11 @@ Search::Enumerated Search::enumerate(const std::array<std::vector<int>, RackCoun
     };
     const size_t W = static_cast<size_t>(pool_->size());
     std::vector<Best> bestW(W);
+    // keep > 1: each worker's best `keep` sets (sorted, best first)
+    auto before = [](const Best& a, const Best& b) {
+        return better(a.s, b.s) || (!better(b.s, a.s) && a.index < b.index);
+    };
+    std::vector<std::vector<Best>> topW(keep > 1 ? W : 0);
     std::vector<size_t> fitW(W, 0), evalW(W, 0);
     auto evalOne = [&](const SearchPlan& plan, const Layout& lay, const std::array<size_t, RackCount>& outerIdx,
                        uint64_t o, uint64_t i, int w, std::vector<int>& ids, std::vector<int>& choice) {
@@ -5553,6 +5829,17 @@ Search::Enumerated Search::enumerate(const std::array<std::vector<int>, RackCoun
         const uint64_t index = o * nInner + i;
         if (better(s, b.s) || (!better(b.s, s) && index < b.index))
             b = {s, index, ids};
+        if (keep > 1)
+        {
+            auto& top = topW[static_cast<size_t>(w)];
+            Best cand{s, index, ids};
+            if (top.size() < keep || before(cand, top.back()))
+            {
+                top.insert(std::upper_bound(top.begin(), top.end(), cand, before), std::move(cand));
+                if (top.size() > keep)
+                    top.pop_back();
+            }
+        }
     };
     if (nOuter >= 4 * W)
         pool_->run(static_cast<size_t>(nOuter), 1, [&](size_t o, int w) {
@@ -5593,6 +5880,15 @@ Search::Enumerated Search::enumerate(const std::array<std::vector<int>, RackCoun
     {
         mc.best = b.s;
         mc.ids = b.ids;
+    }
+    if (keep > 1)
+    {
+        std::vector<Best> all;
+        for (auto& t : topW)
+            all.insert(all.end(), std::make_move_iterator(t.begin()), std::make_move_iterator(t.end()));
+        std::sort(all.begin(), all.end(), before);
+        for (size_t k = 0; k < all.size() && k < keep; ++k)
+            mc.top.emplace_back(all[k].s, std::move(all[k].ids));
     }
     return mc;
 }
@@ -5925,7 +6221,7 @@ bool Search::diagnoseCalibration()
             continue;
         FitInput without = base_;
         without.modules.erase(without.modules.begin() + static_cast<ptrdiff_t>(j));
-        const double cal = used - static_cast<double>(toTestResult(engine_.evaluate(without), obj_).calibrationUsed);
+        const double cal = used - static_cast<double>(toTestResult(evaluateFull(without), obj_).calibrationUsed);
         if (cal > 0)
             rigs.emplace_back(static_cast<int>(j), cal);
     }
@@ -6210,17 +6506,27 @@ Result Search::run()
     // Stage 1's model has size limits (ModelLimit). When one is hit, stages 1 and 2 are
     // skipped and refine searches alone (from the empty set); it needs no model.
     bool model = true;
-    try
+    if (dps_)
     {
-        buildKinds();
-    }
-    catch (const ModelLimit& e)
-    {
-        if (opt_.bruteForce || !opt_.refine || opt_.dumpKinds)
-            throw;
+        // Applied damage has no separable stage-1 model (application multiplies weapon,
+        // charge and support module effects): refine's exact search does it all.
+        if (opt_.bruteForce)
+            throw std::invalid_argument("the stage-1 check (--check) has no model to check for appliedDps; "
+                                        "use --members");
         model = false;
-        result_.stats.modelSkipped = e.what();
     }
+    else
+        try
+        {
+            buildKinds();
+        }
+        catch (const ModelLimit& e)
+        {
+            if (opt_.bruteForce || !opt_.refine || opt_.dumpKinds)
+                throw;
+            model = false;
+            result_.stats.modelSkipped = e.what();
+        }
     logLine(std::to_string(result_.stats.candidates) + " useful candidates in " + std::to_string(kinds_.size()) +
             " subgroups (" + std::to_string(result_.stats.coreKinds) + " core, " +
             std::to_string(result_.stats.resistKinds) + " resist, " + std::to_string(result_.stats.fittingKinds) +
@@ -6230,6 +6536,8 @@ Result Search::run()
         return std::move(result_);  // diagnostics only
     try
     {
+        if (!model && dps_)
+            throw ModelLimit("");
         if (!model)
             throw ModelLimit(result_.stats.modelSkipped);
         auto t1 = Clock::now();
@@ -6255,14 +6563,17 @@ Result Search::run()
     }
     catch (const ModelLimit& e)
     {
-        if (opt_.bruteForce || !opt_.refine)
+        if (opt_.bruteForce || (!opt_.refine && !dps_))
             throw;
-        result_.stats.modelSkipped = e.what();
-        logLine(std::string("stage 1 model limit (") + e.what() + "): stages 1 and 2 skipped, refine only");
+        if (!dps_)
+        {
+            result_.stats.modelSkipped = e.what();
+            logLine(std::string("stage 1 model limit (") + e.what() + "): stages 1 and 2 skipped, refine only");
+        }
         top_.clear();
         finals_.clear();
     }
-    if (opt_.refine)
+    if (opt_.refine || dps_)
     {
         auto t4 = Clock::now();
         progress(0.8, "refine");

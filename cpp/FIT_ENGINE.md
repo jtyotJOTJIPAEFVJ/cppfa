@@ -1,6 +1,6 @@
 # C++ fit engine (cppfa): how it works
 
-This is a C++ reimplementation of the part of pyfa's fit calculation that tank-oriented fit optimization needs. Its results match pyfa on the user's saved fits, and it has a search mode (`SearchPlan`) that evaluates about 0.6–0.9M fit variations per second per thread. The module optimizer (`OPTIMIZER.md`) is built on it.
+This is a C++ reimplementation of the part of pyfa's fit calculation that fit optimization for tank and applied damage needs. Its results match pyfa on the user's saved fits, and it has a search mode (`SearchPlan`) that evaluates about 0.6–0.9M fit variations per second per thread. The module optimizer (`OPTIMIZER.md`) is built on it.
 
 It lives in `cpp/` of the pyfa repo, on branch `cppfa`. Pyfa is the ground truth, and all validation is against pyfa's own output.
 
@@ -11,16 +11,21 @@ It lives in `cpp/` of the pyfa repo, on branch `cppfa`. Pyfa is the ground truth
 | Goal | Value |
 |---|---|
 | `ShieldPassive` / `ArmorPassive` / `HullPassive` | EHP of that layer: HP ÷ mean of the layer's four resist multipliers (uniform damage profile) |
-| `ShieldActive` / `ArmorActive` | Effective sustainable rep/s of that layer: pyfa's `sustainableTank` with **reload always factored in**, ÷ the same mean resist |
+| `ShieldActive` / `ArmorActive` | Effective sustainable rep/s of that layer: pyfa's `sustainableTank` (reload as `FitInput::factorReload`), ÷ the same mean resist |
 | `ShieldResists` / `ArmorResists` | EHP per HP of that layer: 1 ÷ the mean resist multiplier |
-| `ShieldRemote` / `ArmorRemote` | Outgoing remote rep/s (HP/s) of that layer: pyfa's `Module.getRemoteReps` per remote repairer (reload factored in, mutadaptive ones fully spooled), the capacitor left after every other module shared between them most cap-efficient first (`makeRemoteProfile`) |
+| `ShieldRemote` / `ArmorRemote` | Outgoing remote rep/s (HP/s) of that layer: pyfa's `Module.getRemoteReps` per remote repairer (reload and spool-up as the fit says), the capacitor left after every other module shared between them most cap-efficient first (`makeRemoteProfile`) |
 | `LocalShieldRemoteShield` … `LocalArmorRemoteArmor` | Balanced: the harmonic mean of the local layer's effective rep/s (the goal's remote repairers off) and remote rep/s × `Objective::remoteWeight` (the goal's local repairers off), `balancedParts` / `balancedScore` |
+| `AppliedDps` | Damage per second the modules and drones apply to `Objective::target` (a `DamageTarget`: a pyfa target profile plus distance and target speed), section 4, "Damage" |
 
 Every evaluation also returns:
 - **Fitting:** CPU, powergrid and calibration, used and available.
 - **Capacitor:** use (GJ/s) and peak recharge plus injectors (GJ/s). The fit is "cap stable" in the simplified sense when use ≤ recharge. pyfa's own sustainable-tank code uses the same model.
 
-Active goals count only repairers (no passive shield regen). The damage profile is always uniform.
+Active goals count only repairers (no passive shield regen). The tank goals' damage profile is always uniform.
+
+Every full evaluation (`Engine::evaluate`) also returns the raw damage per second of each module and drone (pyfa `getDps` without a profile), and with a `DamageTarget` their applied damage.
+
+**Reload and spool-up** follow pyfa's settings, passed in `FitInput`: `factorReload` (pyfa `Fit.factorReload`, the global "factor in reload time"; default true) decides whether reload time is in the average cycle (`getCycleParameters`), so in capacitor use, the sustainable tank's charged repairers (on-duty share), remote repair and damage; active capacitor boosters always factor it (pyfa effect 48 sets `forceReload`). `spoolup` (pyfa's `globalDefaultSpoolupPercentage`, default 1) is the spool-up of mutadaptive remote repairers and entropic disintegrators; a module's own setting (`ModuleInput::spoolType` / `spoolAmount`, pyfa `Module.spoolType`) wins. `spoolBonus` ports `calculateSpoolup` (all four spool types). With reload off, pyfa's sustainable tank takes the raw repair sum when its capacitor simulation is stable; the engine runs the same sharing loop, which gives that sum whenever use is within recharge.
 
 **Sources modeled:**
 - **Ship:** all bonuses (role, per-skill, ship-conditional).
@@ -34,15 +39,17 @@ Active goals count only repairers (no passive shield regen). The damage profile 
   - T3 cruiser subsystems
   - T3 destroyer modes
 - **Command bursts:** the fit's own, all 74 buffs.
+- **Drones:** the drones in space (`DroneInput::amount` = pyfa's `amountActive`), also mutated ones; their damage, and every modifier that reaches them (skills, ship, modules, rigs, implants).
 
 **Not modeled:**
 - bursts from other fits, and the Titan phenomena generator
 - system effects (wormhole, beacons, weather)
 - projected effects (webs, neuts, remote reps)
-- drones and fighters
+- fighters
 - structures/citadels
 - the CONCORD pilot-security bonus
-- non-uniform damage profiles
+- non-uniform damage profiles for the tank goals
+- for damage: bombs, doomsdays and defender launchers count raw damage but no applied damage; breacher pods (damage over time against the target's HP) none; attacker movement; fighters' webs
 
 ## 2. Layout
 
@@ -136,9 +143,11 @@ Rows with a literal amount instead of a source attribute (`note` "no source attr
 `goal_closure.py` defines each goal's root attributes, plus fitting, capacitor/cycle, burst and RAH roots. It walks the modifier table backwards: any modifier targeting a needed attribute makes its source attribute needed too.
 
 `gen_fit_schema.py` turns that into `FitSchema.generated.h`:
-- **`enum class Attr : uint16_t`:** 222 attributes the engine stores, plus eve IDs and names.
-- **`ShipAttrs`:** 28 floats of ship attributes that can change per fit. Ship bonus amounts are excluded; they're constant per ship.
-- **Group structs:** one float-only struct per module, charge, implant or booster group (246 groups → 103 shapes, ~10 fields on average). A struct contains only the attributes the group's items have, or that relevant modifiers can actually reach on them. Each has `kFields` (`Attr` per field) and `kGroupLayouts` maps groups to layouts.
+- **`enum class Attr : uint16_t`:** 358 attributes the engine stores, plus eve IDs and names. pyfa-only ship attributes (`Ship.EXTRA_ATTRIBUTES` not in eve.db: `droneControlRange`, `PSEUDO_ATTRS` in the generator) get eve ID 0; the engine sets pyfa's base value (20000 m).
+- **`ShipAttrs`:** 31 floats of ship attributes that can change per fit. Ship bonus amounts are excluded; they're constant per ship.
+- **Group structs:** one float-only struct per module, charge, implant, booster or drone group (254 groups → 166 shapes, ~19 fields on average, at most 63; the engine's per-item field masks (`FieldMask`) hold 127). A struct contains only the attributes the group's items have, or that relevant modifiers can actually reach on them. Each has `kFields` (`Attr` per field) and `kGroupLayouts` maps groups to layouts.
+
+The damage roots (`DPS` in `goal_closure.py`) are the damage attributes of modules, charges and drones, the multipliers, cycle and reload inputs, turret range and tracking, missile flight and explosion attributes, the ship's radius, lock range and drone control range, and the tackle attributes (web `speedFactor`, painter `signatureRadiusBonus`, `falloffEffectiveness`, `activationBlockedStrenght`, `warpScrambleRange`).
 
 The engine uses these layouts generically, by field index. The named structs exist for future hand-written code.
 
@@ -163,11 +172,12 @@ The base value is the type's attribute. For abyssal modules it's the mutator val
 **Evaluation order (pyfa's):** three passes (early/normal/late). Each pass runs:
 1. all skills (passive effects)
 2. ship (passive)
-3. boosters (passive + enabled side effects)
-4. implants (passive)
-5. modules in order: the charge's effects (context `moduleCharge`, with the module as owner), then overheat effects if overheated, then the effects the module's state allows (offline effects always, passive if ≥ online, active if ≥ active)
-6. T3D mode
-7. this pass's command buffs
+3. drones (passive effects, once per drone in space; in practice only mining drones have any)
+4. boosters (passive + enabled side effects)
+5. implants (passive)
+6. modules in order: the charge's effects (context `moduleCharge`, with the module as owner), then overheat effects if overheated, then the effects the module's state allows (offline effects always, passive if ≥ online, active if ≥ active)
+7. T3D mode
+8. this pass's command buffs
 
 **Applying a modifier:**
 - **Conditions:** checked against the ship type or owner.
@@ -193,6 +203,19 @@ The base value is the type's attribute. For abyssal modules it's the mutator val
   - capacitor use and peak recharge
   - `sustainableTank`: pyfa's algorithm, reps sorted by cap efficiency and filled until capacitor use exceeds peak recharge; computed in double
   - uniform EHP
+  - damage, below
+
+**Damage** (`moduleDamage`, `droneDamage`; in double like pyfa). The weapon kind comes from the type (`WeaponKind`, pyfa's `getApplicationPerKey` branches): turret (effect `turretFitted`), launcher (`launcherFitted`, or the civilian launcher), vorton projector (`ChainLightning`), smartbomb (groups Smart Bomb, Structure Area Denial Module), other (bombs, doomsdays, defender launchers: raw damage only).
+- **Raw** (pyfa `Module.getDps` / `Drone.getDps`): the charge's damage attributes (the module's without a charge) × `damageMultiplier`, × (1 + spool bonus) for entropic disintegrators, ÷ the average cycle. Active modules only. Drones: damage × `damageMultiplier` × amount ÷ `speed`.
+- **Applied** (`DamageTarget`): each damage type × (1 - the target's resist), × the application multiplier of pyfa's damage graph (`graphs/data/fitDamageStats/calc/application.py`) with the attacker's speed 0 and the target at `speedFactor × maxVelocity`, angle 90°, `distance` surface to surface:
+  - turrets: `_calcTurretMult(range factor × tracking factor)`, angular speed = target speed ÷ (ship radius + distance + target radius)
+  - launchers: pyfa's `missileMaxRangeData` (flight time with the ship-radius bonus, the two whole-second ranges and the chance of the longer one, FoF range limits) × `_calcMissileFactor` with the charge's explosion radius, velocity and DRF
+  - vorton projectors: within `maxRange`, × the missile factor with the module's explosion attributes
+  - smartbombs: 1 within range (`maxRange`, else `empFieldRange`)
+  - drones: within drone control range; chance to hit 1 when the drone is faster than the target (pyfa's `mobileDroneMode` auto), else a turret shot from the ship
+  - nothing beyond the ship's lock range (`maxTargetRange`), except smartbombs and FoF missiles. pyfa's graph ignores lock range by default (`ignoreLockRange`); the engine always checks it.
+  - An infinite signature radius (pyfa's profiles without one) applies fully.
+- **Tackle** (`tackled`, pyfa `getScramRange`, `getTackledSpeed` and `getSigRadiusMult` in `graphs/data/fitDamageStats/calc/projected.py`, as with the graph's "apply projected"; fighters aside): before the application above, the fit's active webs and grapplers (effect `remoteWebifierFalloff`) and web drones (`remoteWebifierEntity`) slow the target, its target painters (`remoteTargetPaintFalloff`, drones `remoteTargetPaintEntity`) grow its signature, each × its range factor (optimal, falloff), stacking-penalized together (`calculateMultiplier`) and × the target's resistance (`DamageTarget::webResistance`, `painterResistance`; pyfa `stasisWebifierResistance`, `targetPainterResistance`). Modules need the target in lock range, drones in drone control range too: a mobile web within its optimal applies fully, the others fastest first, fully when faster than the (already slowed) target, else from the ship's center. A scrambler (`warpScrambleBlockMWDWithNPCEffect` with `activationBlockedStrenght`, or a HIC disruptor with the focused scrambling script) reaching the target switches its MWD / MJD off: the webs then start from `maxVelocityScrammed` and the painters from `signatureRadiusScrammed` (pyfa's `ignoreAfflictors`; for target profiles the same values). Immune targets (`immune`, `disallowOffensiveModifiers`) are left as they are. pyfa stacks the webs with the target fit's own penalized speed multipliers in the same group; the engine stacks them on their own (they would only meet webs projected onto the target fit, which the Target tab includes in its speed).
 
 **Precision:** float everywhere, apart from the few discrete steps noted above. Results match pyfa to ~1e-4 relative. Shots per reload floor with a 1e-5 tolerance, so float noise can't turn 1000 into 999.
 
@@ -238,7 +261,7 @@ FitInput full = plan.fitFor(choice);   // the equivalent full fit
    1. The scratch uses the plan's item numbering. A pointer table points every item at the plan's copy.
    2. Only *written* items that are live are copied: header, field arrays and their penalties. Typically 5 of ~110 items.
    3. Dynamic instructions are replayed in order, skipping those whose source option isn't chosen and targets that aren't live.
-   4. Then the goal value, fitting and capacitor numbers are computed.
+   4. Then the goal value, fitting and capacitor numbers are computed, and for `AppliedDps` the damage (drones are pinned items like modules).
 
 `Stats` reports:
 - instructions recorded and replayed per test
@@ -247,9 +270,9 @@ FitInput full = plan.fitFor(choice);   // the equivalent full fit
 - order sensitivity
 
 **Performance** (single thread, Release, i.e. the user's machine):
-- `--search-check` average (≤4 open slots): **~1.1 µs** per test; plan build ~0.06 ms
-- `--bench 1980 5 armorActive`: **1.7 µs** per test (~590k/s); plan build 0.24 ms. That's a C5 Paladin with 11 open slots × up to 8 options, 152 instructions replayed per test, 5 of 110 items written, 4 of 98 modules with per-test cycle values.
-- Full `Engine::evaluate`: ~22 µs (`--search-check` fits), ~35 µs (all saved fits).
+- `--search-check` average (≤4 open slots): **~1.4 µs** per test; plan build ~0.1 ms
+- `--bench 1980 5 armorActive`: **1.85 µs** per test (~540k/s); plan build 0.29 ms. That's a C5 Paladin with 11 open slots × up to 8 options, 152 instructions replayed per test, 5 of 110 items written, 4 of 98 modules with per-test cycle values.
+- Full `Engine::evaluate`: ~45 µs (`--search-check` fits; it always computes the damage, tackle and the drones too).
 
 Profiles showed the remaining cost spread over:
 - the replay loop (amount reads and applying)
@@ -272,7 +295,7 @@ Profiles showed the remaining cost spread over:
 **Reference.** `cpp/tools/pyfa_reference.py` runs pyfa itself, through its normal service and fit-loading path, on a temporary copy of saveddata.db. It uses pyfa's Python environment (needs wxPython; under WSL run it with `scripts/wsl-python.sh`). The copy is normalized:
 - character All 5
 - uniform damage profile
-- reload factored in
+- reload factored in (`--no-reload`: not) and pyfa's default spool-up set to `--spool` (default 1)
 - projected and command fits removed
 - implants/boosters removed, unless `--with-implants`
 
@@ -299,15 +322,18 @@ PyfaReader --search-check [maxFits]     # SearchPlan vs Engine, random choices, 
 
 ### Engine vs pyfa
 
-Measured 2026-10-20 on the user's saved fits (pyfa master of October 2026, `--with-implants`): **3,202 of 3,213 in-scope fits match** on all ~200 compared values each (648,987 of 649,023 values; outgoing remote repair included on cap-stable fits). That includes 892 fits with implants, 1,479 with boosters, 426 with active command bursts and 58 with abyssal (mutated) modules. The 11 that differ:
+Measured 2026-11-03 on the user's saved fits (`--with-implants`): **3,195 of 3,221 in-scope fits match** on all ~230 compared values each (750,128 of 750,218 values; outgoing remote repair included on cap-stable fits). That includes 892 fits with implants, 1,479 with boosters, 427 with active command bursts and 58 with abyssal (mutated) modules. Damage is compared per module and in total, raw and applied (tackle included: 505 fits run webs, 124 target painters, 17 web or painter drones) against three reference targets (`REFERENCE_TARGETS` in `pyfa_reference.py`, `referenceTargets()` in `main.cpp`: a frigate at 2 km, a cruiser at 15 km, a battleship at 45 km), modules and drones separately (pyfa's totals would include fighters). The 26 that differ:
 - 10 fits with a Reactive Armor Hardener in an exact tie, which pyfa breaks by double-precision noise (≤0.8% armor EHP). Earlier, while the engine still used double, these matched; the float switch introduced them.
 - 1 Enforcer (CONCORD security-status bonus, not modeled)
+- 15 with bomb launchers (applied damage, not modeled) or breacher pods (raw and applied, not modeled)
+
+The same holds with `--no-reload --spool 0.5` on both sides (the same 26 fits differ). Scramblers only act on fit targets with an MWD: A check of 40 attacker fits with active scramblers against 6 fit targets with active MWDs, at 4 km (scrambled) and 15 km, through the request path vs pyfa's graph functions: 370 pairs, 0 mismatches. The reference's applied damage sets the profile on `getDps()`'s result, as pyfa's fit totals do: `Module.getDps(targetProfile=...)` loses the profile while summing volleys and returns raw damage.
 
 2 citadels are excluded (out of scope). Any other difference is new.
 
 ### Other checks
 
-- **SearchPlan vs Engine** (`--search-check 0`): 801,580 random combinations over 3,083 fits (up to 4 open slots × 4 options, including empty slots), all goals: 0 mismatches, 0 detail mismatches.
+- **SearchPlan vs Engine** (`--search-check 0`): 865,480 random combinations over 3,091 fits (up to 4 open slots × 4 options, including empty slots), all goals (`AppliedDps` against the cruiser reference target, raw damage compared too): 0 mismatches, 0 detail mismatches.
 - **EFT export:** byte-identical to pyfa on all saved fits.
 
 ## 7. CLI (`PyfaReader.exe`)
@@ -315,8 +341,8 @@ Measured 2026-10-20 on the user's saved fits (pyfa master of October 2026, `--wi
 | Command | |
 |---|---|
 | `PyfaReader [<fit name> \| #<fitID>]` | EFT export of a saved fit (no argument: list recent fits) |
-| `--engine-dump out.tsv` | evaluate all saved fits (All 5, uniform damage, reload factored), `fitID<TAB>key<TAB>value` |
-| `--search-check [maxFits]` | SearchPlan vs Engine on random choices (0 = all fits) |
+| `--engine-dump out.tsv [--no-reload] [--spool F]` | evaluate all saved fits (All 5, uniform damage, reload factored unless `--no-reload`, default spool-up F), `fitID<TAB>key<TAB>value`; damage also against the reference targets |
+| `--search-check [maxFits] [--no-reload] [--spool F]` | SearchPlan vs Engine on random choices (0 = all fits) |
 | `--bench [fitID [seconds [goal]]]` | profiling case: the fit's mid and low slots become open slots, each with the fitted module + up to 7 same-group alternatives, enumerated in order on one thread |
 | `--optimize`, `--optimize-check`, `--optimize-request`, `--make-request` | the optimizer, see `OPTIMIZER_CLI.md` |
 | `--game eve.db`, `--save saveddata.db` | override the database paths (default: eve.db next to or above the exe, `%USERPROFILE%\.pyfa\saveddata.db`) |
@@ -329,4 +355,4 @@ The full usage is the comment at the top of `src/main.cpp`. To profile in Visual
 - **Cost drivers:** cost per test grows with the number of instructions replayed per test, i.e. options whose effects interact with other parts of the fit. Options that don't affect the goal still cost their own instructions. Filtering candidates by goal relevance before building the plan pays off; `goal_closure.py`'s backward pass identifies which groups and attributes a goal depends on.
 - **Rebuilding:** plan build is ~0.05–0.15 ms (refine's plans, ~220 items: 0.14 ms), so rebuilding plans with narrower candidate sets during a search, e.g. per branch, is affordable.
 - **Pinned modules:** they keep their state. A pinned remote rep set to active consumes capacitor in every test, which is the intended way to reserve capacitor.
-- **Choice of goal:** `Goal` only selects which value is returned. The cost of a test is nearly the same for all goals: active goals add the sustainable-tank step, and fitting and capacitor are always computed.
+- **Choice of goal:** `Goal` only selects which value is returned. The cost of a test is nearly the same for all goals: active goals add the sustainable-tank step, `AppliedDps` the damage of the weapons and drones, and fitting and capacitor are always computed.

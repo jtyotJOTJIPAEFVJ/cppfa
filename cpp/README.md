@@ -50,7 +50,9 @@ Run these after engine or optimizer changes:
       PyfaReader.exe --save '<WIN_PATH>\normalized.db' --engine-dump '<WIN_PATH>\engine.tsv'
       python3 cpp/tools/compare_engine.py ref.jsonl <WINDOWS_DIR>/engine.tsv
 
-  11 fits differ for known reasons (`FIT_ENGINE.md`, "Engine vs pyfa"); anything else is new.
+  26 fits differ for known reasons (11 tank, 15 with bombs or breacher pods) (`FIT_ENGINE.md`, "Engine vs pyfa"); anything else is new.
+- Applied damage (no stage-1 model, so no `--optimize-check`): `--make-request <fit> --open "high:0;low:0" --goal appliedDps`,
+  then `--optimize-request <req> --members`; the response's `members.found` must equal `members.best`.
 - Unchanged results after a refactor: run `--optimize <fit> <goal> --threads 8 --time-budget 0
   --refine-rounds 15` on a few fits with the old and the new build (the old one from a
   temporary `git worktree`) and diff the option lines.

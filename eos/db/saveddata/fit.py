@@ -40,6 +40,7 @@ from eos.saveddata.damagePattern import DamagePattern
 from eos.saveddata.drone import Drone
 from eos.saveddata.fighter import Fighter
 from eos.saveddata.fit import Fit as es_Fit
+from eos.saveddata.fitTarget import FitTarget
 from eos.saveddata.implant import Implant
 from eos.saveddata.module import Module
 from eos.saveddata.targetProfile import TargetProfile
@@ -96,6 +97,20 @@ commandLinks_table = Table("commandLinks", saveddata_meta,
                            Column("created", DateTime, nullable=True, default=datetime.datetime.now),
                            Column("modified", DateTime, nullable=True, onupdate=datetime.datetime.now)
                            )
+
+# A fit's targets (Target tab). The table is new in this fork but is created by
+# saveddata_meta.create_all() at startup, so it needs no migration and the database
+# stays usable by upstream pyfa (which ignores the table).
+fitTargets_table = Table("fitTargets", saveddata_meta,
+                         Column("ID", Integer, primary_key=True),
+                         Column("fitID", ForeignKey("fits.ID"), nullable=False, index=True),
+                         Column("targetFitID", ForeignKey("fits.ID"), nullable=True, index=True),
+                         Column("targetProfileID", ForeignKey("targetResists.ID"), nullable=True, index=True),
+                         Column("builtinTargetProfileID", Integer, nullable=True),
+                         Column("active", Boolean, nullable=False, default=0),
+                         Column("created", DateTime, nullable=True, default=datetime.datetime.now),
+                         Column("modified", DateTime, nullable=True, onupdate=datetime.datetime.now)
+                         )
 
 
 class ProjectedFit:
@@ -270,6 +285,13 @@ mapper(es_Fit, fits_table,
                    CommandLink,
                    backref='fit',
                    cascade='all, delete, delete-orphan'),
+           "fitTargets": relationship(
+                   FitTarget,
+                   primaryjoin=fitTargets_table.c.fitID == fits_table.c.ID,
+                   foreign_keys=[fitTargets_table.c.fitID],
+                   order_by=fitTargets_table.c.ID,
+                   backref='fit',
+                   cascade='all, delete, delete-orphan'),
        }
 )
 
@@ -282,3 +304,17 @@ mapper(ProjectedFit, projectedFits_table,
 mapper(CommandFit, commandFits_table)
 
 mapper(CommandLink, commandLinks_table)
+
+# No backrefs from the target fit or profile: rows pointing at a fit or user profile
+# that gets deleted are removed explicitly (service.fit.Fit.deleteFit,
+# service.targetProfile.TargetProfile.deletePattern)
+mapper(FitTarget, fitTargets_table,
+       properties={
+           "_FitTarget__targetFit": relationship(
+                   es_Fit,
+                   primaryjoin=fitTargets_table.c.targetFitID == fits_table.c.ID,
+                   foreign_keys=[fitTargets_table.c.targetFitID]),
+           "_FitTarget__userTargetProfile": relationship(TargetProfile),
+           "_FitTarget__builtinTargetProfileID": fitTargets_table.c.builtinTargetProfileID,
+       }
+)

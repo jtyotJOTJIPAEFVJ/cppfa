@@ -1,16 +1,16 @@
 #pragma once
 
 // Fit evaluation engine: reproduces pyfa's calculation for the attributes the
-// tank / fitting / capacitor goals need (see tools/goal_closure.py), using the
-// generated compact layouts (src/generated/FitSchema.generated.h).
+// tank / fitting / capacitor / applied damage goals need (see tools/goal_closure.py),
+// using the generated compact layouts (src/generated/FitSchema.generated.h).
 //
 // Sources supported: ship, character skills, implants (incl. set bonuses),
-// boosters (incl. enabled side effects), modules (with state), charges, T3
-// destroyer modes, the fit's own command bursts. Not yet: bursts from other
-// fits, system effects, projected effects, drones/fighters.
+// boosters (incl. enabled side effects), modules (with state), charges, drones,
+// T3 destroyer modes, the fit's own command bursts. Not yet: bursts from other
+// fits, system effects, projected effects, fighters.
 //
-// Matches pyfa with: All-5 style character, uniform damage profile, reload
-// factored into cycle times.
+// Matches pyfa with: All-5 style character, uniform damage profile (tank goals);
+// reload and spool-up as FitInput says (pyfa's fit setting and default).
 //
 // Evaluation keeps pyfa's order (early/normal/late passes; skills, ship,
 // modules, mode) and lazy attribute reads, so effects that read attributes
@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -41,15 +42,40 @@ enum class State : int8_t
     Overheated = 2,
 };
 
+// Spool-up (mutadaptive remote repairers, entropic disintegrators): pyfa's SpoolType
+// and calculateSpoolup. Values match eos.const.SpoolType.
+enum class SpoolType : int8_t
+{
+    Default = -1,  // the fit's (FitInput::spoolup, a SpoolScale fraction)
+    SpoolScale = 0,  // fraction 0..1 of the maximum bonus
+    CycleScale = 1,  // fraction 0..1 of the cycles to reach the maximum
+    Time = 2,        // seconds since spool-up started
+    Cycles = 3,      // cycles since spool-up started
+};
+// pyfa calculateSpoolup: the bonus reached (0..max) for a module's spool attributes.
+double spoolBonus(double maxValue, double stepValue, double cycleSeconds, SpoolType type, double amount);
+
 struct ModuleInput
 {
     int typeID = 0;
     int chargeID = 0;  // 0 = no charge
     State state = State::Online;
+    // pyfa Module.spoolType / spoolAmount (the module's own setting), Default = the fit's
+    SpoolType spoolType = SpoolType::Default;
+    float spoolAmount = 0;
     // Abyssal (mutated) modules: typeID is the mutated type, baseTypeID the original
     // item. Attribute originals are mutators, then typeID's, then baseTypeID's.
     int baseTypeID = 0;
     std::vector<std::pair<int, float>> mutators;  // eve attributeID -> value
+};
+
+// Drones in space: amount is pyfa's amountActive (drones in the bay don't count).
+struct DroneInput
+{
+    int typeID = 0;
+    int amount = 1;
+    int baseTypeID = 0;  // mutated drones, as ModuleInput
+    std::vector<std::pair<int, float>> mutators;
 };
 
 struct ImplantInput
@@ -70,8 +96,14 @@ struct FitInput
     int shipTypeID = 0;
     int modeTypeID = 0;  // T3 destroyer mode, 0 = none
     std::vector<ModuleInput> modules;
+    std::vector<DroneInput> drones;      // active drones
     std::vector<ImplantInput> implants;  // the implants applied to the fit
     std::vector<BoosterInput> boosters;
+    // pyfa Fit.factorReload: reload time in the average cycle (and so capacitor use,
+    // sustained repair, remote repair, damage). Capacitor boosters always factor it.
+    bool factorReload = true;
+    // pyfa's default spool-up (globalDefaultSpoolupPercentage), a SpoolScale fraction
+    float spoolup = 1;
 };
 
 struct ModuleResult
@@ -86,6 +118,49 @@ struct ModuleResult
     float averageCycleTime = 0;  // 0 when the module doesn't cycle
     float capUse = 0;            // GJ/s while active
     int numShots = 0;             // cycles before reload, 0 = never reloads
+    float dps = 0;                // raw damage per second (no resists, no application)
+    float appliedDps = 0;         // against the evaluation's target (0 without one)
+};
+
+struct DroneResult
+{
+    int typeID = 0;
+    int amount = 0;
+    float dps = 0, appliedDps = 0;  // all `amount` drones together, as ModuleResult
+};
+
+// What the damage goal shoots at: a pyfa target profile and the engagement.
+// The attacker is stationary; the target moves at speedFactor * maxVelocity,
+// fully transversal (pyfa's damage graph with attacker speed 0, target angle 90°).
+struct DamageTarget
+{
+    float em = 0, thermal = 0, kinetic = 0, explosive = 0;  // resists, 0..1
+    // m; infinite (pyfa's profiles without a signature, e.g. the ideal target): everything applies fully
+    float signatureRadius = std::numeric_limits<float>::infinity();
+    float maxVelocity = 0;      // m/s
+    float radius = 0;           // m
+    float distance = 0;         // m, surface to surface
+    float speedFactor = 1;      // share of maxVelocity the target moves at
+    // Tackle (the fit's webs, target painters, scramblers; pyfa's damage graph with
+    // "apply projected"): the target's speed and signature with its MWD / MJD off, used
+    // when a scrambler reaches it (negative: the same as maxVelocity / signatureRadius;
+    // target profiles have no MWD), its resistance to webs and painters (pyfa
+    // stasisWebifierResistance, targetPainterResistance: 1 = none), and immunity
+    // (disallowOffensiveModifiers).
+    float maxVelocityScrammed = -1, signatureRadiusScrammed = -1;
+    float webResistance = 1, painterResistance = 1;
+    bool immune = false;
+};
+
+// Weapon kinds the damage calculation knows (pyfa graphs/.../application.py).
+enum class WeaponKind : uint8_t
+{
+    None,
+    Turret,     // effect turretFitted
+    Launcher,   // effect launcherFitted, or the civilian launcher
+    Vorton,     // effect ChainLightning
+    Smartbomb,  // groups Smart Bomb, Structure Area Denial Module
+    Other,      // bombs, doomsdays, defender launchers: raw damage only, no applied damage
 };
 
 enum Layer
@@ -116,6 +191,7 @@ struct ModuleStats
     float rawCycle = 0, reactivation = 0, reload = 0, averageCycle = 0;
     float capNeed = 0, capUse = 0;  // capUse: GJ/s while active (negative for cap boosters)
     int numShots = 0;
+    bool factorReload = true;  // the fit's FitInput::factorReload (sustainable tank's reload share)
     // Local repairers (repEffects != 0)
     uint8_t repEffects = 0;
     bool ancillaryShield = false;
@@ -124,9 +200,12 @@ struct ModuleStats
     float duration = 0;        // 'duration' attribute (ms)
     float shieldBonus = 0, armorDamage = 0, structureDamage = 0, chargedArmorMult = 0;
     // Remote repairers (active): the layer (-1: none) and the amount per cycle, charge
-    // multiplier and full spool-up included (pyfa getRepAmountParameters).
+    // multiplier and spool-up included (pyfa getRepAmountParameters).
     int8_t remoteLayer = -1;
     float remoteAmount = 0;
+    // Weapons (active): raw and applied damage per second (DamageTarget), spool-up included.
+    WeaponKind weapon = WeaponKind::None;
+    float dps = 0, appliedDps = 0;
 };
 
 // pyfa __generateDrain: capacitor used by active modules and added by cap boosters.
@@ -197,6 +276,9 @@ struct FitResult
     std::array<float, LayerCount> remoteRepair{};  // outgoing, HP/s (makeRemoteProfile)
     std::array<std::array<BalancedParts, 2>, 2> balanced{};  // [local layer][remote layer] (Shield, Armor)
     std::vector<ModuleResult> modules;  // in input order
+    std::vector<DroneResult> drones;    // in input order
+    float dps = 0;         // modules + drones, raw (pyfa getTotalDps without a profile)
+    float appliedDps = 0;  // against the evaluation's target (0 without one)
     std::vector<std::string> warnings;
 
     float shipAttr(Attr a) const;
@@ -211,7 +293,8 @@ public:
     Engine(const Engine&) = delete;
     Engine& operator=(const Engine&) = delete;
 
-    FitResult evaluate(const FitInput& fit) const;
+    // target: also the applied damage against it (FitResult::appliedDps).
+    FitResult evaluate(const FitInput& fit, const DamageTarget* target = nullptr) const;
 
     // Modifier rows compiled / skipped (unresolved, unsupported target, not goal-relevant).
     size_t compiledModifierCount() const;
@@ -226,6 +309,8 @@ public:
         bool self = false;     // the module itself or its charge
         bool special = false;  // effects handled in code (repairers, cap booster, RAH, bursts)
         bool activatable = false;  // has an active effect: fitted as Active
+        WeaponKind weapon = WeaponKind::None;  // deals damage (fit as Active)
+        bool tackle = false;  // web, target painter or scrambler (fit as Active; acts on the damage target)
     };
     Reach reach(int typeID, bool asCharge = false) const;
 
@@ -258,6 +343,9 @@ enum class Goal
     LocalShieldRemoteArmor,
     LocalArmorRemoteShield,
     LocalArmorRemoteArmor,
+    // Damage per second applied to Objective::target: modules and drones, the
+    // target's resists, turret hit chance, missile explosion, ranges, lock range.
+    AppliedDps,
 };
 
 inline bool isBalancedGoal(Goal g) { return g >= Goal::LocalShieldRemoteShield && g <= Goal::LocalArmorRemoteArmor; }
@@ -278,6 +366,7 @@ struct Objective
 {
     Goal goal = Goal::ArmorActive;
     float remoteWeight = 4;  // balanced goals: EHP/s one remote HP/s is worth (the rep target's resists)
+    DamageTarget target;     // AppliedDps
     Objective(Goal g = Goal::ArmorActive, float weight = 4) : goal(g), remoteWeight(weight) {}
 };
 
@@ -311,6 +400,7 @@ struct TestResult
     float capUsed = 0;      // GJ/s used by active modules
     float capRecharge = 0;  // peak recharge + injectors; cap stable (simplified) when capUsed <= capRecharge
     float localRep = 0, remoteRep = 0;  // balanced goals: BalancedParts (EHP/s, HP/s)
+    float dps = 0;                      // AppliedDps: raw damage per second (no resists, no application)
 };
 
 TestResult toTestResult(const FitResult& r, const Objective& goal);
@@ -351,6 +441,7 @@ struct TestDetail
     int moduleCount = 0;
     std::array<ModuleStats, kMaxModules> modules;
     std::array<int, kMaxModules> moduleOption{};
+    float droneDps = 0, droneAppliedDps = 0;  // AppliedDps: the drones' part of the totals
 };
 
 // Evaluates many variations of one fit quickly, with results identical to

@@ -28,7 +28,7 @@ class RemoveItem(ContextMenuCombined):
                 "projectedFit", "projectedDrone",
                 "fighterItem", "projectedFighter",
                 "commandFit", "graphFitList",
-                "graphTgtList"
+                "graphTgtList", "targetItem"
         ):
             return False
 
@@ -57,7 +57,8 @@ class RemoveItem(ContextMenuCombined):
             'projectedFighter': self.__handleProjectedItem,
             'commandFit': self.__handleCommandFit,
             'graphFitList': self.__handleGraphItem,
-            'graphTgtList': self.__handleGraphItem
+            'graphTgtList': self.__handleGraphItem,
+            'targetItem': self.__handleTarget
         }
         srcContext = fullContext[0]
         handler = handlerMap.get(srcContext)
@@ -165,6 +166,9 @@ class RemoveItem(ContextMenuCombined):
 
     def __handleGraphItem(self, callingWindow, mainItem, selection):
         callingWindow.removeWrappers(selection)
+
+    def __handleTarget(self, callingWindow, mainItem, selection):
+        callingWindow.removeTargets(selection)
 
 
 RemoveItem.register()

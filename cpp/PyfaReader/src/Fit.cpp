@@ -69,7 +69,8 @@ std::optional<Fit> loadFit(const Database& saveDb, int64_t fitID)
     {
         auto mutators = saveDb.prepare("SELECT attrID, value FROM mutators WHERE moduleID = ?1");
         auto st = saveDb.prepare(R"(
-            SELECT ID, itemID, dummySlot, baseItemID, mutaplasmidID, chargeID, IFNULL(state, 0), IFNULL(position, 0)
+            SELECT ID, itemID, dummySlot, baseItemID, mutaplasmidID, chargeID, IFNULL(state, 0), IFNULL(position, 0),
+                   spoolType, IFNULL(spoolAmount, 0)
             FROM modules WHERE fitID = ?1 AND projected = 0
             ORDER BY position, ID)");
         st.bind(1, fitID);
@@ -83,6 +84,8 @@ std::optional<Fit> loadFit(const Database& saveDb, int64_t fitID)
             m.chargeID = optInt(st, 5);
             m.state = static_cast<ModuleState>(st.getInt(6));
             m.position = static_cast<int>(st.getInt(7));
+            m.spoolType = optInt(st, 8);
+            m.spoolAmount = st.getDouble(9);
             if (m.isMutated())
             {
                 mutators.reset();

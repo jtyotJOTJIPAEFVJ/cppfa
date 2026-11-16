@@ -1,8 +1,8 @@
 # cppfa
 
 A fork of [pyfa](https://github.com/pyfa-org/Pyfa), the python fitting assistant for EVE Online,
-that adds a module optimizer: a C++ reimplementation of pyfa's tank, fitting and capacitor
-calculation, and a search on top of it that proposes modules for the slots you select.
+that adds a module optimizer: a C++ reimplementation of pyfa's tank, fitting, capacitor and
+damage calculation, and a search on top of it that proposes modules for the slots you select.
 
 This is not official pyfa and is not supported by the pyfa developers. For pyfa itself (releases,
 documentation, bug reports) go to [pyfa-org/Pyfa](https://github.com/pyfa-org/Pyfa). Bugs in the
@@ -16,9 +16,10 @@ Everything else is pyfa as it is upstream; the branch `cppfa` is kept rebased on
 
 `PyfaReader.exe` is a Windows C++ program (Visual Studio solution `cpp/PyfaReader.sln`).
 
-- **Fit engine.** It recomputes the part of pyfa's fit calculation that tank optimization needs:
-  ship, skills, implants and boosters, modules and charges, command bursts, mutated modules,
-  stacking penalties, fitting (CPU, powergrid, calibration) and capacitor. It reads pyfa's
+- **Fit engine.** It recomputes the part of pyfa's fit calculation that the optimizer needs:
+  ship, skills, implants and boosters, modules and charges, drones, command bursts, mutated
+  modules, stacking penalties, fitting (CPU, powergrid, calibration), capacitor, and weapon and
+  drone damage with pyfa's damage-graph application (tracking, missile explosions, ranges). It reads pyfa's
   `eve.db` and its effect definitions, generated from pyfa's own `eos/effects.py`, and is
   checked fit by fit against pyfa's results.
 - **Module optimizer.** For the selected slots it searches every published module that fits
@@ -28,6 +29,8 @@ Everything else is pyfa as it is upstream; the branch `cppfa` is kept rebased on
   - resists only
   - sustained remote shield or armor repair (HP/s)
   - local tank and remote repair balanced against each other
+  - damage per second applied to a target (a target profile or another fit) at a given
+    distance and speed, weapons and ammo included
 
   Constraints: an ISK price cap per module, officer modules, ancillary repairers, capacitor
   boosters, the number of repairers, capacitor stability and a minimum capacitor recharge.
@@ -37,6 +40,9 @@ Everything else is pyfa as it is upstream; the branch `cppfa` is kept rebased on
 
 - **"Optimize Modules..."** in the fitting view's right-click menu, on selected high, mid, low
   and rig slots (empty ones included); `gui/builtinContextMenus/moduleOptimize.py`.
+- **The Target tab** at the bottom of the main window (`gui/builtinAdditionPanes/targetView.py`):
+  like the Projected tab, a fit's targets (other fits or target profiles), one enabled at a
+  time; the applied damage goal shoots at it.
 - **The optimizer dialog** (`gui/moduleOptimizerDialog.py`): goal and constraints, progress and
   cancel, the options found with their stats and price, and applying one to the fit as a single
   undoable step (`gui/fitCommands/gui/localModule/optimizerApply.py`).

@@ -330,6 +330,16 @@ class Fit:
     def commandFits(self):
         return [fit for fit in list(self.commandFitDict.values()) if not fit.isInvalid]
 
+    @property
+    def targets(self):
+        # Target tab entries (FitTarget), skipping any whose fit or profile is gone
+        return [t for t in self.fitTargets if not t.isInvalid]
+
+    @property
+    def activeTarget(self):
+        # The enabled FitTarget, if any (at most one is enabled)
+        return next((t for t in self.targets if t.active), None)
+
     def getProjectionInfo(self, fitID):
         return self.projectedOnto.get(fitID, None)
 
@@ -1990,6 +2000,12 @@ class Fit:
         from eos.saveddata.commandLink import CommandLink
         for link in self.commandLinks:
             fitCopy.commandLinks.append(CommandLink(link.linkType, link.strength, link.mindlink, link.active))
+
+        # Targets are owned rows pointing at other fits / profiles, like the projected fits
+        # above the copy aims at the same ones
+        from eos.saveddata.fitTarget import FitTarget
+        for target in self.targets:
+            fitCopy.fitTargets.append(FitTarget(target.target, target.active))
 
         return fitCopy
 

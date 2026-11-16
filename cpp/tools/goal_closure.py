@@ -32,6 +32,29 @@ FITTING = [('ship', a) for a in ('cpuOutput', 'powerOutput', 'upgradeCapacity',
                                   'hiSlots', 'medSlots', 'lowSlots', 'rigSlots',
                                   'turretSlotsLeft', 'launcherSlotsLeft')] + \
           [('module', a) for a in ('cpu', 'power', 'upgradeCost')]
+# Applied DPS (pyfa Module/Drone.getDps against a target profile, with the damage graph's
+# application: graphs/data/fitDamageStats/calc/application.py). Turrets, launchers,
+# vorton projectors, smartbombs and drones; the fit's webs, target painters and scramblers
+# on the target (calc/projected.py).
+DAMAGE = ('emDamage', 'thermalDamage', 'kineticDamage', 'explosiveDamage')
+DPS = [('module', a) for a in DAMAGE + (
+    'damageMultiplier', 'maxRange', 'falloff', 'trackingSpeed', 'optimalSigRadius',
+    'aoeCloudSize', 'aoeVelocity', 'aoeDamageReductionFactor',  # vorton projectors
+    'damageMultiplierBonusMax', 'damageMultiplierBonusPerCycle',  # entropic disintegrator spool-up
+    'empFieldRange')] + \
+      [('charge', a) for a in DAMAGE + (
+          'maxVelocity', 'explosionDelay', 'mass', 'agility', 'aoeCloudSize', 'aoeVelocity',
+          'aoeDamageReductionFactor', 'maxFOFTargetRange')] + \
+      [('drone', a) for a in DAMAGE + (
+          'damageMultiplier', 'speed', 'maxRange', 'falloff', 'trackingSpeed', 'optimalSigRadius',
+          'maxVelocity', 'radius')] + \
+      [('ship', a) for a in ('radius', 'maxTargetRange', 'droneControlRange')] + \
+      [('module', a) for a in ('speedFactor', 'signatureRadiusBonus', 'falloffEffectiveness',  # webs, painters
+                               'activationBlockedStrenght', 'warpScrambleRange')] + \
+      [('drone', a) for a in ('speedFactor', 'signatureRadiusBonus', 'falloffEffectiveness')] + \
+      [('module', a) for a in ('speed', 'reloadTime', 'capacity', 'chargeRate', 'moduleReactivationDelay')] + \
+      [('charge', a) for a in ('volume', 'crystalsGetDamaged', 'hp', 'crystalVolatilityChance',
+                               'crystalVolatilityDamage')]
 GOALS = {
     'shieldPassive': [('ship', 'shieldCapacity')] + [('ship', f'shield{x}DamageResonance') for x in RES],
     'armorPassive': [('ship', 'armorHP')] + [('ship', f'armor{x}DamageResonance') for x in RES] + RAH,
@@ -44,10 +67,11 @@ GOALS = {
     'armorRemote': [('module', 'armorDamageAmount'), ('module', 'chargedArmorDamageMultiplier')] + CAP + SPOOL,
     # Not an optimization goal, but pyfa reports hull rep/s; cheap to keep it exact.
     'hullActive': [('ship', f'{x.lower()}DamageResonance') for x in RES] + [('module', 'structureDamageAmount')] + CAP,
+    'appliedDps': DPS,
 }
-# Owner kinds in v1 and the context pyfa runs their effects in.
+# Owner kinds and the context pyfa runs their effects in.
 OWNERS = {'ship': 'ship', 'skill': 'skill', 'module': 'module', 'charge': 'moduleCharge',
-          'implant': 'implant', 'booster': 'booster'}
+          'implant': 'implant', 'booster': 'booster', 'drone': 'drone'}
 
 
 def unresolved(r):
@@ -64,6 +88,8 @@ def target_kind(r, owner):
         return 'implant'
     if d == 'boosters':
         return 'booster'
+    if d == 'drones':
+        return 'drone'
     if d == 'self':
         if owner in ('module', 'charge'):  # charge effects run with the module as owner
             return 'charge' if r['target'] == 'charge' else 'module'

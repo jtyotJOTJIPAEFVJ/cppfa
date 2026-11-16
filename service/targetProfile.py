@@ -59,6 +59,11 @@ class TargetProfile:
 
     @staticmethod
     def deletePattern(p):
+        # Drop the profile from fits' target lists (Target tab)
+        if p.ID is not None:
+            for fitTarget in db.getFitTargetsReferencing(targetProfileID=p.ID):
+                if fitTarget.fit is not None:
+                    fitTarget.fit.fitTargets.remove(fitTarget)
         db.remove(p)
 
     @staticmethod

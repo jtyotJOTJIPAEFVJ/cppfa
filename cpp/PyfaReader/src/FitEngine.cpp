@@ -25,9 +25,20 @@ constexpr int widestLayout()
     return static_cast<int>(w);
 }
 constexpr int kMaxFields = widestLayout();  // from the generated layouts
-static_assert(kMaxFields <= 64, "field bit masks are 64-bit");
+static_assert(kMaxFields <= 127, "field masks hold 128 fields, Layout::fieldOf is int8_t");
+static_assert(std::size(fitschema::ShipAttrs::kFields) <= 64, "Influence::shipFields is 64-bit");
+
+// One bit per field of an item's layout.
+struct FieldMask
+{
+    std::array<uint64_t, 2> w{};
+    bool test(int f) const { return w[static_cast<size_t>(f >> 6)] >> (f & 63) & 1; }
+    void set(int f) { w[static_cast<size_t>(f >> 6)] |= uint64_t{1} << (f & 63); }
+    void reset() { w = {}; }
+    bool any() const { return (w[0] | w[1]) != 0; }
+};
 constexpr int kMaxItems = 512;     // ship + mode + modules + their charges (search plans: every option)
-constexpr int kMaxPenalties = 4096;
+constexpr int kMaxPenalties = 16384;  // plans with many weapon / charge options
 constexpr int kMaxDepth = 12;      // guards recursive reads (caps, chained amounts)
 constexpr float kUniformShare = 0.25f;  // uniform damage profile: 25% of each type
 
@@ -39,9 +50,10 @@ enum Context
     CtxModuleCharge,
     CtxImplant,
     CtxBooster,
+    CtxDrone,
     CtxCount
 };
-constexpr const char* kContextNames[CtxCount] = {"ship", "skill", "module", "moduleCharge", "implant", "booster"};
+constexpr const char* kContextNames[CtxCount] = {"ship", "skill", "module", "moduleCharge", "implant", "booster", "drone"};
 
 enum class Op : uint8_t
 {
@@ -61,6 +73,7 @@ enum class TargetSel : uint8_t
     SelfCharge,     // the owner's loaded charge
     Implants,       // every applied implant passing the filter (pyfa fit.appliedImplants)
     Boosters,       // every booster passing the filter
+    Drones,         // every drone passing the filter (pyfa fit.drones)
 };
 
 enum class SourceSel : uint8_t
@@ -80,6 +93,7 @@ enum class ItemKind : uint8_t
     Charge,
     Implant,
     Booster,
+    Drone,
 };
 
 struct Term
@@ -195,6 +209,11 @@ struct TypeProto
     bool ancillaryShield = false, isPaste = false;
     int8_t remoteLayer = -1;             // remote repairers: the layer they repair (Shield, Armor)
     bool ancillaryRemoteArmor = false;  // group Ancillary Remote Armor Repairer
+    WeaponKind weapon = WeaponKind::None;
+    bool fofCharge = false, breacherCharge = false;  // charges: FoF missile, breacher pod
+    // Tackle on the damage target (pyfa graphs/.../cache/projected.py, calc/projected.py)
+    uint8_t tackle = 0;        // TackleKind
+    bool scramScript = false;  // charges: the focused warp scrambling script (HIC disruptors)
     std::vector<float> base;  // per layout field: the unmutated base value
     std::array<int8_t, kHot> hotField{};
     std::array<float, kHot> hotBase{};
@@ -212,6 +231,7 @@ struct Item
     int charge = -1;  // module: its charge item
     int owner = -1;   // charge: its module item
     int input = -1;   // module: index into FitInput::modules
+    int amount = 1;   // drone: drones in space
     State state = State::Online;
     bool active = true;  // implants / boosters
     const std::vector<int>* sideEffects = nullptr;  // boosters: effectIDs switched on
@@ -237,7 +257,7 @@ struct Item
     float* postInc() const { return data + 5 * stride; }
     float* force() const { return data + 6 * stride; }
     float* cache() const { return data + 7 * stride; }
-    uint64_t hasPreAssign = 0, hasIntermediary = 0, hasForce = 0, touched = 0, penalized = 0, cached = 0;
+    FieldMask hasPreAssign, hasIntermediary, hasForce, touched, penalized, cached;
 
     int numCharges = 0;  // module: charges per load, from the module and charge types (pyfa numCharges)
     int penHead = -1;    // newest of this item's stacking-penalized multipliers (Scratch::pens list)
@@ -247,6 +267,9 @@ struct Item
     uint32_t hotHas = 0;                  // the item itself has the attribute (pyfa 'x' in item.attributes)
 
     // Search plans: values that can't change between tests, computed at plan build.
+    bool forceReload = false;  // pyfa Module.forceReload: active capacitor boosters (effect 48)
+    SpoolType spoolType = SpoolType::Default;
+    float spoolAmount = 0;
     bool constCycle = false;
     CycleInfo cycle;
     bool constFitting = false;
@@ -300,6 +323,8 @@ struct Scratch
     int penCount = 0;
     int ship = -1;
     int mode = -1;
+    bool factorReload = true;  // FitInput::factorReload
+    float spoolup = 1;         // FitInput::spoolup
     std::array<int, kMaxItems> modules;
     int moduleCount = 0;
     std::array<ModuleStats, kMaxItems> moduleStats;  // totals(): per s.modules entry
@@ -307,6 +332,8 @@ struct Scratch
     int implantCount = 0;
     std::array<int, 16> boosters;
     int boosterCount = 0;
+    std::array<int, 64> drones;
+    int droneCount = 0;
 };
 
 uint8_t runTimeIndex(const std::string& rt)
@@ -374,6 +401,15 @@ struct Engine::Impl
         eveVolume, eveChargeRate, eveCrystalsDamaged, eveHp, eveCrystalChance, eveCrystalDamage, eveShieldBonus,
         eveArmorDamage, eveStructureDamage, eveCapacitorBonus, eveChargedArmorMult, eveCpu, evePower, eveUpgradeCost,
         eveResistanceShift, eveSpoolMax, eveSpoolStep;
+    // Damage (pyfa Module/Drone.getVolleyParameters, the damage graph's application)
+    std::array<int, 4> eveDamage{};  // em, thermal, kinetic, explosive
+    int eveDamageMult, eveDamageSpoolMax, eveDamageSpoolStep, eveMaxRange, eveFalloff, eveTracking, eveOptimalSig,
+        eveAoeCloud, eveAoeVelocity, eveAoeDrf, eveEmpFieldRange, eveMaxVelocity, eveExplosionDelay, eveMass,
+        eveAgility, eveMaxFof, eveRadius, eveMaxTargetRange;
+    int effTurretFitted, effLauncherFitted, effChainLightning, effFofMissile, effDotMissile;
+    int eveSpeedFactor, eveSigBonus, eveFalloffEff, eveActivationBlocked, eveWarpScrambleRange;
+    std::array<int, 2> effWebModule{}, effPaintModule{}, effScram{};
+    int effDisruptSphere, effScramScript, effWebDrone, effPaintDrone;
     std::array<int, 4> eveBurstDurations{};
     std::array<int, 4> eveWarfareBuffID{}, eveWarfareBuffValue{};
     std::array<int, kHot> hotEve{};
@@ -451,6 +487,43 @@ struct Engine::Impl
         eveCapacitorBonus = eve("capacitorBonus");
         eveSpoolMax = eve("repairMultiplierBonusMax");
         eveSpoolStep = eve("repairMultiplierBonusPerCycle");
+        eveDamage = {eve("emDamage"), eve("thermalDamage"), eve("kineticDamage"), eve("explosiveDamage")};
+        eveDamageMult = eve("damageMultiplier");
+        eveDamageSpoolMax = eve("damageMultiplierBonusMax");
+        eveDamageSpoolStep = eve("damageMultiplierBonusPerCycle");
+        eveMaxRange = eve("maxRange");
+        eveFalloff = eve("falloff");
+        eveTracking = eve("trackingSpeed");
+        eveOptimalSig = eve("optimalSigRadius");
+        eveAoeCloud = eve("aoeCloudSize");
+        eveAoeVelocity = eve("aoeVelocity");
+        eveAoeDrf = eve("aoeDamageReductionFactor");
+        eveEmpFieldRange = eve("empFieldRange");
+        eveMaxVelocity = eve("maxVelocity");
+        eveExplosionDelay = eve("explosionDelay");
+        eveMass = eve("mass");
+        eveAgility = eve("agility");
+        eveMaxFof = eve("maxFOFTargetRange");
+        eveRadius = eve("radius");
+        eveMaxTargetRange = eve("maxTargetRange");
+        effTurretFitted = gd.effectID("turretFitted");
+        effLauncherFitted = gd.effectID("launcherFitted");
+        effChainLightning = gd.effectID("ChainLightning");
+        effFofMissile = gd.effectID("fofMissileLaunching");
+        effDotMissile = gd.effectID("dotMissileLaunching");
+        eveSpeedFactor = eve("speedFactor");
+        eveSigBonus = eve("signatureRadiusBonus");
+        eveFalloffEff = eve("falloffEffectiveness");
+        eveActivationBlocked = eve("activationBlockedStrenght");  // (sic)
+        eveWarpScrambleRange = eve("warpScrambleRange");
+        effWebModule = {gd.effectID("remoteWebifierFalloff"), gd.effectID("structureModuleEffectStasisWebifier")};
+        effPaintModule = {gd.effectID("remoteTargetPaintFalloff"), gd.effectID("structureModuleEffectTargetPainter")};
+        effScram = {gd.effectID("warpScrambleBlockMWDWithNPCEffect"),
+                    gd.effectID("structureWarpScrambleBlockMWDWithNPCEffect")};
+        effDisruptSphere = gd.effectID("warpDisruptSphere");
+        effScramScript = gd.effectID("shipModuleFocusedWarpScramblingScript");
+        effWebDrone = gd.effectID("remoteWebifierEntity");
+        effPaintDrone = gd.effectID("remoteTargetPaintEntity");
         for (int x = 0; x < 4; ++x)
         {
             eveWarfareBuffID[x] = eve(("warfareBuff" + std::to_string(x + 1) + "ID").c_str());
@@ -512,8 +585,10 @@ struct Engine::Impl
             out.target = TargetSel::Implants;
         else if (m.domain == "boosters")
             out.target = TargetSel::Boosters;
+        else if (m.domain == "drones")
+            out.target = TargetSel::Drones;
         else
-            return std::nullopt;  // drones, fighters, projected targets, ...
+            return std::nullopt;  // fighters, projected targets, ...
 
         if (m.operation == "boost")
             out.op = Op::Multiply, out.boost = true;
@@ -683,6 +758,11 @@ struct Engine::Impl
                 p->remoteLayer = Armor;
             p->ancillaryRemoteArmor = g == "Ancillary Remote Armor Repairer";
         }
+        p->weapon = weaponKind(*type, p->group);
+        p->tackle = tackleKind(*type);
+        p->scramScript = effScramScript && type->hasEffect(effScramScript);
+        p->fofCharge = type->hasEffect(effFofMissile);
+        p->breacherCharge = type->hasEffect(effDotMissile);
         for (int eid : type->effects)
             if (const EffectInfo* e = effect(eid))
                 p->effects.emplace_back(eid, e);
@@ -705,6 +785,49 @@ struct Engine::Impl
         if (!slot)
             slot = std::move(p);  // else another thread built it first
         return *slot;
+    }
+
+    // pyfa's projected-data collection (getProjModData, getProjDroneData, getScramRange)
+    enum TackleKind : uint8_t
+    {
+        TackleNone,
+        TackleWeb,        // modules: remoteWebifierFalloff (webs, grapplers); drones: remoteWebifierEntity
+        TacklePainter,    // remoteTargetPaintFalloff / remoteTargetPaintEntity
+        TackleScram,      // warpScrambleBlockMWDWithNPCEffect, with activationBlockedStrenght
+        TackleDisruptor,  // warpDisruptSphere: a scrambler with the focused scrambling script
+    };
+    uint8_t tackleKind(const Type& type) const
+    {
+        auto has = [&](int eid) { return eid && type.hasEffect(eid); };
+        if (has(effWebModule[0]) || has(effWebModule[1]) || has(effWebDrone))
+            return TackleWeb;
+        if (has(effPaintModule[0]) || has(effPaintModule[1]) || has(effPaintDrone))
+            return TacklePainter;
+        if (has(effScram[0]) || has(effScram[1]))
+            return TackleScram;
+        if (has(effDisruptSphere))
+            return TackleDisruptor;
+        return TackleNone;
+    }
+
+    // pyfa getApplicationPerKey's weapon branches
+    WeaponKind weaponKind(const Type& type, const Group* group) const
+    {
+        if (type.hasEffect(effChainLightning))
+            return WeaponKind::Vorton;
+        if (type.hasEffect(effTurretFitted))
+            return WeaponKind::Turret;
+        if (type.hasEffect(effLauncherFitted) || type.id == 32461)  // civilian launcher
+            return WeaponKind::Launcher;
+        if (!group)
+            return WeaponKind::None;
+        const std::string& g = group->name;
+        if (g == "Smart Bomb" || g == "Structure Area Denial Module")
+            return WeaponKind::Smartbomb;
+        if (g == "Missile Launcher Bomb" || g == "Super Weapon" || g == "Structure Doomsday Weapon" ||
+            g == "Structure Guided Bomb Launcher" || g == "Missile Launcher Defender")
+            return WeaponKind::Other;
+        return WeaponKind::None;
     }
 
     static float* allocFields(Scratch& s, int stride)
@@ -761,7 +884,7 @@ struct Engine::Impl
     {
         const Item& it = s.items[static_cast<size_t>(item)];
         int f = it.hotField[static_cast<size_t>(h)];
-        return (it.hotHas >> h & 1u) || (f >= 0 && (it.touched >> f & 1));
+        return (it.hotHas >> h & 1u) || (f >= 0 && (it.touched.test(f)));
     }
 
     // The item type's own attribute; for mutated modules merged over the base item
@@ -817,7 +940,7 @@ struct Engine::Impl
     {
         const Item& it = s.items[item];
         int f = fieldOf(it, eve);
-        return hasBase(it, eve) || (f >= 0 && (it.touched >> f & 1));
+        return hasBase(it, eve) || (f >= 0 && (it.touched.test(f)));
     }
 
     // pyfa ModifiedAttributeDict.__getitem__ / __calculateValue
@@ -826,22 +949,22 @@ struct Engine::Impl
         Item& it = s.items[item];
         // Attributes no modifier touched never reach __calculateValue: pyfa returns
         // the intermediary or original value as is - no caps, no cpu/power rounding.
-        if (!(it.touched >> field & 1))
-            return (it.hasIntermediary >> field & 1) ? it.intermediary()[field] : it.base()[field];
-        if (it.cached >> field & 1)
+        if (!(it.touched.test(field)))
+            return (it.hasIntermediary.test(field)) ? it.intermediary()[field] : it.base()[field];
+        if (it.cached.test(field))
             return it.cache()[field];
         float val;
-        if (it.hasForce >> field & 1)
+        if (it.hasForce.test(field))
             val = it.force()[field];
         else
         {
             // priority: intermediary > preAssign > original
-            val = (it.hasIntermediary >> field & 1) ? it.intermediary()[field]
-                  : (it.hasPreAssign >> field & 1) ? it.preAssign()[field]
+            val = (it.hasIntermediary.test(field)) ? it.intermediary()[field]
+                  : (it.hasPreAssign.test(field)) ? it.preAssign()[field]
                                                     : it.base()[field];
             val += it.preInc()[field];
             val *= it.mult()[field];
-            if (it.penalized >> field & 1)
+            if (it.penalized.test(field))
                 val = applyPenalties(s, item, field, val);
             val += it.postInc()[field];
         }
@@ -858,7 +981,7 @@ struct Engine::Impl
             val = pymath::round(val, 2);
         Item& w = s.items[item];  // (caps may have read other fields of this item)
         w.cache()[field] = val;
-        w.cached |= uint64_t{1} << field;
+        w.cached.set(field);
         return val;
     }
 
@@ -870,23 +993,23 @@ struct Engine::Impl
             return;
         out.value = value(s, item, field, 0);
         const Item& it = s.items[item];
-        if (!(it.touched >> field & 1))
+        if (!(it.touched.test(field)))
         {
-            out.base = (it.hasIntermediary >> field & 1) ? it.intermediary()[field] : it.base()[field];
+            out.base = (it.hasIntermediary.test(field)) ? it.intermediary()[field] : it.base()[field];
             return;
         }
-        if (it.hasForce >> field & 1)
+        if (it.hasForce.test(field))
         {
             out.forced = true;
             return;
         }
-        out.base = (it.hasIntermediary >> field & 1) ? it.intermediary()[field]
-                   : (it.hasPreAssign >> field & 1)  ? it.preAssign()[field]
+        out.base = (it.hasIntermediary.test(field)) ? it.intermediary()[field]
+                   : (it.hasPreAssign.test(field))  ? it.preAssign()[field]
                                                       : it.base()[field];
         out.preInc = it.preInc()[field];
         out.mult = it.mult()[field];
         out.post = it.postInc()[field];
-        if (it.penalized >> field & 1)
+        if (it.penalized.test(field))
         {
             for (int p = it.penHead; p >= 0; p = s.pens[p].next)
                 if (s.pens[p].field == field)
@@ -981,14 +1104,13 @@ struct Engine::Impl
         int f = it.layout->fieldOf[static_cast<size_t>(m.targetAttr)];
         if (f < 0)
             return;
-        uint64_t bit = uint64_t{1} << f;
-        it.touched |= bit;
-        it.cached = 0;
+        it.touched.set(f);
+        it.cached.reset();
         switch (m.op)
         {
         case Op::PreAssign:
             it.preAssign()[f] = amount;
-            it.hasPreAssign |= bit;
+            it.hasPreAssign.set(f);
             break;
         case Op::PreIncrease:
             it.preInc()[f] += amount;
@@ -998,7 +1120,7 @@ struct Engine::Impl
             break;
         case Op::Force:
             it.force()[f] = amount;
-            it.hasForce |= bit;
+            it.hasForce.set(f);
             break;
         case Op::Multiply:
         {
@@ -1010,7 +1132,7 @@ struct Engine::Impl
                 s.pens[s.penCount] = {static_cast<uint16_t>(item), static_cast<uint8_t>(f), m.penaltyGroup, mult,
                                       it.penHead};
                 it.penHead = s.penCount++;
-                it.penalized |= bit;
+                it.penalized.set(f);
             }
             else
                 it.mult()[f] *= mult;
@@ -1174,6 +1296,11 @@ struct Engine::Impl
                 if (filterMatches(s, m, s.boosters[i], ownerSkill))
                     applyTo(s, s.boosters[i], m, *amount);
             break;
+        case TargetSel::Drones:
+            for (int i = 0; i < s.droneCount; ++i)
+                if (filterMatches(s, m, s.drones[i], ownerSkill))
+                    applyTo(s, s.drones[i], m, *amount);
+            break;
         }
     }
 
@@ -1191,8 +1318,8 @@ struct Engine::Impl
         // Weapon / cap booster effects also set module.reloadTime in pyfa, but
         // pyfa's reloadTime property only falls back to that when the
         // 'reloadTime' attribute is None - and it never is (dgmattribs default
-        // 10000). Cap boosters' forceReload doesn't matter either: reload is
-        // always factored in here. So none of those need handling.
+        // 10000). Cap boosters' forceReload is set at item setup (Item::forceReload).
+        // So none of those need handling here.
         if (eid >= kEffWarfareLinkFirst && eid <= kEffWarfareLinkLast)
         {
             // for x in 1..4: if charge warfareBuff{x}ID: addCommandBonus(id, module warfareBuff{x}Value)
@@ -1216,8 +1343,8 @@ struct Engine::Impl
                 if (f >= 0)
                 {
                     it.intermediary()[f] = -read(s, it.charge, eveCapacitorBonus, 0);
-                    it.hasIntermediary |= uint64_t{1} << f;
-                    it.cached = 0;
+                    it.hasIntermediary.set(f);
+                    it.cached.reset();
                 }
             }
             break;
@@ -1371,7 +1498,18 @@ struct Engine::Impl
                     for (const Mod& m : e->mods[CtxShip])
                         sink.apply(s, m, s.ship, nullptr);
 
-            // (pyfa runs drones and fighters here; not modeled.)
+            // Drones: passive effects, once per drone in space (pyfa Drone.calculateModifiedAttributes;
+            // no drone has a 'grouped' passive effect). Fighters would follow; not modeled.
+            for (int i = 0; i < s.droneCount; ++i)
+            {
+                int dr = s.drones[i];
+                const Item& it = s.items[dr];
+                for (int k = 0; k < it.amount; ++k)
+                    for (const auto& [eid, e] : it.proto->effects)
+                        if (e->passive && e->runTime == pass)
+                            for (const Mod& m : e->mods[CtxDrone])
+                                sink.apply(s, m, dr, nullptr);
+            }
             for (int i = 0; i < s.boosterCount; ++i)
             {
                 int b = s.boosters[i];
@@ -1481,8 +1619,11 @@ struct Engine::Impl
 
     void resetScratch(Scratch& s) const
     {
-        s.count = s.penCount = s.moduleCount = s.bonusCount = s.implantCount = s.boosterCount = s.arenaUsed = 0;
+        s.count = s.penCount = s.moduleCount = s.bonusCount = s.implantCount = s.boosterCount = s.droneCount =
+            s.arenaUsed = 0;
         s.ship = s.mode = -1;
+        s.factorReload = true;
+        s.spoolup = 1;
     }
 
     void addShipAndMode(Scratch& s, const FitInput& in) const
@@ -1492,6 +1633,9 @@ struct Engine::Impl
             throw std::invalid_argument("unknown ship type " + std::to_string(in.shipTypeID));
         s.ship = addItem(s, shipType, &shipLayout, ItemKind::Ship);
         initValues(s.items[s.ship]);
+        // pyfa Ship.EXTRA_ATTRIBUTES (not in eve.db)
+        if (int f = shipLayout.fieldOf[static_cast<size_t>(Attr::droneControlRange)]; f >= 0)
+            s.items[s.ship].base()[f] = 20000.0f;
         if (in.modeTypeID)
             if (const Type* mode = gd.type(in.modeTypeID))
             {
@@ -1539,6 +1683,31 @@ struct Engine::Impl
         }
     }
 
+    // Adds the fit's drones in space (amount > 0).
+    void addDrones(Scratch& s, const FitInput& in, std::vector<std::string>* warnings) const
+    {
+        for (const DroneInput& di : in.drones)
+        {
+            const Type* t = gd.type(di.typeID);
+            if (di.amount <= 0)
+                continue;
+            if (!t || s.droneCount >= static_cast<int>(s.drones.size()))
+            {
+                if (warnings)
+                    warnings->push_back("drone " + std::to_string(di.typeID) + " skipped");
+                continue;
+            }
+            auto l = layoutByGroup.find(t->groupID);
+            int item = addItem(s, t, l == layoutByGroup.end() ? &emptyLayout : l->second, ItemKind::Drone);
+            Item& it = s.items[item];
+            it.amount = di.amount;
+            it.baseType = di.baseTypeID ? gd.type(di.baseTypeID) : nullptr;
+            it.mutators = di.mutators.empty() ? nullptr : &di.mutators;
+            initValues(it);
+            s.drones[s.droneCount++] = item;
+        }
+    }
+
     // Adds a module (and its charge) to s.modules; returns the module item, -1 if unknown.
     int addModule(Scratch& s, const ModuleInput& mi, int input, std::vector<std::string>* warnings) const
     {
@@ -1556,6 +1725,10 @@ struct Engine::Impl
         it.baseType = mi.baseTypeID ? gd.type(mi.baseTypeID) : nullptr;
         it.input = input;
         it.mutators = mi.mutators.empty() ? nullptr : &mi.mutators;
+        it.spoolType = mi.spoolType;
+        it.spoolAmount = mi.spoolAmount;
+        // pyfa effect 48 (powerBooster) sets forceReload when it runs, i.e. when active
+        it.forceReload = mi.state >= State::Active && t->hasEffect(kEffCapBooster);
         initValues(it);
         s.modules[s.moduleCount++] = mod;
         if (mi.chargeID)
@@ -1592,6 +1765,8 @@ struct Engine::Impl
         CapSums cap;
         std::array<float, LayerCount> hp{}, ehp{}, divider{}, repair{}, effRepair{}, remoteRepair{};
         std::array<std::array<BalancedParts, 2>, 2> balanced{};
+        float dps = 0, appliedDps = 0;            // modules + drones
+        float droneDps = 0, droneAppliedDps = 0;  // the drones' part
     };
 
     float shipValue(Scratch& s, Attr a) const
@@ -1641,8 +1816,9 @@ struct Engine::Impl
         c.numShots = numShots(s, module);
         if (c.raw > 0)
         {
-            // Reload always factored in.
-            if (c.numShots == 0 || c.reactivation >= c.reload)
+            // pyfa getCycleParameters: reload factored when the fit says so (capacitor
+            // boosters always), and only if the module has to reload in active time.
+            if (!(s.factorReload || it.forceReload) || c.numShots == 0 || c.reactivation >= c.reload)
                 c.average = c.raw + c.reactivation;
             else if (c.numShots == 1)
                 c.average = c.raw + c.reload;
@@ -1658,8 +1834,441 @@ struct Engine::Impl
         return c;
     }
 
+    // ------------------------------------------------------------ damage
+    // pyfa Module/Drone.getVolleyParameters + getDps, and the damage graph's application
+    // (graphs/data/fitDamageStats/calc/application.py) with the attacker stationary and
+    // the target moving fully transversal. In double like pyfa.
+
+    // eos.calc.calculateRangeFactor
+    static double rangeFactor(double optimal, double falloff, double distance, bool restricted)
+    {
+        if (falloff > 0)
+        {
+            if (restricted && distance > optimal + 3 * falloff)
+                return 0;
+            double x = std::max(0.0, distance - optimal) / falloff;
+            return std::pow(0.5, x * x);
+        }
+        return distance <= optimal ? 1 : 0;
+    }
+
+    // _calcTurretMult: average damage of the hits, wrecking shots included
+    static double turretDamageMult(double chance)
+    {
+        double wrecking = std::min(chance, 0.01);
+        double normal = chance - wrecking;
+        double normalPart = normal > 0 ? normal * ((0.01 + chance) / 2 + 0.49) : 0;
+        return normalPart + wrecking * 3;
+    }
+
+    // _calcTurretChanceToHit, attacker speed 0, target angle 90°
+    static double turretChance(double tracking, double optimalSig, double optimal, double falloff, double atkRadius,
+                               double distance, const DamageTarget& t)
+    {
+        double tgtSpeed = static_cast<double>(t.maxVelocity) * t.speedFactor;
+        double ctc = atkRadius + distance + t.radius;
+        double angular = ctc == 0 ? (tgtSpeed == 0 ? 0 : std::numeric_limits<double>::infinity()) : tgtSpeed / ctc;
+        double range = rangeFactor(optimal, falloff, distance, false);
+        double sig = t.signatureRadius;
+        double trackingFactor;
+        if (angular == 0 || std::isinf(sig))
+            trackingFactor = 1;
+        else if (tracking <= 0 || sig <= 0)
+            trackingFactor = 0;
+        else
+        {
+            double x = angular * optimalSig / (tracking * sig);
+            trackingFactor = std::pow(0.5, x * x);
+        }
+        return range * trackingFactor;
+    }
+
+    // _calcMissileFactor
+    static double missileFactor(double er, double ev, double drf, const DamageTarget& t)
+    {
+        double sig = t.signatureRadius, tgtSpeed = static_cast<double>(t.maxVelocity) * t.speedFactor;
+        if (std::isinf(sig))
+            return 1;
+        double f = 1;
+        if (er > 0)
+            f = std::min(f, sig / er);
+        if (tgtSpeed > 0)
+            f = er > 0 ? std::min(f, std::pow(ev * sig / (er * tgtSpeed), drf)) : f;
+        return f;
+    }
+
+    // pyfa Module.missileMaxRangeData: (lower range, higher range, chance of the higher one)
+    bool missileRanges(Scratch& s, int mod, double& lower, double& higher, double& higherChance) const
+    {
+        int charge = s.items[mod].charge;
+        if (charge < 0)
+            return false;
+        double velocity = read(s, charge, eveMaxVelocity, 0);
+        if (velocity == 0)
+            return false;
+        double shipRadius = read(s, s.ship, eveRadius, 0);
+        double flightTime = pymath::floatUnerr(read(s, charge, eveExplosionDelay, 0) / 1000.0 + shipRadius / velocity);
+        double mass = read(s, charge, eveMass, 0), agility = read(s, charge, eveAgility, 0);
+        auto range = [&](double time) {
+            double accel = std::min(time, mass * agility / 1000000.0);
+            return velocity / 2 * accel + velocity * (time - accel);
+        };
+        double lowerTime = std::floor(flightTime), higherTime = std::ceil(flightTime);
+        lower = range(lowerTime);
+        higher = range(higherTime);
+        if (s.items[charge].proto->fofCharge)
+            if (double limit = read(s, charge, eveMaxFof, 0); limit != 0)
+            {
+                lower = std::min(lower, limit);
+                higher = std::min(higher, limit);
+            }
+        lower = std::max(0.0, lower - shipRadius);
+        higher = std::max(0.0, higher - shipRadius);
+        higherChance = flightTime - lowerTime;
+        return true;
+    }
+
+    // eos.calc.calculateMultiplier for one stacking group: bonuses and penalties separately,
+    // strongest first, 1 + (m - 1) * exp(-i^2 / 7.1289).
+    static double stackedMultiplier(const double* mults, int n)
+    {
+        double up[64], down[64];
+        int nu = 0, nd = 0;
+        for (int i = 0; i < n && i < 64; ++i)
+        {
+            if (mults[i] > 1)
+                up[nu++] = mults[i];
+            else if (mults[i] < 1)
+                down[nd++] = mults[i];
+        }
+        auto strongest = [](double a, double b) { return std::abs(a - 1) > std::abs(b - 1); };
+        std::stable_sort(up, up + nu, strongest);
+        std::stable_sort(down, down + nd, strongest);
+        double v = 1;
+        for (int i = 0; i < nu; ++i)
+            v *= 1 + (up[i] - 1) * std::exp(-static_cast<double>(i * i) / 7.1289);
+        for (int i = 0; i < nd; ++i)
+            v *= 1 + (down[i] - 1) * std::exp(-static_cast<double>(i * i) / 7.1289);
+        return v;
+    }
+
+    // pyfa Module.maxRange for tackle modules: maxRange, else warpScrambleRange (HIC disruptors)
+    double tackleRange(Scratch& s, int mod) const
+    {
+        double r = read(s, mod, eveMaxRange, 0);
+        return r != 0 ? r : read(s, mod, eveWarpScrambleRange, 0);
+    }
+    // pyfa Module.falloff (falloffEffectiveness, else falloff) and Drone.falloff (the other way round)
+    double moduleFalloff(Scratch& s, int mod) const
+    {
+        double f = read(s, mod, eveFalloffEff, 0);
+        return f != 0 ? f : read(s, mod, eveFalloff, 0);
+    }
+    double droneFalloff(Scratch& s, int drone) const
+    {
+        double f = read(s, drone, eveFalloff, 0);
+        return f != 0 ? f : read(s, drone, eveFalloffEff, 0);
+    }
+
+    // The damage target as the fit's tackle leaves it: pyfa getScramRange, getTackledSpeed and
+    // getSigRadiusMult (graphs/data/fitDamageStats/calc/projected.py, fighters aside). Speed
+    // becomes the tackled speed (speedFactor folded in), signature the painted one.
+    DamageTarget tackled(Scratch& s, const DamageTarget& t) const
+    {
+        DamageTarget out = t;
+        out.speedFactor = 1;
+        const double d = t.distance;
+        const double untackled = static_cast<double>(t.maxVelocity) * t.speedFactor;
+        out.maxVelocity = static_cast<float>(untackled);
+        if (t.immune)
+            return out;
+        const bool inLock = d <= shipValue(s, Attr::maxTargetRange);
+        const bool inDrone = d <= shipValue(s, Attr::droneControlRange);
+        const double atkRadius = read(s, s.ship, eveRadius, 0);
+
+        // Scrambled: the target's MWD / MJD off
+        double scramRange = -1;
+        for (int i = 0; i < s.moduleCount; ++i)
+        {
+            const Item& it = s.items[s.modules[i]];
+            if (it.state < State::Active)
+                continue;
+            const uint8_t k = it.proto->tackle;
+            const bool scram = (k == TackleScram && read(s, s.modules[i], eveActivationBlocked, 0) != 0) ||
+                               (k == TackleDisruptor && it.charge >= 0 && s.items[it.charge].proto->scramScript);
+            if (scram)
+                scramRange = std::max(scramRange, std::max(0.0, tackleRange(s, s.modules[i])));
+        }
+        const bool scrammed = inLock && scramRange >= 0 && d <= scramRange;
+        const double baseSpeed = scrammed && t.maxVelocityScrammed >= 0 ? t.maxVelocityScrammed : t.maxVelocity;
+        const double baseSig = scrammed && t.signatureRadiusScrammed >= 0 ? t.signatureRadiusScrammed
+                                                                          : t.signatureRadius;
+        auto resisted = [](double mult, double resistance) {
+            return resistance == 1 ? mult : (mult - 1) * resistance + 1;
+        };
+
+        struct Mobile
+        {
+            double boost, optimal, falloff, speed, radius;
+        };
+        // Webs
+        double webs[64];
+        int nWebs = 0;
+        double current = untackled;
+        if (t.maxVelocity != 0)
+        {
+            const double ratio = t.speedFactor;
+            if (inLock)
+                for (int i = 0; i < s.moduleCount && nWebs < 64; ++i)
+                {
+                    int mod = s.modules[i];
+                    const Item& it = s.items[mod];
+                    if (it.state < State::Active || it.proto->tackle != TackleWeb)
+                        continue;
+                    double boost = read(s, mod, eveSpeedFactor, 0) *
+                                   rangeFactor(tackleRange(s, mod), moduleFalloff(s, mod), d, true);
+                    if (boost != 0)
+                        webs[nWebs++] = resisted(1 + boost / 100, t.webResistance);
+                }
+            auto speedNow = [&] { return baseSpeed * stackedMultiplier(webs, nWebs) * ratio; };
+            current = speedNow();
+            std::vector<Mobile> mobile;
+            if (inLock && inDrone)
+                for (int i = 0; i < s.droneCount; ++i)
+                {
+                    int dr = s.drones[i];
+                    if (s.items[dr].proto->tackle != TackleWeb)
+                        continue;
+                    Mobile m{read(s, dr, eveSpeedFactor, 0), read(s, dr, eveMaxRange, 0), droneFalloff(s, dr),
+                             read(s, dr, eveMaxVelocity, 0), read(s, dr, eveRadius, 0)};
+                    for (int k = 0; k < s.items[dr].amount; ++k)
+                        mobile.push_back(m);
+                }
+            // Within a mobile web's optimal it applies regardless
+            bool any = false;
+            for (size_t k = 0; k < mobile.size();)
+                if (d <= mobile[k].optimal - atkRadius + mobile[k].radius)
+                {
+                    if (nWebs < 64)
+                        webs[nWebs++] = resisted(1 + mobile[k].boost / 100, t.webResistance);
+                    mobile.erase(mobile.begin() + static_cast<long>(k));
+                    any = true;
+                }
+                else
+                    ++k;
+            if (any)
+                current = speedNow();
+            // The rest fastest first: full when faster than the target, else from the ship's center
+            while (!mobile.empty())
+            {
+                double fastest = 0;
+                for (const Mobile& m : mobile)
+                    fastest = std::max(fastest, m.speed);
+                for (size_t k = 0; k < mobile.size();)
+                {
+                    if (mobile[k].speed != fastest)
+                    {
+                        ++k;
+                        continue;
+                    }
+                    const Mobile& m = mobile[k];
+                    double boost = m.speed >= current
+                                       ? m.boost
+                                       : m.boost * rangeFactor(m.optimal, m.falloff, d + atkRadius - m.radius, true);
+                    if (nWebs < 64)
+                        webs[nWebs++] = resisted(1 + boost / 100, t.webResistance);
+                    mobile.erase(mobile.begin() + static_cast<long>(k));
+                }
+                current = speedNow();
+            }
+            current = pymath::floatUnerr(current);
+        }
+        else
+            current = 0;
+        out.maxVelocity = static_cast<float>(current);
+
+        // Target painters
+        double paints[64];
+        int nPaints = 0;
+        if (inLock)
+            for (int i = 0; i < s.moduleCount && nPaints < 64; ++i)
+            {
+                int mod = s.modules[i];
+                const Item& it = s.items[mod];
+                if (it.state < State::Active || it.proto->tackle != TacklePainter)
+                    continue;
+                double boost =
+                    read(s, mod, eveSigBonus, 0) * rangeFactor(tackleRange(s, mod), moduleFalloff(s, mod), d, true);
+                if (boost != 0)
+                    paints[nPaints++] = resisted(1 + boost / 100, t.painterResistance);
+            }
+        if (inLock && inDrone)
+            for (int i = 0; i < s.droneCount; ++i)
+            {
+                int dr = s.drones[i];
+                if (s.items[dr].proto->tackle != TacklePainter)
+                    continue;
+                double boost = read(s, dr, eveSigBonus, 0);
+                if (read(s, dr, eveMaxVelocity, 0) < current)
+                    boost *= rangeFactor(read(s, dr, eveMaxRange, 0), droneFalloff(s, dr),
+                                         d + atkRadius - read(s, dr, eveRadius, 0), true);
+                for (int k = 0; k < s.items[dr].amount && nPaints < 64; ++k)
+                    paints[nPaints++] = resisted(1 + boost / 100, t.painterResistance);
+            }
+        const double initSig = t.signatureRadius;
+        const double modified = baseSig * stackedMultiplier(paints, nPaints);
+        double mult = std::isinf(modified) && std::isinf(initSig) ? 1.0 : pymath::floatUnerr(modified / initSig);
+        out.signatureRadius = static_cast<float>(initSig * mult);
+        return out;
+    }
+
+    // Application multiplier of an active weapon module (getApplicationPerKey).
+    double moduleApplication(Scratch& s, int mod, WeaponKind kind, const DamageTarget& t) const
+    {
+        const double d = t.distance;
+        const bool inLock = d <= shipValue(s, Attr::maxTargetRange);
+        switch (kind)
+        {
+        case WeaponKind::Vorton:
+            if (!inLock)
+                return 0;
+            return rangeFactor(read(s, mod, eveMaxRange, 0), 0, d, true) *
+                   missileFactor(read(s, mod, eveAoeCloud, 0), read(s, mod, eveAoeVelocity, 0),
+                                 read(s, mod, eveAoeDrf, 0), t);
+        case WeaponKind::Turret:
+            if (!inLock)
+                return 0;
+            return turretDamageMult(turretChance(read(s, mod, eveTracking, 0), read(s, mod, eveOptimalSig, 0),
+                                                 read(s, mod, eveMaxRange, 0), read(s, mod, eveFalloff, 0),
+                                                 read(s, s.ship, eveRadius, 0), d, t));
+        case WeaponKind::Launcher:
+        {
+            int charge = s.items[mod].charge;
+            if (!inLock && !(charge >= 0 && s.items[charge].proto->fofCharge))
+                return 0;
+            double lower, higher, chance;
+            if (!missileRanges(s, mod, lower, higher, chance))
+                return 0;
+            double distanceFactor = d <= lower ? 1 : d <= higher ? chance : 0;
+            return distanceFactor * missileFactor(read(s, charge, eveAoeCloud, 0), read(s, charge, eveAoeVelocity, 0),
+                                                  read(s, charge, eveAoeDrf, 0), t);
+        }
+        case WeaponKind::Smartbomb:
+        {
+            // Module.maxRange: the first non-zero of its range attributes
+            double range = read(s, mod, eveMaxRange, 0);
+            if (range == 0)
+                range = read(s, mod, eveEmpFieldRange, 0);
+            return range != 0 && d <= range ? 1 : 0;
+        }
+        default:
+            return 0;
+        }
+    }
+
+    // Raw and applied damage per second of an active module; averageCycle in ms (reload factored).
+    void moduleDamage(Scratch& s, int mod, float averageCycle, const DamageTarget* target, ModuleStats& m) const
+    {
+        const Item& it = s.items[mod];
+        m.weapon = it.proto->weapon;
+        m.dps = m.appliedDps = 0;
+        if (m.weapon == WeaponKind::None || it.state < State::Active || averageCycle <= 0)
+            return;
+        if (it.charge >= 0 && s.items[it.charge].proto->breacherCharge)
+            return;  // damage over time against the target's HP: not modeled
+        const int source = it.charge >= 0 ? it.charge : mod;
+        double mult = read(s, mod, eveDamageMult, 0);
+        mult *= 1 + spoolOf(s, mod, read(s, mod, eveDamageSpoolMax, 0), read(s, mod, eveDamageSpoolStep, 0),
+                            cycleRaw(s, mod));
+        double volley[4], total = 0;
+        for (int k = 0; k < 4; ++k)
+        {
+            volley[k] = read(s, source, eveDamage[static_cast<size_t>(k)], 0) * mult;
+            total += volley[k];
+        }
+        if (total <= 0)
+            return;
+        const double perSecond = 1000.0 / averageCycle;
+        m.dps = static_cast<float>(total * perSecond);
+        if (target && m.weapon != WeaponKind::Other)  // Other: raw damage only (bombs, doomsdays, defenders)
+        {
+            double application = pymath::floatUnerr(moduleApplication(s, mod, m.weapon, *target));
+            m.appliedDps = static_cast<float>(resisted(volley, *target) * perSecond * application);
+        }
+    }
+
+    static double resisted(const double* volley, const DamageTarget& t)
+    {
+        return volley[0] * (1 - static_cast<double>(t.em)) + volley[1] * (1 - static_cast<double>(t.thermal)) +
+               volley[2] * (1 - static_cast<double>(t.kinetic)) + volley[3] * (1 - static_cast<double>(t.explosive));
+    }
+
+    // All drones of one item together: raw and applied damage per second.
+    void droneDamage(Scratch& s, int drone, const DamageTarget* target, float& dps, float& applied) const
+    {
+        dps = applied = 0;
+        const Item& it = s.items[drone];
+        // Drone.cycleTime: speed, else duration, else durationHighisGood
+        double cycle = readHot(s, drone, HotSpeed);
+        if (cycle == 0)
+            cycle = readHot(s, drone, HotDuration);
+        if (cycle == 0)
+            cycle = readHot(s, drone, HotDurationHigh);
+        if (cycle <= 0)
+            return;
+        double mult = it.amount * static_cast<double>(read(s, drone, eveDamageMult, 0));
+        double volley[4], total = 0;
+        for (int k = 0; k < 4; ++k)
+        {
+            volley[k] = read(s, drone, eveDamage[static_cast<size_t>(k)], 0) * mult;
+            total += volley[k];
+        }
+        if (total <= 0)
+            return;
+        const double perSecond = 1000.0 / cycle;
+        dps = static_cast<float>(total * perSecond);
+        if (!target)
+            return;
+        const DamageTarget& t = *target;
+        const double d = t.distance;
+        // getApplicationPerKey + getDroneMult: lock range and drone control range, then the
+        // drone catches up with the target (mobileDroneMode auto) or shoots from the ship
+        if (d > shipValue(s, Attr::droneControlRange) || d > shipValue(s, Attr::maxTargetRange))
+            return;
+        double droneSpeed = read(s, drone, eveMaxVelocity, 0);
+        double chance;
+        if (droneSpeed > 1 && droneSpeed >= static_cast<double>(t.maxVelocity) * t.speedFactor)
+            chance = 1;
+        else
+        {
+            double droneRadius = read(s, drone, eveRadius, 0);
+            chance = turretChance(read(s, drone, eveTracking, 0), read(s, drone, eveOptimalSig, 0),
+                                  read(s, drone, eveMaxRange, 0), read(s, drone, eveFalloff, 0), droneRadius,
+                                  d + read(s, s.ship, eveRadius, 0) - droneRadius, t);
+        }
+        double application = pymath::floatUnerr(turretDamageMult(chance));
+        applied = static_cast<float>(resisted(volley, t) * perSecond * application);
+    }
+
+    // pyfa resolveSpoolOptions + calculateSpoolup: the module's own setting, else the fit's default.
+    double spoolOf(const Scratch& s, int mod, double maxValue, double stepValue, double rawCycleMs) const
+    {
+        const Item& it = s.items[mod];
+        if (it.spoolType == SpoolType::Default)
+            return spoolBonus(maxValue, stepValue, rawCycleMs / 1000.0, SpoolType::SpoolScale, s.spoolup);
+        return spoolBonus(maxValue, stepValue, rawCycleMs / 1000.0, it.spoolType, it.spoolAmount);
+    }
+
+    // pyfa Module.rawCycleTime
+    double cycleRaw(Scratch& s, int mod) const
+    {
+        return std::max({readHot(s, mod, HotSpeed), readHot(s, mod, HotDuration), readHot(s, mod, HotDurationHigh),
+                         readHot(s, mod, HotBurst0), readHot(s, mod, HotBurst1), readHot(s, mod, HotBurst2),
+                         readHot(s, mod, HotBurst3)});
+    }
+
     // A module's inputs to the totals, from its final attributes.
-    void moduleStats(Scratch& s, int mod, ModuleStats& m) const
+    void moduleStats(Scratch& s, int mod, ModuleStats& m, bool damage, const DamageTarget* target) const
     {
         const Item& it = s.items[mod];
         Cycle computed;
@@ -1674,6 +2283,7 @@ struct Engine::Impl
         m.capNeed = c.capNeed;
         m.capUse = c.capUse;
         m.numShots = c.numShots;
+        m.factorReload = s.factorReload;
         m.cpu = m.power = m.calibration = 0;
         m.repEffects = 0;
         if (it.state >= State::Online)
@@ -1719,23 +2329,45 @@ struct Engine::Impl
                     mult = readHot(s, mod, HotChargedArmorMult);
                 amount = readHot(s, mod, HotArmorDamage) * mult;
             }
-            double spoolMax = readHot(s, mod, HotSpoolMax), spoolStep = readHot(s, mod, HotSpoolStep);
-            if (spoolMax != 0 && spoolStep != 0)
-                amount *= 1 + spoolMax;  // calculateSpoolup(SPOOL_SCALE, 1): ceil(max / step) cycles reach max
+            amount *= 1 + spoolOf(s, mod, readHot(s, mod, HotSpoolMax), readHot(s, mod, HotSpoolStep), c.raw);
             m.remoteLayer = it.remoteLayer;
             m.remoteAmount = static_cast<float>(amount);
         }
+        m.weapon = WeaponKind::None;
+        m.dps = m.appliedDps = 0;
+        if (damage)
+            moduleDamage(s, mod, c.average, target, m);
     }
 
     // Everything derived from the final attributes. s.moduleStats[i] belongs to s.modules[i].
     // balancedMask: the balanced goals' tests to run, bit 2 * local layer + remote layer.
-    void totals(Scratch& s, Totals& t, bool withRepair, unsigned balancedMask = 0) const
+    // damage: also the damage per second (applied when target is given).
+    void totals(Scratch& s, Totals& t, bool withRepair, unsigned balancedMask = 0, bool damage = false,
+                const DamageTarget* target = nullptr) const
     {
         t = Totals{};
         ModuleStats* stats = s.moduleStats.data();
+        DamageTarget tackledTarget;
+        if (damage && target)
+        {
+            tackledTarget = tackled(s, *target);
+            target = &tackledTarget;
+        }
+        if (damage)
+            for (int i = 0; i < s.droneCount; ++i)
+            {
+                float dps, applied;
+                droneDamage(s, s.drones[i], target, dps, applied);
+                t.droneDps += dps;
+                t.droneAppliedDps += applied;
+            }
+        t.dps = t.droneDps;
+        t.appliedDps = t.droneAppliedDps;
         for (int i = 0; i < s.moduleCount; ++i)
         {
-            moduleStats(s, s.modules[i], stats[i]);
+            moduleStats(s, s.modules[i], stats[i], damage, target);
+            t.dps += stats[i].dps;
+            t.appliedDps += stats[i].appliedDps;
             if (stats[i].state < State::Online)
                 continue;
             t.cpu += stats[i].cpu;
@@ -1800,13 +2432,16 @@ struct Engine::Impl
         return *scratch;
     }
 
-    FitResult evaluate(const FitInput& in) const
+    FitResult evaluate(const FitInput& in, const DamageTarget* target) const
     {
         Scratch& s = threadScratch();
         resetScratch(s);
         FitResult out;
+        s.factorReload = in.factorReload;
+        s.spoolup = in.spoolup;
         addShipAndMode(s, in);
         addImplantsAndBoosters(s, in, &out.warnings);
+        addDrones(s, in, &out.warnings);
         for (size_t i = 0; i < in.modules.size(); ++i)
             addModule(s, in.modules[i], static_cast<int>(i), &out.warnings);
 
@@ -1816,7 +2451,7 @@ struct Engine::Impl
             out.ship[static_cast<size_t>(f)] = value(s, s.ship, f, 0);
 
         Totals t;
-        totals(s, t, true, 15u);
+        totals(s, t, true, 15u, true, target);
 
         out.modules.resize(static_cast<size_t>(s.moduleCount));
         for (int i = 0; i < s.moduleCount; ++i)
@@ -1836,7 +2471,26 @@ struct Engine::Impl
             r.averageCycleTime = ms.averageCycle;
             r.capUse = ms.capUse;
             r.numShots = ms.numShots;
+            r.dps = ms.dps;
+            r.appliedDps = ms.appliedDps;
         }
+        DamageTarget tackledTarget;
+        const DamageTarget* droneTarget = target;
+        if (target)
+        {
+            tackledTarget = tackled(s, *target);
+            droneTarget = &tackledTarget;
+        }
+        for (int i = 0; i < s.droneCount; ++i)
+        {
+            DroneResult dr;
+            dr.typeID = s.items[s.drones[i]].type->id;
+            dr.amount = s.items[s.drones[i]].amount;
+            droneDamage(s, s.drones[i], droneTarget, dr.dps, dr.appliedDps);
+            out.drones.push_back(dr);
+        }
+        out.dps = t.dps;
+        out.appliedDps = t.appliedDps;
         out.cpuUsed = t.cpu;
         out.powerUsed = t.power;
         out.calibrationUsed = t.calibration;
@@ -1857,9 +2511,9 @@ struct Engine::Impl
 Engine::Engine(const GameData& gd, const Character& character) : impl_(std::make_unique<Impl>(gd, character)) {}
 Engine::~Engine() = default;
 
-FitResult Engine::evaluate(const FitInput& fit) const
+FitResult Engine::evaluate(const FitInput& fit, const DamageTarget* target) const
 {
-    return impl_->evaluate(fit);
+    return impl_->evaluate(fit, target);
 }
 
 size_t Engine::compiledModifierCount() const
@@ -1873,6 +2527,11 @@ Engine::Reach Engine::reach(int typeID, bool asCharge) const
     const Type* t = impl_->gd.type(typeID);
     if (!t)
         return r;
+    if (!asCharge)
+    {
+        r.weapon = impl_->weaponKind(*t, impl_->gd.groupOf(*t));
+        r.tackle = impl_->tackleKind(*t) != 0;
+    }
     for (int eid : t->effects)
     {
         const EffectInfo* e = impl_->effect(eid);
@@ -1919,8 +2578,10 @@ TestResult toTestResult(const FitResult& r, const Objective& objective)
     case Goal::ArmorResists: t.goal = 1 / r.divider[Armor]; break;
     case Goal::ShieldRemote: t.goal = r.remoteRepair[Shield]; break;
     case Goal::ArmorRemote: t.goal = r.remoteRepair[Armor]; break;
+    case Goal::AppliedDps: t.goal = r.appliedDps; break;  // r evaluated with objective.target
     default: break;
     }
+    t.dps = r.dps;
     t.cpuUsed = r.cpuUsed;
     t.powerUsed = r.powerUsed;
     t.calibrationUsed = r.calibrationUsed;
@@ -1933,6 +2594,32 @@ TestResult toTestResult(const FitResult& r, const Objective& objective)
 }
 
 // ==================================================================== shared totals
+
+double spoolBonus(double maxValue, double stepValue, double cycleSeconds, SpoolType type, double amount)
+{
+    if (!maxValue || !stepValue)
+        return 0;
+    const double toMax = std::ceil(pymath::floatUnerr(maxValue / stepValue));
+    double cycles;
+    switch (type)
+    {
+    case SpoolType::CycleScale:
+        cycles = std::nearbyint(amount * toMax);  // Python round(): half to even
+        break;
+    case SpoolType::Time:
+        if (cycleSeconds <= 0)
+            return 0;
+        cycles = std::min(std::floor(pymath::floatUnerr(amount / cycleSeconds)), toMax);
+        break;
+    case SpoolType::Cycles:
+        cycles = std::min(std::floor(amount), toMax);
+        break;
+    default:  // SpoolScale (and Default: the caller resolves it)
+        cycles = std::ceil(pymath::floatUnerr(maxValue * amount / stepValue));
+        break;
+    }
+    return std::min(maxValue, cycles * stepValue);
+}
 
 CapSums capSums(const ModuleStats* modules, int count)
 {
@@ -2030,7 +2717,7 @@ RepProfile makeRepProfile(const ModuleStats* modules, int count, float capUsed, 
             }
             else if (m.ancillaryShield)
             {
-                double reload = m.hasCharge ? m.reload : 0.0;
+                double reload = m.hasCharge && m.factorReload ? m.reload : 0.0;
                 double offDuty = reload / (std::max(m.numShots, 1) * static_cast<double>(m.rawCycle) + reload);
                 p.adjust[static_cast<size_t>(layer)] -= amount * offDuty / cycle;
             }
@@ -2053,7 +2740,7 @@ RepProfile makeRepProfile(const ModuleStats* modules, int count, float capUsed, 
         r.layer = c.layer;
         r.hasCharge = m.hasCharge;
         r.cycleSeconds = m.rawCycle / 1000.0;
-        double reload = m.hasCharge ? m.reload : 0.0;
+        double reload = m.hasCharge && m.factorReload ? m.reload : 0.0;
         double shots = std::max(m.numShots, 1) * static_cast<double>(m.rawCycle);
         r.onDuty = shots / (shots + reload);
         r.paste = pasteMultiplier(m);
@@ -2312,6 +2999,11 @@ void resolveTargets(const Impl& e, const Scratch& s, const Mod& m, int owner, co
             if (e.filterMatches(s, m, s.boosters[i], skill))
                 out.push_back(s.boosters[i]);
         break;
+    case TargetSel::Drones:
+        for (int i = 0; i < s.droneCount; ++i)
+            if (e.filterMatches(s, m, s.drones[i], skill))
+                out.push_back(s.drones[i]);
+        break;
     }
 }
 
@@ -2556,8 +3248,11 @@ SearchPlan::SearchPlan(const Engine& engine, const SearchSpec& spec)
     e.resetScratch(s);
 
     // Superset: ship, mode, pinned modules, then every option of every slot.
+    s.factorReload = d.spec.base.factorReload;
+    s.spoolup = d.spec.base.spoolup;
     e.addShipAndMode(s, d.spec.base);
     e.addImplantsAndBoosters(s, d.spec.base, nullptr);
+    e.addDrones(s, d.spec.base, nullptr);
     for (size_t i = 0; i < d.spec.base.modules.size(); ++i)
         e.addModule(s, d.spec.base.modules[i], static_cast<int>(i), nullptr);
     d.staticModuleCount = s.moduleCount;
@@ -2585,10 +3280,10 @@ SearchPlan::SearchPlan(const Engine& engine, const SearchSpec& spec)
 
     // Dynamic: the source depends on the choice, or a value it reads (or an
     // assignment it makes) involves a field some dynamic instruction modifies.
-    std::vector<uint64_t> dyn(static_cast<size_t>(s.count), 0);
+    std::vector<FieldMask> dyn(static_cast<size_t>(s.count));
     auto touchesDyn = [&](const std::vector<std::pair<int, int>>& fields) {
         for (const auto& [item, f] : fields)
-            if (dyn[static_cast<size_t>(item)] >> f & 1)
+            if (dyn[static_cast<size_t>(item)].test(f))
                 return true;
         return false;
     };
@@ -2610,9 +3305,9 @@ SearchPlan::SearchPlan(const Engine& engine, const SearchSpec& spec)
             }
             if (in.dynamic)
                 for (const auto& [item, f] : in.writes)
-                    if (!(dyn[static_cast<size_t>(item)] >> f & 1))
+                    if (!(dyn[static_cast<size_t>(item)].test(f)))
                     {
-                        dyn[static_cast<size_t>(item)] |= uint64_t{1} << f;
+                        dyn[static_cast<size_t>(item)].set(f);
                         changed = true;
                     }
         }
@@ -2622,18 +3317,18 @@ SearchPlan::SearchPlan(const Engine& engine, const SearchSpec& spec)
     // modifies later would see that later modification; pyfa wouldn't. Backwards,
     // with the fields static instructions write later.
     {
-        std::vector<uint64_t> laterStatic(static_cast<size_t>(s.count), 0);
+        std::vector<FieldMask> laterStatic(static_cast<size_t>(s.count));
         for (size_t k = all.size(); k-- > 0;)
         {
             const Instr& in = all[k];
             if (!in.dynamic)
             {
                 for (const auto& [item, f] : in.writes)
-                    laterStatic[static_cast<size_t>(item)] |= uint64_t{1} << f;
+                    laterStatic[static_cast<size_t>(item)].set(f);
                 continue;
             }
             for (const auto& [item, f] : in.reads)
-                if (laterStatic[static_cast<size_t>(item)] >> f & 1)
+                if (laterStatic[static_cast<size_t>(item)].test(f))
                 {
                     ++d.stats.orderSensitive;
                     break;
@@ -2677,7 +3372,7 @@ SearchPlan::SearchPlan(const Engine& engine, const SearchSpec& spec)
     // writes are the same in every test.
     auto anyDyn = [&](const std::vector<std::pair<int, int>>& fields) {
         for (const auto& [item, f] : fields)
-            if (dyn[static_cast<size_t>(item)] >> f & 1)
+            if (dyn[static_cast<size_t>(item)].test(f))
                 return true;
         return false;
     };
@@ -2722,16 +3417,16 @@ SearchPlan::SearchPlan(const Engine& engine, const SearchSpec& spec)
     d.dynItem.assign(static_cast<size_t>(s.count), false);
     for (int item = 0; item < s.count; ++item)
     {
-        d.dynItem[static_cast<size_t>(item)] = dyn[static_cast<size_t>(item)] != 0;
+        d.dynItem[static_cast<size_t>(item)] = dyn[static_cast<size_t>(item)].any();
         ++d.stats.items;
-        if (dyn[static_cast<size_t>(item)])
+        if (dyn[static_cast<size_t>(item)].any())
         {
             ++d.stats.itemsWritten;
             continue;
         }
         const Item& it = s.items[item];
         for (int f = 0; f < it.stride; ++f)
-            if (it.touched >> f & 1)
+            if (it.touched.test(f))
                 e.value(s, item, f, 0);
     }
 }
@@ -2767,6 +3462,8 @@ TestResult SearchPlan::evaluate(const int* choice, const Objective& objective, T
     s.count = b.count;
     s.ship = b.ship;
     s.mode = b.mode;
+    s.factorReload = b.factorReload;
+    s.spoolup = b.spoolup;
     for (int i = 0; i < b.count; ++i)
         s.items.ptr[static_cast<size_t>(i)] = b.items.ptr[static_cast<size_t>(i)];
     bool live[kMaxItems];
@@ -2813,6 +3510,11 @@ TestResult SearchPlan::evaluate(const int* choice, const Objective& objective, T
         useItem(b.boosters[i]);
         s.boosters[s.boosterCount++] = b.boosters[i];
     }
+    for (int i = 0; i < b.droneCount; ++i)
+    {
+        useItem(b.drones[i]);
+        s.drones[s.droneCount++] = b.drones[i];
+    }
     for (int i = 0; i < d.staticModuleCount; ++i)
         useModule(b.modules[i]);
     for (size_t slot = 0; slot < d.spec.slots.size(); ++slot)
@@ -2851,8 +3553,10 @@ TestResult SearchPlan::evaluate(const int* choice, const Objective& objective, T
     const bool balanced = isBalancedGoal(goal);
     bool active = goal == Goal::ShieldActive || goal == Goal::ArmorActive || goal == Goal::ShieldRemote ||
                   goal == Goal::ArmorRemote || balanced;
+    const bool damage = goal == Goal::AppliedDps;
     e.totals(s, t, active,
-             balanced ? 1u << (2 * balancedLocalLayer(goal) + balancedRemoteLayer(goal)) : 0u);
+             balanced ? 1u << (2 * balancedLocalLayer(goal) + balancedRemoteLayer(goal)) : 0u, damage,
+             damage ? &objective.target : nullptr);
 
     TestResult r;
     if (balanced)
@@ -2874,8 +3578,10 @@ TestResult SearchPlan::evaluate(const int* choice, const Objective& objective, T
     case Goal::ArmorResists: r.goal = 1 / t.divider[Armor]; break;
     case Goal::ShieldRemote: r.goal = t.remoteRepair[Shield]; break;
     case Goal::ArmorRemote: r.goal = t.remoteRepair[Armor]; break;
+    case Goal::AppliedDps: r.goal = t.appliedDps; break;
     default: break;
     }
+    r.dps = t.dps;
     r.cpuUsed = t.cpu;
     r.powerUsed = t.power;
     r.calibrationUsed = t.calibration;
@@ -2895,6 +3601,8 @@ TestResult SearchPlan::evaluate(const int* choice, const Objective& objective, T
         detail->divider = t.divider;
         detail->capPeak = t.capPeak;
         detail->cap = t.cap;
+        detail->droneDps = t.droneDps;
+        detail->droneAppliedDps = t.droneAppliedDps;
         detail->moduleCount = s.moduleCount;
         for (int i = 0; i < s.moduleCount; ++i)
         {
@@ -2940,7 +3648,7 @@ Influence SearchPlan::influence(int slot, int option) const
     const int o = optionIndex(slot, option);
 
     // Same fixed point as the dynamic classification, seeded with this option only.
-    std::vector<uint64_t> written(static_cast<size_t>(s.count), 0);
+    std::vector<FieldMask> written(static_cast<size_t>(s.count));
     std::vector<char> hit(d.graph.size(), 0);
     for (bool changed = true; changed;)
     {
@@ -2955,16 +3663,16 @@ Influence SearchPlan::influence(int slot, int option) const
             {
                 bool h = in.option == o || (in.kind == Instr::Boosts && burstHit);
                 for (size_t r = 0; !h && r < in.reads.size(); ++r)
-                    h = written[static_cast<size_t>(in.reads[r].first)] >> in.reads[r].second & 1;
+                    h = written[static_cast<size_t>(in.reads[r].first)].test(in.reads[r].second);
                 if (!h)
                     continue;
                 hit[k] = 1;
                 changed = true;
             }
             for (const auto& [item, f] : in.writes)
-                if (!(written[static_cast<size_t>(item)] >> f & 1))
+                if (!(written[static_cast<size_t>(item)].test(f)))
                 {
-                    written[static_cast<size_t>(item)] |= uint64_t{1} << f;
+                    written[static_cast<size_t>(item)].set(f);
                     changed = true;
                 }
         }
@@ -2973,13 +3681,13 @@ Influence SearchPlan::influence(int slot, int option) const
     Influence out;
     for (int item = 0; item < s.count; ++item)
     {
-        uint64_t bits = written[static_cast<size_t>(item)];
-        if (!bits)
+        const FieldMask bits = written[static_cast<size_t>(item)];
+        if (!bits.any())
             continue;
         const Item& it = s.items[static_cast<size_t>(item)];
         if (item == s.ship)
         {
-            out.shipFields = bits;
+            out.shipFields = bits.w[0];
             continue;
         }
         int itemOpt = d.itemOption[static_cast<size_t>(item)];
@@ -2994,7 +3702,7 @@ Influence SearchPlan::influence(int slot, int option) const
         else if (itemOpt == o)
             continue;
         for (int f = 0; f < it.stride; ++f)
-            if (bits >> f & 1)
+            if (bits.test(f))
             {
                 Attr a = it.layout->fields[f];
                 if (itemOpt >= 0)

@@ -17,10 +17,10 @@ class AddCurrentlyOpenFit(ContextMenuUnconditional):
 
     def display(self, callingWindow, srcContext):
 
-        if srcContext not in ('projected', 'commandView', 'graphFitList', 'graphTgtList'):
+        if srcContext not in ('projected', 'commandView', 'targetView', 'graphFitList', 'graphTgtList'):
             return False
 
-        if srcContext in ('projected', 'commandView') and self.mainFrame.getActiveFit() is None:
+        if srcContext in ('projected', 'commandView', 'targetView') and self.mainFrame.getActiveFit() is None:
             return False
 
         return True

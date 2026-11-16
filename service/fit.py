@@ -222,6 +222,11 @@ class Fit:
             if booster.boosted_fit and booster.boosted_fit != fit and booster.boosted_fit in eos.db.saveddata_session:  # GH issue #359
                 refreshFits.add(booster.boosted_fit)
 
+        # Drop this fit from the target lists of other fits
+        for fitTarget in eos.db.getFitTargetsReferencing(fitID=fitID):
+            if fitTarget.fit is not None and fitTarget.fit is not fit:
+                fitTarget.fit.fitTargets.remove(fitTarget)
+
         eos.db.remove(fit)
 
         if fitID in Fit.processors:

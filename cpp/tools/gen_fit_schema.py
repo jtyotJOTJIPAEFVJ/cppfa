@@ -1,7 +1,7 @@
 """Generate the compact fit-engine schema (C++ header) from eve.db + effect_modifiers.tsv.
 
 The fit engine only stores attributes that the supported goals (tank, fitting,
-capacitor; see goal_closure.py) depend on. This script decides which ones:
+capacitor, applied damage; see goal_closure.py) depend on. This script decides which ones:
 
   Attr enum      every module/charge attribute in any goal's closure, plus the
                  ship attributes that can change per fit (goal attributes and
@@ -9,7 +9,7 @@ capacitor; see goal_closure.py) depend on. This script decides which ones:
                  Ship bonus amounts (shipBonusMC2, ...) are deliberately left
                  out: they are constant for a ship and get folded in at setup.
   ShipAttrs      float per ship Attr.
-  <Group>Attrs   one float-only struct per module/charge group, holding the
+  <Group>Attrs   one float-only struct per module/charge/implant/drone group, holding the
                  Attrs that group's items have or that relevant modifiers can
                  target on them. Groups with identical layouts share a struct.
 
@@ -39,6 +39,9 @@ IMPLANT_CATEGORIES = ('Implant',)  # implants and boosters
 CHARGE_CATEGORIES = ('Charge',)
 # Ship-mode items (T3 destroyers) live in category Ship Modifiers; they act like modules.
 MODE_CATEGORIES = ('Ship Modifiers',)
+DRONE_CATEGORIES = ('Drone',)
+# Ship attributes pyfa adds that aren't in eve.db (eve ID 0 in the schema).
+PSEUDO_ATTRS = ('droneControlRange',)
 
 
 def identifier(name):
@@ -53,7 +56,7 @@ def load_rows(path):
 
 def module_owned(owner):
     # Sources that differ between fits of the same ship.
-    return owner in ('module', 'charge', 'implant', 'booster')
+    return owner in ('module', 'charge', 'implant', 'booster', 'drone')
 
 
 def filter_can_match(r, item, skills_of, group_name_of, attrs_of, owner_skill_ids):
@@ -114,6 +117,7 @@ def main():
     module_attrs = {a for k, a in needed if k == 'module'}
     charge_attrs = {a for k, a in needed if k == 'charge'}
     implant_attrs = {a for k, a in needed if k in ('implant', 'booster')}
+    drone_attrs = {a for k, a in needed if k == 'drone'}
 
     # --- eve.db lookups --------------------------------------------------------
     attr_ids = dict(db.execute('SELECT attributeName, attributeID FROM dgmattribs'))
@@ -121,8 +125,9 @@ def main():
         SELECT t.typeID, t.typeName, g.groupID, g.name, c.name, IFNULL(t.reqskills, '')
         FROM invtypes t JOIN invgroups g USING(groupID) JOIN invcategories c USING(categoryID)
         WHERE c.name IN ({})""".format(','.join('?' * len(MODULE_CATEGORIES + CHARGE_CATEGORIES + MODE_CATEGORIES +
-                                                         IMPLANT_CATEGORIES))),
-                           MODULE_CATEGORIES + CHARGE_CATEGORIES + MODE_CATEGORIES + IMPLANT_CATEGORIES).fetchall()
+                                                         IMPLANT_CATEGORIES + DRONE_CATEGORIES))),
+                           MODULE_CATEGORIES + CHARGE_CATEGORIES + MODE_CATEGORIES + IMPLANT_CATEGORIES +
+                           DRONE_CATEGORIES).fetchall()
     type_attrs = collections.defaultdict(set)
     for tid, name in db.execute('SELECT v.typeID, a.attributeName FROM dgmtypeattribs v JOIN dgmattribs a USING(attributeID)'):
         type_attrs[tid].add(name)
@@ -144,16 +149,18 @@ def main():
     # Module-owned modifiers targeting module attributes, with the owner's skill ids
     # (for ownerSkill filters the owner is a skill: any skill could match, keep it).
     module_targeting = [(r, owner) for r, owner in used
-                        if goal_closure.target_kind(r, owner) in ('module', 'charge', 'implant', 'booster')]
+                        if goal_closure.target_kind(r, owner) in ('module', 'charge', 'implant', 'booster', 'drone')]
 
     groups = collections.OrderedDict()  # (kind, groupID) -> (group name, set of types)
     for tid, tname, gid, gname, cname, _ in type_rows:
-        kind = 'charge' if cname in CHARGE_CATEGORIES else 'implant' if cname in IMPLANT_CATEGORIES else 'module'
+        kind = 'charge' if cname in CHARGE_CATEGORIES else 'implant' if cname in IMPLANT_CATEGORIES \
+            else 'drone' if cname in DRONE_CATEGORIES else 'module'
         groups.setdefault((kind, gid), (gname, []))[1].append(tid)
 
     layouts = collections.OrderedDict()  # (kind, groupID) -> tuple of attrs
     for (kind, gid), (gname, tids) in groups.items():
-        relevant = {'module': module_attrs, 'charge': charge_attrs, 'implant': implant_attrs}[kind]
+        relevant = {'module': module_attrs, 'charge': charge_attrs, 'implant': implant_attrs,
+                    'drone': drone_attrs}[kind]
         fields = set()
         for tid in tids:
             fields |= type_attrs[tid] & relevant
@@ -167,7 +174,7 @@ def main():
             eid = int(r['effectID'])
             if r['domain'] == 'self':
                 # Only the item owning the effect (or, for charge effects, the module holding the charge).
-                if owner in ('module', 'implant', 'booster'):
+                if owner in ('module', 'implant', 'booster', 'drone'):
                     candidates = [t for t in tids if eid in type_effects[t]]
                 else:
                     candidates = [t for t in tids if 'chargeGroup1' in type_attrs[t]]
@@ -182,6 +189,10 @@ def main():
             layouts[(kind, gid)] = tuple(sorted(fields))
 
     # --- Attr enum ---------------------------------------------------------------
+    # pyfa's extra ship attributes that eve.db doesn't define (Ship.EXTRA_ATTRIBUTES):
+    # stored with eve ID 0, the engine gives them pyfa's base value.
+    for name in PSEUDO_ATTRS:
+        attr_ids.setdefault(name, 0)
     all_attrs = sorted(ship_dynamic | {a for f in layouts.values() for a in f})
     missing = [a for a in all_attrs if a not in attr_ids]
     all_attrs = [a for a in all_attrs if a in attr_ids]
@@ -192,7 +203,8 @@ def main():
     for (kind, gid), fields in layouts.items():
         gname = groups[(kind, gid)][0]
         if fields not in shapes:
-            shapes[fields] = identifier(gname) + ('ChargeAttrs' if kind == 'charge' else 'Attrs')
+            shapes[fields] = identifier(gname) + ('ChargeAttrs' if kind == 'charge' else
+                                                  'DroneAttrs' if kind == 'drone' else 'Attrs')
         group_struct[(kind, gid)] = shapes[fields]
 
     ship_fields = tuple(sorted(a for a in ship_dynamic if a in attr_ids))
@@ -216,7 +228,7 @@ def main():
     w('};')
     w(f'inline constexpr size_t kAttrCount = {len(all_attrs)};')
     w('')
-    w('// eve.db attributeID per Attr.')
+    w('// eve.db attributeID per Attr (0: pyfa-only ship attribute, see PSEUDO_ATTRS).')
     w('inline constexpr uint16_t kAttrEveID[kAttrCount] = {')
     for i in range(0, len(all_attrs), 12):
         w('    ' + ' '.join(f'{attr_ids[a]},' for a in all_attrs[i:i + 12]))

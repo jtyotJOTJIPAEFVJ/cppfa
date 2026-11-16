@@ -43,14 +43,19 @@ REQUEST_VERSION = 1
 # Goal names of the request, in the order the dialog shows them
 GOALS = ('shieldPassive', 'armorPassive', 'hullPassive', 'shieldActive', 'armorActive', 'shieldResists',
          'armorResists', 'shieldRemote', 'armorRemote', 'localShieldRemoteShield', 'localShieldRemoteArmor',
-         'localArmorRemoteShield', 'localArmorRemoteArmor')
+         'localArmorRemoteShield', 'localArmorRemoteArmor', 'appliedDps')
+
+
+def isDamageGoal(goal):
+    """Damage per second applied to the fit's target (the Target tab), see OPTIMIZER_CLI.md."""
+    return goal == 'appliedDps'
 
 
 def isBalancedGoal(goal):
     """Local tank and remote repair together (the harmonic mean of the two, see OPTIMIZER_CLI.md)."""
     return goal.startswith('local')
 
-# Only these slots can be optimized (high slots: for remote repairers)
+# Only these slots can be optimized (high slots: remote repairers, weapons for the damage goal)
 OPTIMIZABLE_SLOTS = (FittingSlot.HIGH, FittingSlot.MED, FittingSlot.LOW, FittingSlot.RIG)
 
 SLOT_NAMES = {
@@ -126,13 +131,54 @@ def buildModuleEntry(position, mod, optimize):
         mutators = {str(m.attrID): m.value for m in mod.mutators.values()}
         if mutators:
             entry['mutators'] = mutators
+        # The module's own spool-up setting (right-click > Spoolup); none = pyfa's default
+        if getattr(mod, 'spoolType', None) is not None:
+            entry['spoolType'] = int(mod.spoolType)
+            entry['spoolAmount'] = float(mod.spoolAmount or 0)
     entry['optimize'] = bool(optimize)
     return entry
 
 
+def buildDrones(fit):
+    """The request's drones: the fit's drones in space (amountActive)."""
+    drones = []
+    for drone in fit.drones:
+        if drone.item is None or drone.amountActive <= 0:
+            continue
+        entry = {'typeID': drone.itemID, 'amount': int(drone.amountActive)}
+        if getattr(drone, 'isMutated', False):
+            entry['baseTypeID'] = drone.baseItemID
+            mutators = {str(m.attrID): m.value for m in drone.mutators.values()}
+            if mutators:
+                entry['mutators'] = mutators
+        drones.append(entry)
+    return drones
+
+
+def buildTarget(target, distance, speedFactor=1.0):
+    """The request's damage target from service.target.getActiveTarget's dict."""
+    out = {'em': float(target['em']), 'thermal': float(target['thermal']), 'kinetic': float(target['kinetic']),
+           'explosive': float(target['explosive']), 'maxVelocity': float(target.get('maxVelocity') or 0),
+           'radius': float(target.get('radius') or 0), 'distance': max(0.0, float(distance or 0)),
+           'speedFactor': min(1.0, max(0.0, float(speedFactor)))}
+    # No signature (infinite, e.g. the ideal target) is left out: JSON has no infinity
+    for key in ('signatureRadius', 'signatureRadiusScrammed'):
+        sig = target.get(key)
+        if sig is not None and sig > 0 and sig != float('inf'):
+            out[key] = float(sig)
+    if target.get('maxVelocityScrammed') is not None:
+        out['maxVelocityScrammed'] = float(target['maxVelocityScrammed'])
+    for key in ('webResistance', 'painterResistance'):
+        if target.get(key) is not None:
+            out[key] = float(target[key])
+    out['immune'] = bool(target.get('immune', False))
+    return out
+
+
 def buildRequest(fit, positions, goal, priceCap=0, allowOfficer=False, results=10, threads=0,
                  prices=None, allSkillsV=False, timeBudget=60, allowAncillary=True, allowCapBoosters=True, maxReps=0,
-                 requireCapStable=False, minCapRecharge=0, remoteWeight=4):
+                 requireCapStable=False, minCapRecharge=0, remoteWeight=4, target=None, distance=0, speedFactor=1.0,
+                 excludePolarized=False):
     """
     The request dict for fit, with the modules (or empty slots) at positions (indices in
     fit.modules) open. prices: {typeID: ISK}; None reads pyfa's price cache.
@@ -144,9 +190,14 @@ def buildRequest(fit, positions, goal, priceCap=0, allowOfficer=False, results=1
     requireCapStable and minCapRecharge (GJ/s, peak recharge plus cap boosters) are
     capacitor requirements. An option that misses one doesn't count as fitting.
     remoteWeight: balanced goals, the EHP/s one remote HP/s is worth (the rep target's resists).
+    target: the damage goal's target, a service.target.getActiveTarget dict; distance (m,
+    surface to surface) and speedFactor (share of its speed it moves at, fully transversal)
+    the engagement; excludePolarized leaves polarized weapons out of the candidates.
     """
     if goal not in GOALS:
         raise ValueError('Unknown goal {}'.format(goal))
+    if isDamageGoal(goal) and target is None:
+        raise ValueError('The applied damage goal needs a target (enable one in the Target tab)')
     positions = set(positions)
     request = {'version': REQUEST_VERSION, 'ship': fit.ship.item.ID}
     if fit.mode is not None and fit.mode.item is not None:
@@ -158,6 +209,12 @@ def buildRequest(fit, positions, goal, priceCap=0, allowOfficer=False, results=1
     request['boosters'] = [
         {'typeID': b.itemID, 'active': bool(b.active), 'sideEffects': [e.ID for e in b.activeSideEffectEffects]}
         for b in fit.boosters]
+    request['drones'] = buildDrones(fit)
+    # pyfa's reload setting (Fit.factorReload, the global "factor in reload time") and default
+    # spool-up (preferences > engine): the optimizer computes cycles, capacitor, repair and damage so
+    import eos.config
+    request['factorReload'] = bool(fit.factorReload)
+    request['spoolup'] = min(1.0, max(0.0, float(eos.config.settings['globalDefaultSpoolupPercentage'])))
     modules = []
     for position, mod in enumerate(fit.modules):
         entry = buildModuleEntry(position, mod, position in positions)
@@ -169,10 +226,13 @@ def buildRequest(fit, positions, goal, priceCap=0, allowOfficer=False, results=1
     request['allowOfficer'] = bool(allowOfficer)
     request['allowAncillary'] = bool(allowAncillary)
     request['allowCapBoosters'] = bool(allowCapBoosters)
+    request['excludePolarized'] = bool(excludePolarized)
     request['maxReps'] = max(0, int(maxReps or 0))
     request['requireCapStable'] = bool(requireCapStable)
     request['minCapRecharge'] = max(0.0, float(minCapRecharge or 0))
     request['remoteWeight'] = max(0.1, float(remoteWeight or 4))
+    if target is not None:
+        request['target'] = buildTarget(target, distance, speedFactor)
     request['results'] = int(results)
     request['threads'] = int(threads)
     request['timeBudget'] = max(0.0, float(timeBudget or 0))
@@ -196,6 +256,143 @@ def readPrices():
         pyfalog.exception('Failed to read cached prices')
         return {}
     return {int(typeID): float(price) for typeID, price in rows}
+
+
+# -----------------------------------------------------------------------------
+# Price catalog
+# -----------------------------------------------------------------------------
+
+# Prices older than this are fetched again by updatePrices (a week)
+PRICE_MAX_AGE = 7 * 24 * 60 * 60
+# Types per price request (the market sources put them in one URL)
+PRICE_BATCH = 200
+
+
+def catalogTypeIDs():
+    """Published modules, charges and drones on the market: what the optimizer can propose."""
+    import eos.db
+    from sqlalchemy import text
+    rows = eos.db.gamedata_session.execute(text(
+        "SELECT t.typeID FROM invtypes t JOIN invgroups g ON g.groupID = t.groupID "
+        "JOIN invcategories c ON c.categoryID = g.categoryID "
+        "WHERE t.published = 1 AND t.marketGroupID IS NOT NULL AND c.name IN ('Module', 'Charge', 'Drone')")).fetchall()
+    return [int(r[0]) for r in rows]
+
+
+def readPriceRows():
+    """pyfa's cached prices: {typeID: (price, time, status)}."""
+    import eos.db
+    from eos.db.saveddata.price import prices_table
+    from sqlalchemy import select
+    try:
+        with eos.db.sd_lock:
+            rows = eos.db.saveddata_session.execute(select(
+                prices_table.c.typeID, prices_table.c.price, prices_table.c.time, prices_table.c.status)).fetchall()
+    except Exception:
+        pyfalog.exception('Failed to read cached prices')
+        return {}
+    return {int(t): (float(p or 0), float(tm or 0), int(st or 0)) for t, p, tm, st in rows}
+
+
+def priceSummary(now=None):
+    """How fresh the catalog's prices are: {'types', 'priced', 'medianAge', 'oldestAge', 'stale'}
+    (ages in seconds, None without prices; stale: types updatePrices would fetch)."""
+    from eos.saveddata.price import PriceStatus
+    now = time.time() if now is None else now
+    rows = readPriceRows()
+    types = catalogTypeIDs()
+    ages = sorted(now - rows[t][1] for t in types
+                  if t in rows and rows[t][2] == PriceStatus.fetchSuccess and rows[t][0] > 0)
+    return {'types': len(types), 'priced': len(ages),
+            'medianAge': ages[len(ages) // 2] if ages else None, 'oldestAge': ages[-1] if ages else None,
+            'stale': len(stalePriceTypes(rows=rows, types=types, now=now))}
+
+
+def stalePriceTypes(maxAge=PRICE_MAX_AGE, rows=None, types=None, now=None):
+    """Catalog types without a price fetched (or tried and not found) in the last maxAge seconds."""
+    from eos.saveddata.price import PriceStatus
+    now = time.time() if now is None else now
+    rows = readPriceRows() if rows is None else rows
+    types = catalogTypeIDs() if types is None else types
+    stale = []
+    for typeID in types:
+        row = rows.get(typeID)
+        if row is None or row[2] in (PriceStatus.initialized, PriceStatus.notSupported) or now - row[1] > maxAge:
+            stale.append(typeID)
+    return stale
+
+
+class PriceUpdate:
+    """
+    Fetches pyfa's prices for typeIDs in batches, through pyfa's price service (its source
+    and system settings), one batch after another. progress(done, total) and finished(cancelled)
+    are called on the GUI thread (the price service calls back with wx.CallAfter).
+    """
+
+    def __init__(self, typeIDs, progress=None, finished=None, maxAge=PRICE_MAX_AGE, batch=PRICE_BATCH,
+                 fetchTimeout=60):
+        self.typeIDs = list(typeIDs)
+        self.progress = progress
+        self.finished = finished
+        self.maxAge = maxAge
+        self.batch = batch
+        self.fetchTimeout = fetchTimeout
+        self.done = 0
+        self.cancelled = False
+        self.running = False
+
+    def start(self):
+        self.running = True
+        self._next()
+
+    def cancel(self):
+        self.cancelled = True
+
+    def _next(self):
+        if self.cancelled or self.done >= len(self.typeIDs):
+            self.running = False
+            if self.finished is not None:
+                self.finished(self.cancelled)
+            return
+        from service.price import Price
+        batch = self.typeIDs[self.done:self.done + self.batch]
+
+        def onBatch(requests):
+            self.done += len(batch)
+            if self.progress is not None:
+                self.progress(self.done, len(self.typeIDs))
+            self._next()
+
+        Price.getInstance().getPrices(batch, onBatch, fetchTimeout=self.fetchTimeout, validityOverride=self.maxAge)
+
+
+def optionPrice(option, prices):
+    """An option's ISK as the optimizer counts it (each module and its charge once, unknown = 0)."""
+    total = 0.0
+    for choice in option.slots:
+        if choice.isEmpty:
+            continue
+        total += prices.get(choice.typeID, 0) or 0
+        if choice.chargeID:
+            total += prices.get(choice.chargeID, 0) or 0
+    return total
+
+
+def ignoredProjections(fit):
+    """What pyfa applies to the fit that the optimizer leaves out: the Projected tab (fits,
+    modules, drones, fighters) and command fits. A list of short descriptions, empty if none."""
+    out = []
+    counts = (
+        (len(fit.projectedFits), 'projected fit', 'projected fits'),
+        (len(fit.projectedModules), 'projected module', 'projected modules'),
+        (sum(1 for d in fit.projectedDrones if getattr(d, 'amountActive', 1)), 'projected drone stack',
+         'projected drone stacks'),
+        (len(fit.projectedFighters), 'projected fighter squadron', 'projected fighter squadrons'),
+        (len(fit.commandFits), 'command fit', 'command fits'))
+    for count, one, many in counts:
+        if count:
+            out.append('{} {}'.format(count, one if count == 1 else many))
+    return out
 
 
 def fitMatchesRequest(fit, request):
@@ -273,6 +470,8 @@ class FitStats:
         # Balanced goals: local tank (EHP/s) and remote repair (HP/s), each in its own test
         self.localRep = data.get('localRep')
         self.remoteRep = data.get('remoteRep')
+        # Damage goal: raw damage per second (no resists, no application)
+        self.dps = data.get('dps')
         self.fits = bool(data.get('fits', True))
         self.price = data.get('price')
 

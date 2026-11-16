@@ -13,6 +13,15 @@ enum class Attr : uint16_t
 {
     ImplantSetNirvana,
     ImplantSetRapture,
+    activationBlockedStrenght,
+    agility,
+    aoeCloudSize,
+    aoeCloudSizeBonus,
+    aoeCloudSizeBonusBonus,
+    aoeDamageReductionFactor,
+    aoeVelocity,
+    aoeVelocityBonus,
+    aoeVelocityBonusBonus,
     armorDamageAmount,
     armorDamageAmountBonus,
     armorEmDamageResonance,
@@ -29,13 +38,21 @@ enum class Attr : uint16_t
     bastionModeArmorRepairCapDurationBonus,
     bastionModeShieldBoosterCapDurationBonus,
     bastionTurretROFBonus,
+    boosterAOEVelocityPenalty,
     boosterArmorHPPenalty,
     boosterArmorRepairAmountPenalty,
     boosterAttributeModifier,
     boosterCapacitorCapacityPenalty,
+    boosterMinerMaxRangeBonus,
     boosterMiningLaserIceGasHarvesterDurationReductionAndCapacitor,
+    boosterMissileAOECloudPenalty,
+    boosterMissileDamageBonusPostPercent,
+    boosterMissileVelocityPenalty,
     boosterShieldBoostAmountPenalty,
     boosterShieldCapacityPenalty,
+    boosterTurretFalloffPenalty,
+    boosterTurretOptimalRangePenalty,
+    boosterTurretTrackingPenalty,
     capNeedBonus,
     capRechargeBonus,
     capacitorBonus,
@@ -58,19 +75,45 @@ enum class Attr : uint16_t
     cpuOutput,
     cpuOutputBonus2,
     cpuPenaltyPercent,
+    crystalVolatilityChance,
+    crystalVolatilityDamage,
+    crystalsGetDamaged,
+    damageMultiplier,
+    damageMultiplierBonus,
+    damageMultiplierBonusMax,
+    damageMultiplierBonusMaxModifier,
+    damageMultiplierBonusPerCycle,
+    damageMultiplierBonusPerCycleModifier,
     drawback,
+    droneControlRange,
+    droneDamageBonus,
+    droneMaxVelocityBonus,
+    droneRangeBonus,
+    droneTrackingBonus,
     duration,
     durationBonus,
     durationHighisGood,
     durationSkillBonus,
+    ecmRangeBonus,
+    emDamage,
     emDamageResistanceBonus,
     emDamageResistanceBonusBonus,
     emDamageResonance,
+    empFieldRange,
     entosisCPUAdd,
     ewCapacitorNeedBonus,
+    explosionDelay,
+    explosionDelayBonus,
+    explosionDelayBonusBonus,
+    explosiveDamage,
     explosiveDamageResistanceBonus,
     explosiveDamageResistanceBonusBonus,
     explosiveDamageResonance,
+    fallofMultiplier,
+    falloff,
+    falloffBonus,
+    falloffBonusBonus,
+    falloffEffectiveness,
     hiSlotModifier,
     hiSlots,
     hiddenArmorHPMultiplier,
@@ -80,18 +123,30 @@ enum class Attr : uint16_t
     hullHpBonus,
     hullKineticDamageResonance,
     hullThermalDamageResonance,
+    hydraDroneRangeBonus,
+    hydraDroneTrackingBonus,
+    hydraMissileExplosionVelocityBonus,
+    hydraMissileFlightTimeBonus,
     iceHarvestCycleBonus,
     implantSetAmulet,
     implantSetBloodraider,
     implantSetChristmas,
     implantSetGuristas,
+    implantSetHydra,
+    implantSetMordus,
+    implantSetORE,
     implantSetSavior,
     implantSetSerpentis2,
     implantSetSyndicate,
+    industrialCoreBonusCommandBurstRange,
+    industrialCoreBonusDroneDamageHP,
+    industrialCoreBonusDroneVelocity,
     industrialCoreBonusMiningBurstStrength,
     industrialCoreLocalLogisticsAmountBonus,
     industrialCoreLocalLogisticsDurationBonus,
     industrialCoreRemoteLogisticsDurationBonus,
+    industrialCoreRemoteLogisticsRangeBonus,
+    kineticDamage,
     kineticDamageResistanceBonus,
     kineticDamageResistanceBonusBonus,
     kineticDamageResonance,
@@ -99,26 +154,59 @@ enum class Attr : uint16_t
     launcherSlotsLeft,
     lowSlotModifier,
     lowSlots,
+    mass,
+    maxFOFTargetRange,
+    maxFlightTimeBonus,
+    maxRange,
+    maxRangeBonus,
+    maxRangeBonusBonus,
+    maxTargetRange,
+    maxTargetRangeBonus,
+    maxTargetRangeBonusBonus,
+    maxTargetRangeMultiplier,
+    maxVelocity,
+    maxVelocityBonus,
     medSlotModifier,
     medSlots,
     mediumRemoteRepFittingMultiplier,
     mindlinkBonus,
     miningUpgradeCPUReductionBonus,
+    missileDamageMultiplierBonus,
+    missileVelocityBonus,
+    missileVelocityBonusBonus,
     modeAnhingaCruiseLauncherTorpedoLauncherRapidHeavyLauncherROFPostDiv,
+    modeAnhingaMissileFlightTimePostDiv,
+    modeAnhingaMissileMaxVelocityPostDiv,
     modeArmorRepDurationPostDiv,
+    modeDamageBonusPostDiv,
     modeEmResistancePostDiv,
     modeExplosiveResistancePostDiv,
     modeKineticResistancePostDiv,
+    modeLightMissileMaxVelocityBonusPostDivSkua,
     modeMWDCapPostDiv,
+    modeMWDSigPenaltyPostDiv,
+    modeMWDVelocityPostDiv,
+    modeMaxRangePostDiv,
+    modeMaxTargetRangePostDiv,
     modeRemoteRepairBonusPostDiv,
     modeRemoteRepairCapacitorCostPostDiv,
+    modeRocketMissileMaxVelocityBonusPostDivSkua,
     modeThermicResistancePostDiv,
+    modeTrackingPostDiv,
+    modeVelocityPostDiv,
     moduleReactivationDelay,
+    optimalSigRadius,
     overloadArmorDamageAmount,
+    overloadDamageModifier,
     overloadHardeningBonus,
+    overloadPainterStrengthBonus,
+    overloadRangeBonus,
     overloadRofBonus,
     overloadSelfDurationBonus,
+    overloadSensorModuleStrengthBonus,
     overloadShieldBonus,
+    overloadSpeedFactorBonus,
+    overloadTrackingModuleStrengthBonus,
     passiveEmDamageResistanceBonus,
     passiveExplosiveDamageResistanceBonus,
     passiveKineticDamageResistanceBonus,
@@ -130,9 +218,14 @@ enum class Attr : uint16_t
     powerOutput,
     powerOutputMultiplier,
     powerTransferAmount,
+    radius,
+    rangeSkillBonus,
     rechargeRate,
     reloadTime,
+    remoteArmorRepairerFalloffBonus,
+    remoteArmorRepairerOptimalBonus,
     remoteRepDurationCapBonus,
+    remoteShieldBoosterFalloffBonus,
     repairBonus,
     repairMultiplierBonusMax,
     repairMultiplierBonusPerCycle,
@@ -142,9 +235,12 @@ enum class Attr : uint16_t
     resistanceShiftAmount,
     rigSlots,
     rofBonus,
+    roleBonusCommandBurstAoERange,
     roleBonusMarauder,
     scanDurationBonus,
+    scanSkillEwStrengthBonus,
     scanspeedBonus,
+    setBonusMimesis,
     shieldBonus,
     shieldBoostCapacitorBonus,
     shieldBoostMultiplier,
@@ -165,17 +261,35 @@ enum class Attr : uint16_t
     siegeLocalLogisticsAmountBonus,
     siegeLocalLogisticsCapacitorNeedBonus,
     siegeLocalLogisticsDurationBonus,
+    siegeMissileDamageBonus,
     siegeRemoteLogisticsAmountBonus,
     siegeRemoteLogisticsDurationBonus,
+    siegeRemoteLogisticsRangeBonus,
+    siegeTorpedoVelocityBonus,
+    siegeTurretDamageBonus,
+    signatureRadiusBonus,
+    signatureRadiusBonusBonus,
     specializationAsteroidDurationMultiplier,
     speed,
+    speedFBonus,
+    speedFactor,
+    speedFactorBonus,
     speedMultiplier,
+    stasisWebRangeAdd,
+    stasisWebRangeBonus,
     structureDamageAmount,
     structureFullPowerStateHitpointMultiplier,
     structureHPBonusAdd,
     structureHPMultiplier,
     structureRigEwarCapUseBonus,
+    structureRigEwarFalloffBonus,
+    structureRigEwarOptimalBonus,
+    structureRigMaxTargetRangeBonus,
+    structureRigMissileExploVeloBonus,
+    structureRigMissileExplosionRadiusBonus,
+    structureRigMissileVelocityBonus,
     structureRigPDCapUseBonus,
+    structureRigPDRangeBonus,
     subsystemBonusAmarrCore,
     subsystemBonusAmarrCore2,
     subsystemBonusAmarrCore3,
@@ -185,14 +299,21 @@ enum class Attr : uint16_t
     subsystemBonusAmarrOffensive,
     subsystemBonusAmarrOffensive2,
     subsystemBonusAmarrOffensive3,
+    subsystemBonusAmarrPropulsion,
+    subsystemBonusAmarrPropulsion2,
     subsystemBonusCaldariCore,
+    subsystemBonusCaldariCore2,
     subsystemBonusCaldariDefensive,
     subsystemBonusCaldariDefensive2,
     subsystemBonusCaldariDefensive3,
     subsystemBonusCaldariOffensive,
     subsystemBonusCaldariOffensive2,
     subsystemBonusCaldariOffensive3,
+    subsystemBonusCaldariPropulsion,
+    subsystemBonusCaldariPropulsion2,
     subsystemBonusGallenteCore,
+    subsystemBonusGallenteCore2,
+    subsystemBonusGallenteCore3,
     subsystemBonusGallenteDefensive,
     subsystemBonusGallenteDefensive2,
     subsystemBonusGallenteDefensive3,
@@ -200,13 +321,18 @@ enum class Attr : uint16_t
     subsystemBonusGallenteOffensive2,
     subsystemBonusGallenteOffensive3,
     subsystemBonusGallentePropulsion,
+    subsystemBonusGallentePropulsion2,
     subsystemBonusMinmatarCore,
+    subsystemBonusMinmatarCore2,
+    subsystemBonusMinmatarCore3,
     subsystemBonusMinmatarDefensive,
     subsystemBonusMinmatarDefensive2,
     subsystemBonusMinmatarDefensive3,
     subsystemBonusMinmatarOffensive,
     subsystemBonusMinmatarOffensive2,
     subsystemBonusMinmatarOffensive3,
+    subsystemBonusMinmatarPropulsion,
+    subsystemBonusMinmatarPropulsion2,
     subsystemCommandBurstFittingReduction,
     subsystemEnergyNeutFittingReduction,
     subsystemMETFittingReduction,
@@ -215,9 +341,15 @@ enum class Attr : uint16_t
     subsystemMPTFittingReduction,
     subsystemMRARFittingReduction,
     subsystemMRSBFittingReduction,
+    surveyProbeDurationBonus,
+    thermalDamage,
     thermalDamageResistanceBonus,
     thermalDamageResistanceBonusBonus,
     thermalDamageResonance,
+    trackingSpeed,
+    trackingSpeedBonus,
+    trackingSpeedBonusBonus,
+    trackingSpeedMultiplier,
     turretHardPointModifier,
     turretSlotsLeft,
     turretSpeeBonus,
@@ -233,35 +365,59 @@ enum class Attr : uint16_t
     warfareBuff4Value,
     warfareLinkCPUAdd,
     warfareLinkCPUPenalty,
+    warpScrambleRange,
+    warpScrambleRangeBonus,
+    weaponRangeMultiplier,
+    webSpeedFactorBonus,
 };
-inline constexpr size_t kAttrCount = 222;
+inline constexpr size_t kAttrCount = 358;
 
-// eve.db attributeID per Attr.
+// eve.db attributeID per Attr (0: pyfa-only ship attribute, see PSEUDO_ATTRS).
 inline constexpr uint16_t kAttrEveID[kAttrCount] = {
-    3017, 3107, 84, 895, 267, 268, 265, 1159, 148, 335, 1083, 269,
-    2457, 270, 3108, 5964, 6187, 3109, 1141, 1142, 1126, 1150, 6099, 616,
-    1143, 317, 314, 67, 482, 1079, 147, 6, 144, 38, 72, 56,
-    1886, 649, 1870, 1871, 1034, 50, 202, 310, 48, 424, 1082, 1138,
-    73, 66, 3115, 312, 984, 2402, 113, 2041, 1190, 985, 2403, 111,
-    1374, 14, 2751, 9, 974, 975, 327, 976, 977, 780, 864, 799,
-    1799, 838, 3023, 803, 1291, 2587, 2607, 2606, 2605, 986, 2404, 109,
-    1369, 101, 1376, 12, 1375, 13, 2691, 884, 927, 6082, 2030, 1997,
-    1998, 2000, 2032, 5962, 5961, 1999, 669, 1230, 1208, 1205, 1206, 1231,
-    994, 995, 996, 997, 30, 313, 549, 323, 11, 145, 90, 55,
-    1795, 3024, 806, 2797, 2796, 1978, 1979, 2746, 1849, 1137, 293, 1923,
-    1906, 308, 68, 851, 548, 263, 337, 146, 271, 272, 3015, 273,
-    274, 2298, 2299, 2300, 2301, 2821, 2305, 2347, 5988, 2346, 2345, 2344,
-    3161, 51, 204, 83, 2743, 2688, 150, 2442, 2437, 1431, 1509, 2681,
-    1433, 1507, 2680, 1434, 1511, 1531, 1441, 1443, 1516, 2682, 1444, 1510,
-    1533, 1436, 1438, 1517, 2684, 1439, 1521, 1532, 1440, 1446, 1448, 1526,
-    2686, 1449, 1522, 1534, 2692, 2665, 2668, 2666, 2669, 2667, 2671, 2670,
-    987, 2405, 110, 1368, 102, 441, 1132, 1153, 161, 2596, 2469, 2597,
-    2471, 2598, 2473, 2537, 1882, 1883,
+    3017, 3107, 1350, 70, 654, 848, 2023, 1353, 653, 847, 2024, 84,
+    895, 267, 268, 265, 1159, 148, 335, 1083, 269, 2457, 270, 3108,
+    5964, 6187, 3109, 1147, 1141, 1142, 1126, 1150, 6098, 6099, 1149, 6125,
+    1148, 616, 1143, 1146, 1144, 1145, 317, 314, 67, 482, 1079, 147,
+    6, 144, 38, 72, 56, 1886, 649, 1870, 1871, 1034, 50, 202,
+    310, 48, 424, 1082, 783, 784, 786, 64, 292, 2734, 2823, 2733,
+    2824, 1138, 0, 1255, 591, 459, 3353, 73, 66, 3115, 312, 1536,
+    114, 984, 2402, 113, 99, 2041, 1190, 281, 596, 2026, 116, 985,
+    2403, 111, 517, 158, 349, 1332, 2044, 1374, 14, 2751, 9, 974,
+    975, 327, 976, 977, 3029, 3028, 3031, 3030, 780, 864, 799, 1799,
+    838, 3027, 1293, 1292, 3023, 803, 1291, 2588, 2583, 2584, 2587, 2607,
+    2606, 2605, 2604, 117, 986, 2404, 109, 1369, 101, 1376, 12, 4,
+    2700, 557, 54, 351, 1315, 76, 309, 1313, 237, 37, 2603, 1375,
+    13, 2691, 884, 927, 213, 547, 2025, 6082, 6080, 6081, 2030, 2589,
+    1997, 1998, 2000, 6078, 2032, 2007, 2031, 1990, 1991, 5962, 5961, 6079,
+    1999, 2008, 2003, 669, 620, 1230, 1210, 1208, 1937, 1222, 1205, 1206,
+    1936, 1231, 1223, 1935, 994, 995, 996, 997, 30, 313, 549, 323,
+    11, 145, 90, 162, 294, 55, 1795, 2694, 2695, 3024, 2693, 806,
+    2797, 2796, 1978, 1979, 2746, 1849, 1137, 293, 2574, 1923, 1906, 828,
+    308, 2825, 68, 851, 548, 263, 337, 146, 271, 272, 3015, 273,
+    274, 2298, 2299, 2300, 2301, 2821, 2305, 2347, 5988, 2346, 2306, 2345,
+    2344, 2348, 2304, 2307, 554, 1227, 3161, 51, 318, 20, 1164, 204,
+    3206, 2747, 83, 2743, 2688, 150, 2442, 2441, 2440, 2748, 2438, 2449,
+    2439, 2437, 2436, 1431, 1509, 2681, 1433, 1507, 2680, 1434, 1511, 1531,
+    1435, 1512, 1441, 1515, 1443, 1516, 2682, 1444, 1510, 1533, 1445, 1513,
+    1436, 1519, 2685, 1438, 1517, 2684, 1439, 1521, 1532, 1440, 1520, 1446,
+    1525, 2687, 1448, 1526, 2686, 1449, 1522, 1534, 1450, 1523, 2692, 2665,
+    2668, 2666, 2669, 2667, 2671, 2670, 2701, 118, 987, 2405, 110, 160,
+    767, 1316, 244, 1368, 102, 441, 1132, 1153, 161, 2596, 2469, 2597,
+    2471, 2598, 2473, 2537, 1882, 1883, 103, 1327, 120, 1619,
 };
 
 inline constexpr const char* kAttrName[kAttrCount] = {
     "ImplantSetNirvana",
     "ImplantSetRapture",
+    "activationBlockedStrenght",
+    "agility",
+    "aoeCloudSize",
+    "aoeCloudSizeBonus",
+    "aoeCloudSizeBonusBonus",
+    "aoeDamageReductionFactor",
+    "aoeVelocity",
+    "aoeVelocityBonus",
+    "aoeVelocityBonusBonus",
     "armorDamageAmount",
     "armorDamageAmountBonus",
     "armorEmDamageResonance",
@@ -278,13 +434,21 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "bastionModeArmorRepairCapDurationBonus",
     "bastionModeShieldBoosterCapDurationBonus",
     "bastionTurretROFBonus",
+    "boosterAOEVelocityPenalty",
     "boosterArmorHPPenalty",
     "boosterArmorRepairAmountPenalty",
     "boosterAttributeModifier",
     "boosterCapacitorCapacityPenalty",
+    "boosterMinerMaxRangeBonus",
     "boosterMiningLaserIceGasHarvesterDurationReductionAndCapacitor",
+    "boosterMissileAOECloudPenalty",
+    "boosterMissileDamageBonusPostPercent",
+    "boosterMissileVelocityPenalty",
     "boosterShieldBoostAmountPenalty",
     "boosterShieldCapacityPenalty",
+    "boosterTurretFalloffPenalty",
+    "boosterTurretOptimalRangePenalty",
+    "boosterTurretTrackingPenalty",
     "capNeedBonus",
     "capRechargeBonus",
     "capacitorBonus",
@@ -307,19 +471,45 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "cpuOutput",
     "cpuOutputBonus2",
     "cpuPenaltyPercent",
+    "crystalVolatilityChance",
+    "crystalVolatilityDamage",
+    "crystalsGetDamaged",
+    "damageMultiplier",
+    "damageMultiplierBonus",
+    "damageMultiplierBonusMax",
+    "damageMultiplierBonusMaxModifier",
+    "damageMultiplierBonusPerCycle",
+    "damageMultiplierBonusPerCycleModifier",
     "drawback",
+    "droneControlRange",
+    "droneDamageBonus",
+    "droneMaxVelocityBonus",
+    "droneRangeBonus",
+    "droneTrackingBonus",
     "duration",
     "durationBonus",
     "durationHighisGood",
     "durationSkillBonus",
+    "ecmRangeBonus",
+    "emDamage",
     "emDamageResistanceBonus",
     "emDamageResistanceBonusBonus",
     "emDamageResonance",
+    "empFieldRange",
     "entosisCPUAdd",
     "ewCapacitorNeedBonus",
+    "explosionDelay",
+    "explosionDelayBonus",
+    "explosionDelayBonusBonus",
+    "explosiveDamage",
     "explosiveDamageResistanceBonus",
     "explosiveDamageResistanceBonusBonus",
     "explosiveDamageResonance",
+    "fallofMultiplier",
+    "falloff",
+    "falloffBonus",
+    "falloffBonusBonus",
+    "falloffEffectiveness",
     "hiSlotModifier",
     "hiSlots",
     "hiddenArmorHPMultiplier",
@@ -329,18 +519,30 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "hullHpBonus",
     "hullKineticDamageResonance",
     "hullThermalDamageResonance",
+    "hydraDroneRangeBonus",
+    "hydraDroneTrackingBonus",
+    "hydraMissileExplosionVelocityBonus",
+    "hydraMissileFlightTimeBonus",
     "iceHarvestCycleBonus",
     "implantSetAmulet",
     "implantSetBloodraider",
     "implantSetChristmas",
     "implantSetGuristas",
+    "implantSetHydra",
+    "implantSetMordus",
+    "implantSetORE",
     "implantSetSavior",
     "implantSetSerpentis2",
     "implantSetSyndicate",
+    "industrialCoreBonusCommandBurstRange",
+    "industrialCoreBonusDroneDamageHP",
+    "industrialCoreBonusDroneVelocity",
     "industrialCoreBonusMiningBurstStrength",
     "industrialCoreLocalLogisticsAmountBonus",
     "industrialCoreLocalLogisticsDurationBonus",
     "industrialCoreRemoteLogisticsDurationBonus",
+    "industrialCoreRemoteLogisticsRangeBonus",
+    "kineticDamage",
     "kineticDamageResistanceBonus",
     "kineticDamageResistanceBonusBonus",
     "kineticDamageResonance",
@@ -348,26 +550,59 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "launcherSlotsLeft",
     "lowSlotModifier",
     "lowSlots",
+    "mass",
+    "maxFOFTargetRange",
+    "maxFlightTimeBonus",
+    "maxRange",
+    "maxRangeBonus",
+    "maxRangeBonusBonus",
+    "maxTargetRange",
+    "maxTargetRangeBonus",
+    "maxTargetRangeBonusBonus",
+    "maxTargetRangeMultiplier",
+    "maxVelocity",
+    "maxVelocityBonus",
     "medSlotModifier",
     "medSlots",
     "mediumRemoteRepFittingMultiplier",
     "mindlinkBonus",
     "miningUpgradeCPUReductionBonus",
+    "missileDamageMultiplierBonus",
+    "missileVelocityBonus",
+    "missileVelocityBonusBonus",
     "modeAnhingaCruiseLauncherTorpedoLauncherRapidHeavyLauncherROFPostDiv",
+    "modeAnhingaMissileFlightTimePostDiv",
+    "modeAnhingaMissileMaxVelocityPostDiv",
     "modeArmorRepDurationPostDiv",
+    "modeDamageBonusPostDiv",
     "modeEmResistancePostDiv",
     "modeExplosiveResistancePostDiv",
     "modeKineticResistancePostDiv",
+    "modeLightMissileMaxVelocityBonusPostDivSkua",
     "modeMWDCapPostDiv",
+    "modeMWDSigPenaltyPostDiv",
+    "modeMWDVelocityPostDiv",
+    "modeMaxRangePostDiv",
+    "modeMaxTargetRangePostDiv",
     "modeRemoteRepairBonusPostDiv",
     "modeRemoteRepairCapacitorCostPostDiv",
+    "modeRocketMissileMaxVelocityBonusPostDivSkua",
     "modeThermicResistancePostDiv",
+    "modeTrackingPostDiv",
+    "modeVelocityPostDiv",
     "moduleReactivationDelay",
+    "optimalSigRadius",
     "overloadArmorDamageAmount",
+    "overloadDamageModifier",
     "overloadHardeningBonus",
+    "overloadPainterStrengthBonus",
+    "overloadRangeBonus",
     "overloadRofBonus",
     "overloadSelfDurationBonus",
+    "overloadSensorModuleStrengthBonus",
     "overloadShieldBonus",
+    "overloadSpeedFactorBonus",
+    "overloadTrackingModuleStrengthBonus",
     "passiveEmDamageResistanceBonus",
     "passiveExplosiveDamageResistanceBonus",
     "passiveKineticDamageResistanceBonus",
@@ -379,9 +614,14 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "powerOutput",
     "powerOutputMultiplier",
     "powerTransferAmount",
+    "radius",
+    "rangeSkillBonus",
     "rechargeRate",
     "reloadTime",
+    "remoteArmorRepairerFalloffBonus",
+    "remoteArmorRepairerOptimalBonus",
     "remoteRepDurationCapBonus",
+    "remoteShieldBoosterFalloffBonus",
     "repairBonus",
     "repairMultiplierBonusMax",
     "repairMultiplierBonusPerCycle",
@@ -391,9 +631,12 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "resistanceShiftAmount",
     "rigSlots",
     "rofBonus",
+    "roleBonusCommandBurstAoERange",
     "roleBonusMarauder",
     "scanDurationBonus",
+    "scanSkillEwStrengthBonus",
     "scanspeedBonus",
+    "setBonusMimesis",
     "shieldBonus",
     "shieldBoostCapacitorBonus",
     "shieldBoostMultiplier",
@@ -414,17 +657,35 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "siegeLocalLogisticsAmountBonus",
     "siegeLocalLogisticsCapacitorNeedBonus",
     "siegeLocalLogisticsDurationBonus",
+    "siegeMissileDamageBonus",
     "siegeRemoteLogisticsAmountBonus",
     "siegeRemoteLogisticsDurationBonus",
+    "siegeRemoteLogisticsRangeBonus",
+    "siegeTorpedoVelocityBonus",
+    "siegeTurretDamageBonus",
+    "signatureRadiusBonus",
+    "signatureRadiusBonusBonus",
     "specializationAsteroidDurationMultiplier",
     "speed",
+    "speedFBonus",
+    "speedFactor",
+    "speedFactorBonus",
     "speedMultiplier",
+    "stasisWebRangeAdd",
+    "stasisWebRangeBonus",
     "structureDamageAmount",
     "structureFullPowerStateHitpointMultiplier",
     "structureHPBonusAdd",
     "structureHPMultiplier",
     "structureRigEwarCapUseBonus",
+    "structureRigEwarFalloffBonus",
+    "structureRigEwarOptimalBonus",
+    "structureRigMaxTargetRangeBonus",
+    "structureRigMissileExploVeloBonus",
+    "structureRigMissileExplosionRadiusBonus",
+    "structureRigMissileVelocityBonus",
     "structureRigPDCapUseBonus",
+    "structureRigPDRangeBonus",
     "subsystemBonusAmarrCore",
     "subsystemBonusAmarrCore2",
     "subsystemBonusAmarrCore3",
@@ -434,14 +695,21 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "subsystemBonusAmarrOffensive",
     "subsystemBonusAmarrOffensive2",
     "subsystemBonusAmarrOffensive3",
+    "subsystemBonusAmarrPropulsion",
+    "subsystemBonusAmarrPropulsion2",
     "subsystemBonusCaldariCore",
+    "subsystemBonusCaldariCore2",
     "subsystemBonusCaldariDefensive",
     "subsystemBonusCaldariDefensive2",
     "subsystemBonusCaldariDefensive3",
     "subsystemBonusCaldariOffensive",
     "subsystemBonusCaldariOffensive2",
     "subsystemBonusCaldariOffensive3",
+    "subsystemBonusCaldariPropulsion",
+    "subsystemBonusCaldariPropulsion2",
     "subsystemBonusGallenteCore",
+    "subsystemBonusGallenteCore2",
+    "subsystemBonusGallenteCore3",
     "subsystemBonusGallenteDefensive",
     "subsystemBonusGallenteDefensive2",
     "subsystemBonusGallenteDefensive3",
@@ -449,13 +717,18 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "subsystemBonusGallenteOffensive2",
     "subsystemBonusGallenteOffensive3",
     "subsystemBonusGallentePropulsion",
+    "subsystemBonusGallentePropulsion2",
     "subsystemBonusMinmatarCore",
+    "subsystemBonusMinmatarCore2",
+    "subsystemBonusMinmatarCore3",
     "subsystemBonusMinmatarDefensive",
     "subsystemBonusMinmatarDefensive2",
     "subsystemBonusMinmatarDefensive3",
     "subsystemBonusMinmatarOffensive",
     "subsystemBonusMinmatarOffensive2",
     "subsystemBonusMinmatarOffensive3",
+    "subsystemBonusMinmatarPropulsion",
+    "subsystemBonusMinmatarPropulsion2",
     "subsystemCommandBurstFittingReduction",
     "subsystemEnergyNeutFittingReduction",
     "subsystemMETFittingReduction",
@@ -464,9 +737,15 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "subsystemMPTFittingReduction",
     "subsystemMRARFittingReduction",
     "subsystemMRSBFittingReduction",
+    "surveyProbeDurationBonus",
+    "thermalDamage",
     "thermalDamageResistanceBonus",
     "thermalDamageResistanceBonusBonus",
     "thermalDamageResonance",
+    "trackingSpeed",
+    "trackingSpeedBonus",
+    "trackingSpeedBonusBonus",
+    "trackingSpeedMultiplier",
     "turretHardPointModifier",
     "turretSlotsLeft",
     "turretSpeeBonus",
@@ -482,6 +761,10 @@ inline constexpr const char* kAttrName[kAttrCount] = {
     "warfareBuff4Value",
     "warfareLinkCPUAdd",
     "warfareLinkCPUPenalty",
+    "warpScrambleRange",
+    "warpScrambleRangeBonus",
+    "weaponRangeMultiplier",
+    "webSpeedFactorBonus",
 };
 
 // Ship attributes that can change per fit.
@@ -494,6 +777,7 @@ struct ShipAttrs
     float armorThermalDamageResonance = 0.0f;
     float capacitorCapacity = 0.0f;
     float cpuOutput = 0.0f;
+    float droneControlRange = 0.0f;
     float emDamageResonance = 0.0f;
     float explosiveDamageResonance = 0.0f;
     float hiSlots = 0.0f;
@@ -502,8 +786,10 @@ struct ShipAttrs
     float kineticDamageResonance = 0.0f;
     float launcherSlotsLeft = 0.0f;
     float lowSlots = 0.0f;
+    float maxTargetRange = 0.0f;
     float medSlots = 0.0f;
     float powerOutput = 0.0f;
+    float radius = 0.0f;
     float rechargeRate = 0.0f;
     float rigSlots = 0.0f;
     float shieldCapacity = 0.0f;
@@ -516,42 +802,180 @@ struct ShipAttrs
     float turretSlotsLeft = 0.0f;
     float upgradeCapacity = 0.0f;
 
-    static constexpr Attr kFields[28] = {
+    static constexpr Attr kFields[31] = {
         Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorHP, Attr::armorKineticDamageResonance,
-        Attr::armorThermalDamageResonance, Attr::capacitorCapacity, Attr::cpuOutput, Attr::emDamageResonance,
-        Attr::explosiveDamageResonance, Attr::hiSlots, Attr::hiddenArmorHPMultiplier, Attr::hp,
-        Attr::kineticDamageResonance, Attr::launcherSlotsLeft, Attr::lowSlots, Attr::medSlots,
-        Attr::powerOutput, Attr::rechargeRate, Attr::rigSlots, Attr::shieldCapacity,
-        Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
-        Attr::structureFullPowerStateHitpointMultiplier, Attr::thermalDamageResonance, Attr::turretSlotsLeft, Attr::upgradeCapacity,
+        Attr::armorThermalDamageResonance, Attr::capacitorCapacity, Attr::cpuOutput, Attr::droneControlRange,
+        Attr::emDamageResonance, Attr::explosiveDamageResonance, Attr::hiSlots, Attr::hiddenArmorHPMultiplier,
+        Attr::hp, Attr::kineticDamageResonance, Attr::launcherSlotsLeft, Attr::lowSlots,
+        Attr::maxTargetRange, Attr::medSlots, Attr::powerOutput, Attr::radius,
+        Attr::rechargeRate, Attr::rigSlots, Attr::shieldCapacity, Attr::shieldEmDamageResonance,
+        Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::structureFullPowerStateHitpointMultiplier,
+        Attr::thermalDamageResonance, Attr::turretSlotsLeft, Attr::upgradeCapacity,
     };
 };
-static_assert(sizeof(ShipAttrs) == 28 * sizeof(float));
+static_assert(sizeof(ShipAttrs) == 31 * sizeof(float));
 
-// Groups: Advanced Artillery Ammo, Advanced Autocannon Ammo, Advanced Beam Laser Crystal, Advanced Cruise Missile, Advanced Heavy Assault Missile, Advanced Heavy Missile, Advanced Light Missile, Advanced Rocket, Advanced Torpedo, Advanced XL Cruise Missile, Advanced XL Torpedo, Auto-Targeting Cruise Missile, Auto-Targeting Heavy Missile, Auto-Targeting Light Missile, Bomb, Bomb ECM, Bomb Energy, Cruise Missile, Defender Missiles, Guidance Disruption Script, Guided Bomb, Heavy Assault Missile, Heavy Missile, Light Missile, Missile Guidance Script, Nanite Repair Paste, Projectile Ammo, Rocket, SCARAB Breacher Pods, Scanner Probe, Sensor Booster Script, Sensor Dampener Script, Structure Anti-Capital Missile, Structure Anti-Subcapital Missile, Structure Area Denial Ammunition, Structure ECM script, Structure Warp Disruptor Script, Survey Probe, Torpedo, Tracking Disruption Script, Tracking Script, XL Cruise Missile, XL Torpedo
+// Groups: Advanced Artillery Ammo, Projectile Ammo
 struct ProjectileAmmoChargeAttrs
 {
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
     float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeedMultiplier = 0.0f;
     float volume = 0.0f;
+    float weaponRangeMultiplier = 0.0f;
 
-    static constexpr Attr kFields[2] = {
-        Attr::capacitorBonus, Attr::volume,
+    static constexpr Attr kFields[13] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capacitorBonus, Attr::emDamage,
+        Attr::explosionDelay, Attr::explosiveDamage, Attr::kineticDamage, Attr::mass,
+        Attr::maxVelocity, Attr::thermalDamage, Attr::trackingSpeedMultiplier, Attr::volume,
+        Attr::weaponRangeMultiplier,
     };
 };
-static_assert(sizeof(ProjectileAmmoChargeAttrs) == 2 * sizeof(float));
+static_assert(sizeof(ProjectileAmmoChargeAttrs) == 13 * sizeof(float));
 
-// Groups: Advanced Blaster Charge, Advanced Condenser Pack, Advanced Exotic Plasma Charge, Advanced Pulse Laser Crystal, Advanced Railgun Charge, Capacitor Booster Charge, Condenser Pack, Exotic Plasma Charge, Frequency Crystal, Hybrid Charge
+// Groups: Advanced Cruise Missile, Advanced Heavy Assault Missile, Advanced Heavy Missile, Advanced Light Missile, Advanced Rocket, Advanced Torpedo, Advanced XL Cruise Missile, Advanced XL Torpedo, Cruise Missile, Defender Missiles, Guided Bomb, Heavy Assault Missile, Heavy Missile, Light Missile, Rocket, Structure Anti-Capital Missile, Structure Anti-Subcapital Missile, Torpedo, XL Cruise Missile, XL Torpedo
+struct CruiseMissileChargeAttrs
+{
+    float agility = 0.0f;
+    float aoeCloudSize = 0.0f;
+    float aoeDamageReductionFactor = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float hp = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float volume = 0.0f;
+
+    static constexpr Attr kFields[14] = {
+        Attr::agility, Attr::aoeCloudSize, Attr::aoeDamageReductionFactor, Attr::aoeVelocity,
+        Attr::capacitorBonus, Attr::emDamage, Attr::explosionDelay, Attr::explosiveDamage,
+        Attr::hp, Attr::kineticDamage, Attr::mass, Attr::maxVelocity,
+        Attr::thermalDamage, Attr::volume,
+    };
+};
+static_assert(sizeof(CruiseMissileChargeAttrs) == 14 * sizeof(float));
+
+// Groups: Condenser Pack, Hybrid Charge
 struct HybridChargeChargeAttrs
 {
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
     float capNeedBonus = 0.0f;
     float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
     float volume = 0.0f;
+    float weaponRangeMultiplier = 0.0f;
 
-    static constexpr Attr kFields[3] = {
-        Attr::capNeedBonus, Attr::capacitorBonus, Attr::volume,
+    static constexpr Attr kFields[13] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capNeedBonus, Attr::capacitorBonus,
+        Attr::emDamage, Attr::explosionDelay, Attr::explosiveDamage, Attr::kineticDamage,
+        Attr::mass, Attr::maxVelocity, Attr::thermalDamage, Attr::volume,
+        Attr::weaponRangeMultiplier,
     };
 };
-static_assert(sizeof(HybridChargeChargeAttrs) == 3 * sizeof(float));
+static_assert(sizeof(HybridChargeChargeAttrs) == 13 * sizeof(float));
+
+// Groups: Frequency Crystal
+struct FrequencyCrystalChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capacitorBonus = 0.0f;
+    float crystalVolatilityChance = 0.0f;
+    float crystalVolatilityDamage = 0.0f;
+    float crystalsGetDamaged = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float hp = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float volume = 0.0f;
+    float weaponRangeMultiplier = 0.0f;
+
+    static constexpr Attr kFields[17] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capNeedBonus, Attr::capacitorBonus,
+        Attr::crystalVolatilityChance, Attr::crystalVolatilityDamage, Attr::crystalsGetDamaged, Attr::emDamage,
+        Attr::explosionDelay, Attr::explosiveDamage, Attr::hp, Attr::kineticDamage,
+        Attr::mass, Attr::maxVelocity, Attr::thermalDamage, Attr::volume,
+        Attr::weaponRangeMultiplier,
+    };
+};
+static_assert(sizeof(FrequencyCrystalChargeAttrs) == 17 * sizeof(float));
+
+// Groups: Capacitor Booster Charge
+struct CapacitorBoosterChargeChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float volume = 0.0f;
+
+    static constexpr Attr kFields[12] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capNeedBonus, Attr::capacitorBonus,
+        Attr::emDamage, Attr::explosionDelay, Attr::explosiveDamage, Attr::kineticDamage,
+        Attr::mass, Attr::maxVelocity, Attr::thermalDamage, Attr::volume,
+    };
+};
+static_assert(sizeof(CapacitorBoosterChargeChargeAttrs) == 12 * sizeof(float));
+
+// Groups: Auto-Targeting Cruise Missile, Auto-Targeting Heavy Missile, Auto-Targeting Light Missile
+struct AutoTargetingLightMissileChargeAttrs
+{
+    float agility = 0.0f;
+    float aoeCloudSize = 0.0f;
+    float aoeDamageReductionFactor = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float hp = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxFOFTargetRange = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float volume = 0.0f;
+
+    static constexpr Attr kFields[15] = {
+        Attr::agility, Attr::aoeCloudSize, Attr::aoeDamageReductionFactor, Attr::aoeVelocity,
+        Attr::capacitorBonus, Attr::emDamage, Attr::explosionDelay, Attr::explosiveDamage,
+        Attr::hp, Attr::kineticDamage, Attr::mass, Attr::maxFOFTargetRange,
+        Attr::maxVelocity, Attr::thermalDamage, Attr::volume,
+    };
+};
+static_assert(sizeof(AutoTargetingLightMissileChargeAttrs) == 15 * sizeof(float));
 
 // Groups: Shield Extender, Shield Recharger
 struct ShieldExtenderAttrs
@@ -593,19 +1017,21 @@ struct RemoteShieldBoosterAttrs
     float capacity = 0.0f;
     float cpu = 0.0f;
     float duration = 0.0f;
+    float falloffEffectiveness = 0.0f;
+    float maxRange = 0.0f;
     float mediumRemoteRepFittingMultiplier = 0.0f;
     float overloadSelfDurationBonus = 0.0f;
     float overloadShieldBonus = 0.0f;
     float power = 0.0f;
     float shieldBonus = 0.0f;
 
-    static constexpr Attr kFields[9] = {
+    static constexpr Attr kFields[11] = {
         Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
-        Attr::mediumRemoteRepFittingMultiplier, Attr::overloadSelfDurationBonus, Attr::overloadShieldBonus, Attr::power,
-        Attr::shieldBonus,
+        Attr::falloffEffectiveness, Attr::maxRange, Attr::mediumRemoteRepFittingMultiplier, Attr::overloadSelfDurationBonus,
+        Attr::overloadShieldBonus, Attr::power, Attr::shieldBonus,
     };
 };
-static_assert(sizeof(RemoteShieldBoosterAttrs) == 9 * sizeof(float));
+static_assert(sizeof(RemoteShieldBoosterAttrs) == 11 * sizeof(float));
 
 // Groups: Capacitor Recharger, Shield Power Relay
 struct CapacitorRechargerAttrs
@@ -630,16 +1056,20 @@ struct PropulsionModuleAttrs
     float cpu = 0.0f;
     float duration = 0.0f;
     float moduleReactivationDelay = 0.0f;
+    float overloadSpeedFactorBonus = 0.0f;
     float power = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speedFactor = 0.0f;
 
-    static constexpr Attr kFields[7] = {
+    static constexpr Attr kFields[10] = {
         Attr::capacitorCapacityMultiplier, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
-        Attr::duration, Attr::moduleReactivationDelay, Attr::power,
+        Attr::duration, Attr::moduleReactivationDelay, Attr::overloadSpeedFactorBonus, Attr::power,
+        Attr::signatureRadiusBonus, Attr::speedFactor,
     };
 };
-static_assert(sizeof(PropulsionModuleAttrs) == 7 * sizeof(float));
+static_assert(sizeof(PropulsionModuleAttrs) == 10 * sizeof(float));
 
-// Groups: Automated Targeting System, Burst Jammer, Burst Projectors, Cargo Scanner, Citizen Mining Laser, Compressors, Covert Jump Portal Generator, Data Miners, ECM, Gas Cloud Harvesters, Gas Cloud Scoops, Industrial Jump Portal Generator, Jump Portal Generator, Mass Entanglers, Mining Laser, Passive Targeting System, Salvager, Ship Scanner, Stasis Grappler, Stasis Web, Strip Miner, Target Painter, Tractor Beam, Warp Scrambler
+// Groups: Automated Targeting System, Burst Jammer, Cargo Scanner, Passive Targeting System, Ship Scanner
 struct CargoScannerAttrs
 {
     float capacitorNeed = 0.0f;
@@ -655,7 +1085,7 @@ struct CargoScannerAttrs
 };
 static_assert(sizeof(CargoScannerAttrs) == 5 * sizeof(float));
 
-// Groups: Clone Vat Bay, Mining Survey Chipset, Signal Amplifier
+// Groups: Mining Survey Chipset
 struct MiningSurveyChipsetAttrs
 {
     float capacity = 0.0f;
@@ -669,9 +1099,35 @@ struct MiningSurveyChipsetAttrs
 };
 static_assert(sizeof(MiningSurveyChipsetAttrs) == 4 * sizeof(float));
 
+// Groups: Warp Scrambler
+struct WarpScramblerAttrs
+{
+    float activationBlockedStrenght = 0.0f;
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float falloff = 0.0f;
+    float maxRange = 0.0f;
+    float overloadRangeBonus = 0.0f;
+    float power = 0.0f;
+    float speedFactorBonus = 0.0f;
+
+    static constexpr Attr kFields[10] = {
+        Attr::activationBlockedStrenght, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
+        Attr::duration, Attr::falloff, Attr::maxRange, Attr::overloadRangeBonus,
+        Attr::power, Attr::speedFactorBonus,
+    };
+};
+static_assert(sizeof(WarpScramblerAttrs) == 10 * sizeof(float));
+
 // Groups: Energy Weapon
 struct EnergyWeaponAttrs
 {
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmount = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -680,14 +1136,27 @@ struct EnergyWeaponAttrs
     float capacitorNeed = 0.0f;
     float capacity = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
     float duration = 0.0f;
+    float emDamage = 0.0f;
     float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
+    float explosiveDamage = 0.0f;
     float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
+    float kineticDamage = 0.0f;
     float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float optimalSigRadius = 0.0f;
+    float overloadDamageModifier = 0.0f;
     float overloadRofBonus = 0.0f;
     float power = 0.0f;
     float reloadTime = 0.0f;
@@ -698,31 +1167,72 @@ struct EnergyWeaponAttrs
     float shieldExplosiveDamageResonance = 0.0f;
     float shieldKineticDamageResonance = 0.0f;
     float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
     float speed = 0.0f;
+    float speedFactor = 0.0f;
     float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
+    float thermalDamage = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float warfareBuff1Value = 0.0f;
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
 
-    static constexpr Attr kFields[33] = {
+    static constexpr Attr kFields[63] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
-        Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus, Attr::hullEmDamageResonance,
-        Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus,
-        Attr::overloadRofBonus, Attr::power, Attr::reloadTime, Attr::resistanceKiller,
-        Attr::resistanceKillerHull, Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance,
-        Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speed, Attr::structureRigEwarCapUseBonus,
-        Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value,
-        Attr::warfareBuff3Value,
+        Attr::damageMultiplier, Attr::duration, Attr::emDamage, Attr::emDamageResistanceBonus,
+        Attr::explosionDelayBonus, Attr::explosiveDamage, Attr::explosiveDamageResistanceBonus, Attr::falloff,
+        Attr::falloffBonus, Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance,
+        Attr::hullThermalDamageResonance, Attr::kineticDamage, Attr::kineticDamageResistanceBonus, Attr::maxRange,
+        Attr::maxRangeBonus, Attr::maxTargetRangeBonus, Attr::missileVelocityBonus, Attr::optimalSigRadius,
+        Attr::overloadDamageModifier, Attr::overloadRofBonus, Attr::power, Attr::reloadTime,
+        Attr::resistanceKiller, Attr::resistanceKillerHull, Attr::shieldBonus, Attr::shieldEmDamageResonance,
+        Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus,
+        Attr::speed, Attr::speedFactor, Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus,
+        Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus,
+        Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus, Attr::thermalDamage,
+        Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus, Attr::warfareBuff1Value,
+        Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
     };
 };
-static_assert(sizeof(EnergyWeaponAttrs) == 33 * sizeof(float));
+static_assert(sizeof(EnergyWeaponAttrs) == 63 * sizeof(float));
 
-// Groups: Hybrid Weapon, Missile Launcher Heavy Assault, Missile Launcher Rocket, Missile Launcher Torpedo, Projectile Weapon
+// Groups: Citizen Mining Laser, Compressors, Data Miners, Gas Cloud Harvesters, Gas Cloud Scoops, Mining Laser, Salvager, Strip Miner, Tractor Beam
+struct MiningLaserAttrs
+{
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float maxRange = 0.0f;
+    float power = 0.0f;
+
+    static constexpr Attr kFields[6] = {
+        Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
+        Attr::maxRange, Attr::power,
+    };
+};
+static_assert(sizeof(MiningLaserAttrs) == 6 * sizeof(float));
+
+// Groups: Projectile Weapon
 struct ProjectileWeaponAttrs
 {
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmount = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -732,14 +1242,24 @@ struct ProjectileWeaponAttrs
     float capacity = 0.0f;
     float chargeRate = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
     float duration = 0.0f;
     float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
     float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
     float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float optimalSigRadius = 0.0f;
+    float overloadDamageModifier = 0.0f;
     float overloadRofBonus = 0.0f;
     float power = 0.0f;
     float reloadTime = 0.0f;
@@ -750,31 +1270,53 @@ struct ProjectileWeaponAttrs
     float shieldExplosiveDamageResonance = 0.0f;
     float shieldKineticDamageResonance = 0.0f;
     float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
     float speed = 0.0f;
+    float speedFactor = 0.0f;
     float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float warfareBuff1Value = 0.0f;
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
 
-    static constexpr Attr kFields[34] = {
+    static constexpr Attr kFields[60] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
-        Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
+        Attr::cpu, Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus,
+        Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus,
         Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance,
-        Attr::kineticDamageResistanceBonus, Attr::overloadRofBonus, Attr::power, Attr::reloadTime,
-        Attr::resistanceKiller, Attr::resistanceKillerHull, Attr::shieldBonus, Attr::shieldEmDamageResonance,
-        Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speed,
-        Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value,
-        Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus,
+        Attr::missileVelocityBonus, Attr::optimalSigRadius, Attr::overloadDamageModifier, Attr::overloadRofBonus,
+        Attr::power, Attr::reloadTime, Attr::resistanceKiller, Attr::resistanceKillerHull,
+        Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance,
+        Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor,
+        Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus,
+        Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus,
+        Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus,
+        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
     };
 };
-static_assert(sizeof(ProjectileWeaponAttrs) == 34 * sizeof(float));
+static_assert(sizeof(ProjectileWeaponAttrs) == 60 * sizeof(float));
 
-// Groups: Interdiction Sphere Launcher, Missile Launcher Cruise, Missile Launcher Heavy, Missile Launcher Light, Missile Launcher Rapid Heavy, Missile Launcher Rapid Light, Missile Launcher Rapid Torpedo, Missile Launcher XL Cruise, Missile Launcher XL Torpedo, Vorton Projector
+// Groups: Missile Launcher Cruise, Missile Launcher Heavy, Missile Launcher Light, Missile Launcher Rapid Heavy, Missile Launcher Rapid Light
 struct MissileLauncherLightAttrs
 {
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmount = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -784,14 +1326,22 @@ struct MissileLauncherLightAttrs
     float capacity = 0.0f;
     float chargeRate = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
     float duration = 0.0f;
     float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
     float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
     float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
     float overloadRofBonus = 0.0f;
     float power = 0.0f;
     float reloadTime = 0.0f;
@@ -800,26 +1350,126 @@ struct MissileLauncherLightAttrs
     float shieldExplosiveDamageResonance = 0.0f;
     float shieldKineticDamageResonance = 0.0f;
     float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
     float speed = 0.0f;
+    float speedFactor = 0.0f;
     float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float warfareBuff1Value = 0.0f;
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
 
-    static constexpr Attr kFields[32] = {
+    static constexpr Attr kFields[56] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
-        Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
+        Attr::cpu, Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus,
+        Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus,
         Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance,
-        Attr::kineticDamageResistanceBonus, Attr::overloadRofBonus, Attr::power, Attr::reloadTime,
+        Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus,
+        Attr::missileVelocityBonus, Attr::overloadRofBonus, Attr::power, Attr::reloadTime,
         Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance,
-        Attr::shieldThermalDamageResonance, Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus,
-        Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor,
+        Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus,
+        Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus,
+        Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus,
+        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
     };
 };
-static_assert(sizeof(MissileLauncherLightAttrs) == 32 * sizeof(float));
+static_assert(sizeof(MissileLauncherLightAttrs) == 56 * sizeof(float));
+
+// Groups: Missile Launcher Heavy Assault, Missile Launcher Rocket, Missile Launcher Torpedo
+struct MissileLauncherTorpedoAttrs
+{
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float armorDamageAmount = 0.0f;
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float chargeRate = 0.0f;
+    float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
+    float duration = 0.0f;
+    float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
+    float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float hullEmDamageResonance = 0.0f;
+    float hullExplosiveDamageResonance = 0.0f;
+    float hullKineticDamageResonance = 0.0f;
+    float hullThermalDamageResonance = 0.0f;
+    float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float overloadRofBonus = 0.0f;
+    float power = 0.0f;
+    float reloadTime = 0.0f;
+    float resistanceKiller = 0.0f;
+    float resistanceKillerHull = 0.0f;
+    float shieldBonus = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speed = 0.0f;
+    float speedFactor = 0.0f;
+    float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
+    float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
+    float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
+
+    static constexpr Attr kFields[58] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
+        Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
+        Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
+        Attr::cpu, Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus,
+        Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus,
+        Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance,
+        Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus,
+        Attr::missileVelocityBonus, Attr::overloadRofBonus, Attr::power, Attr::reloadTime,
+        Attr::resistanceKiller, Attr::resistanceKillerHull, Attr::shieldBonus, Attr::shieldEmDamageResonance,
+        Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus,
+        Attr::speed, Attr::speedFactor, Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus,
+        Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus,
+        Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus,
+        Attr::trackingSpeed, Attr::trackingSpeedBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value,
+        Attr::warfareBuff3Value, Attr::warpScrambleRange,
+    };
+};
+static_assert(sizeof(MissileLauncherTorpedoAttrs) == 58 * sizeof(float));
 
 // Groups: Capacitor Power Relay
 struct CapacitorPowerRelayAttrs
@@ -867,19 +1517,21 @@ struct CapacitorFluxCoilAttrs
 };
 static_assert(sizeof(CapacitorFluxCoilAttrs) == 5 * sizeof(float));
 
-// Groups: Ballistic Control System, Entropic Radiation Sink, Gyrostabilizer, Heat Sink, Magnetic Field Stabilizer, Vorton Projector Upgrade
+// Groups: Entropic Radiation Sink, Gyrostabilizer, Vorton Projector Upgrade
 struct GyrostabilizerAttrs
 {
     float capacity = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
     float power = 0.0f;
     float speedMultiplier = 0.0f;
 
-    static constexpr Attr kFields[4] = {
-        Attr::capacity, Attr::cpu, Attr::power, Attr::speedMultiplier,
+    static constexpr Attr kFields[5] = {
+        Attr::capacity, Attr::cpu, Attr::damageMultiplier, Attr::power,
+        Attr::speedMultiplier,
     };
 };
-static_assert(sizeof(GyrostabilizerAttrs) == 4 * sizeof(float));
+static_assert(sizeof(GyrostabilizerAttrs) == 5 * sizeof(float));
 
 // Groups: Damage Control
 struct DamageControlAttrs
@@ -972,6 +1624,29 @@ struct HullRepairUnitAttrs
 };
 static_assert(sizeof(HullRepairUnitAttrs) == 9 * sizeof(float));
 
+// Groups: Stasis Web
+struct StasisWebAttrs
+{
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float falloff = 0.0f;
+    float falloffEffectiveness = 0.0f;
+    float maxRange = 0.0f;
+    float overloadRangeBonus = 0.0f;
+    float power = 0.0f;
+    float speedFactor = 0.0f;
+    float speedFactorBonus = 0.0f;
+
+    static constexpr Attr kFields[11] = {
+        Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
+        Attr::falloff, Attr::falloffEffectiveness, Attr::maxRange, Attr::overloadRangeBonus,
+        Attr::power, Attr::speedFactor, Attr::speedFactorBonus,
+    };
+};
+static_assert(sizeof(StasisWebAttrs) == 11 * sizeof(float));
+
 // Groups: Energy Nosferatu, Remote Capacitor Transmitter
 struct RemoteCapacitorTransmitterAttrs
 {
@@ -979,37 +1654,46 @@ struct RemoteCapacitorTransmitterAttrs
     float capacity = 0.0f;
     float cpu = 0.0f;
     float duration = 0.0f;
+    float falloffEffectiveness = 0.0f;
+    float maxRange = 0.0f;
     float overloadSelfDurationBonus = 0.0f;
     float power = 0.0f;
     float powerTransferAmount = 0.0f;
 
-    static constexpr Attr kFields[7] = {
+    static constexpr Attr kFields[9] = {
         Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
-        Attr::overloadSelfDurationBonus, Attr::power, Attr::powerTransferAmount,
+        Attr::falloffEffectiveness, Attr::maxRange, Attr::overloadSelfDurationBonus, Attr::power,
+        Attr::powerTransferAmount,
     };
 };
-static_assert(sizeof(RemoteCapacitorTransmitterAttrs) == 7 * sizeof(float));
+static_assert(sizeof(RemoteCapacitorTransmitterAttrs) == 9 * sizeof(float));
 
-// Groups: Energy Neutralizer, Smart Bomb
+// Groups: Energy Neutralizer
 struct EnergyNeutralizerAttrs
 {
     float capacitorNeed = 0.0f;
     float capacity = 0.0f;
     float cpu = 0.0f;
     float duration = 0.0f;
+    float falloffEffectiveness = 0.0f;
+    float maxRange = 0.0f;
     float overloadSelfDurationBonus = 0.0f;
     float power = 0.0f;
 
-    static constexpr Attr kFields[6] = {
+    static constexpr Attr kFields[8] = {
         Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
-        Attr::overloadSelfDurationBonus, Attr::power,
+        Attr::falloffEffectiveness, Attr::maxRange, Attr::overloadSelfDurationBonus, Attr::power,
     };
 };
-static_assert(sizeof(EnergyNeutralizerAttrs) == 6 * sizeof(float));
+static_assert(sizeof(EnergyNeutralizerAttrs) == 8 * sizeof(float));
 
-// Groups: Capacitor Booster
-struct CapacitorBoosterAttrs
+// Groups: Hybrid Weapon
+struct HybridWeaponAttrs
 {
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmount = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -1019,14 +1703,108 @@ struct CapacitorBoosterAttrs
     float capacity = 0.0f;
     float chargeRate = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
+    float damageMultiplierBonus = 0.0f;
     float duration = 0.0f;
     float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
     float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
     float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float optimalSigRadius = 0.0f;
+    float overloadDamageModifier = 0.0f;
+    float overloadRofBonus = 0.0f;
+    float power = 0.0f;
+    float reloadTime = 0.0f;
+    float resistanceKiller = 0.0f;
+    float resistanceKillerHull = 0.0f;
+    float shieldBonus = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speed = 0.0f;
+    float speedFactor = 0.0f;
+    float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
+    float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
+    float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
+
+    static constexpr Attr kFields[61] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
+        Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
+        Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
+        Attr::cpu, Attr::damageMultiplier, Attr::damageMultiplierBonus, Attr::duration,
+        Attr::emDamageResistanceBonus, Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus, Attr::falloff,
+        Attr::falloffBonus, Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance,
+        Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus,
+        Attr::maxTargetRangeBonus, Attr::missileVelocityBonus, Attr::optimalSigRadius, Attr::overloadDamageModifier,
+        Attr::overloadRofBonus, Attr::power, Attr::reloadTime, Attr::resistanceKiller,
+        Attr::resistanceKillerHull, Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance,
+        Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus, Attr::speed,
+        Attr::speedFactor, Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus,
+        Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus,
+        Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus, Attr::trackingSpeed,
+        Attr::trackingSpeedBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::warpScrambleRange,
+    };
+};
+static_assert(sizeof(HybridWeaponAttrs) == 61 * sizeof(float));
+
+// Groups: Capacitor Booster
+struct CapacitorBoosterAttrs
+{
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float armorDamageAmount = 0.0f;
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float chargeRate = 0.0f;
+    float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
+    float duration = 0.0f;
+    float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
+    float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float hullEmDamageResonance = 0.0f;
+    float hullExplosiveDamageResonance = 0.0f;
+    float hullKineticDamageResonance = 0.0f;
+    float hullThermalDamageResonance = 0.0f;
+    float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
     float overloadSelfDurationBonus = 0.0f;
     float power = 0.0f;
     float reloadTime = 0.0f;
@@ -1035,26 +1813,44 @@ struct CapacitorBoosterAttrs
     float shieldExplosiveDamageResonance = 0.0f;
     float shieldKineticDamageResonance = 0.0f;
     float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
     float speed = 0.0f;
+    float speedFactor = 0.0f;
     float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float warfareBuff1Value = 0.0f;
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
 
-    static constexpr Attr kFields[32] = {
+    static constexpr Attr kFields[56] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
-        Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
+        Attr::cpu, Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus,
+        Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus,
         Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance,
-        Attr::kineticDamageResistanceBonus, Attr::overloadSelfDurationBonus, Attr::power, Attr::reloadTime,
+        Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus,
+        Attr::missileVelocityBonus, Attr::overloadSelfDurationBonus, Attr::power, Attr::reloadTime,
         Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance,
-        Attr::shieldThermalDamageResonance, Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus,
-        Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor,
+        Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus,
+        Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus,
+        Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus,
+        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
     };
 };
-static_assert(sizeof(CapacitorBoosterAttrs) == 32 * sizeof(float));
+static_assert(sizeof(CapacitorBoosterAttrs) == 56 * sizeof(float));
 
 // Groups: Shield Hardener
 struct ShieldHardenerAttrs
@@ -1078,7 +1874,7 @@ struct ShieldHardenerAttrs
 };
 static_assert(sizeof(ShieldHardenerAttrs) == 10 * sizeof(float));
 
-// Groups: Inertial Stabilizer, Overdrive Injector System
+// Groups: Overdrive Injector System
 struct OverdriveInjectorSystemAttrs
 {
     float armorHPBonusAdd = 0.0f;
@@ -1114,6 +1910,80 @@ struct ArmorCoatingAttrs
     };
 };
 static_assert(sizeof(ArmorCoatingAttrs) == 11 * sizeof(float));
+
+// Groups: Combat Drone
+struct CombatDroneDroneAttrs
+{
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorCapacity = 0.0f;
+    float damageMultiplier = 0.0f;
+    float emDamage = 0.0f;
+    float explosiveDamage = 0.0f;
+    float falloff = 0.0f;
+    float kineticDamage = 0.0f;
+    float maxRange = 0.0f;
+    float maxVelocity = 0.0f;
+    float optimalSigRadius = 0.0f;
+    float radius = 0.0f;
+    float shieldCapacity = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float speed = 0.0f;
+    float speedFactor = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeed = 0.0f;
+
+    static constexpr Attr kFields[23] = {
+        Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance, Attr::armorThermalDamageResonance,
+        Attr::capacitorCapacity, Attr::damageMultiplier, Attr::emDamage, Attr::explosiveDamage,
+        Attr::falloff, Attr::kineticDamage, Attr::maxRange, Attr::maxVelocity,
+        Attr::optimalSigRadius, Attr::radius, Attr::shieldCapacity, Attr::shieldEmDamageResonance,
+        Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speed,
+        Attr::speedFactor, Attr::thermalDamage, Attr::trackingSpeed,
+    };
+};
+static_assert(sizeof(CombatDroneDroneAttrs) == 23 * sizeof(float));
+
+// Groups: Logistic Drone, Mining Drone
+struct MiningDroneDroneAttrs
+{
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorCapacity = 0.0f;
+    float damageMultiplier = 0.0f;
+    float emDamage = 0.0f;
+    float explosiveDamage = 0.0f;
+    float falloff = 0.0f;
+    float kineticDamage = 0.0f;
+    float maxRange = 0.0f;
+    float maxVelocity = 0.0f;
+    float radius = 0.0f;
+    float shieldCapacity = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float speedFactor = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeed = 0.0f;
+
+    static constexpr Attr kFields[21] = {
+        Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance, Attr::armorThermalDamageResonance,
+        Attr::capacitorCapacity, Attr::damageMultiplier, Attr::emDamage, Attr::explosiveDamage,
+        Attr::falloff, Attr::kineticDamage, Attr::maxRange, Attr::maxVelocity,
+        Attr::radius, Attr::shieldCapacity, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance,
+        Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speedFactor, Attr::thermalDamage,
+        Attr::trackingSpeed,
+    };
+};
+static_assert(sizeof(MiningDroneDroneAttrs) == 21 * sizeof(float));
 
 // Groups: Reinforced Bulkhead
 struct ReinforcedBulkheadAttrs
@@ -1167,6 +2037,45 @@ struct ReactorControlUnitAttrs
 };
 static_assert(sizeof(ReactorControlUnitAttrs) == 7 * sizeof(float));
 
+// Groups: Inertial Stabilizer
+struct InertialStabilizerAttrs
+{
+    float armorHPBonusAdd = 0.0f;
+    float capacity = 0.0f;
+    float overloadHardeningBonus = 0.0f;
+    float overloadSelfDurationBonus = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+
+    static constexpr Attr kFields[5] = {
+        Attr::armorHPBonusAdd, Attr::capacity, Attr::overloadHardeningBonus, Attr::overloadSelfDurationBonus,
+        Attr::signatureRadiusBonus,
+    };
+};
+static_assert(sizeof(InertialStabilizerAttrs) == 5 * sizeof(float));
+
+// Groups: Smart Bomb
+struct SmartBombAttrs
+{
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float emDamage = 0.0f;
+    float empFieldRange = 0.0f;
+    float explosiveDamage = 0.0f;
+    float kineticDamage = 0.0f;
+    float overloadSelfDurationBonus = 0.0f;
+    float power = 0.0f;
+    float thermalDamage = 0.0f;
+
+    static constexpr Attr kFields[11] = {
+        Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
+        Attr::emDamage, Attr::empFieldRange, Attr::explosiveDamage, Attr::kineticDamage,
+        Attr::overloadSelfDurationBonus, Attr::power, Attr::thermalDamage,
+    };
+};
+static_assert(sizeof(SmartBombAttrs) == 11 * sizeof(float));
+
 // Groups: Shield Resistance Amplifier
 struct ShieldResistanceAmplifierAttrs
 {
@@ -1186,23 +2095,82 @@ struct ShieldResistanceAmplifierAttrs
 };
 static_assert(sizeof(ShieldResistanceAmplifierAttrs) == 8 * sizeof(float));
 
+// Groups: Heat Sink, Magnetic Field Stabilizer
+struct HeatSinkAttrs
+{
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
+    float droneDamageBonus = 0.0f;
+    float power = 0.0f;
+    float speedMultiplier = 0.0f;
+
+    static constexpr Attr kFields[6] = {
+        Attr::capacity, Attr::cpu, Attr::damageMultiplier, Attr::droneDamageBonus,
+        Attr::power, Attr::speedMultiplier,
+    };
+};
+static_assert(sizeof(HeatSinkAttrs) == 6 * sizeof(float));
+
+// Groups: ECM
+struct EcmAttrs
+{
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float falloffEffectiveness = 0.0f;
+    float maxRange = 0.0f;
+    float power = 0.0f;
+
+    static constexpr Attr kFields[7] = {
+        Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
+        Attr::falloffEffectiveness, Attr::maxRange, Attr::power,
+    };
+};
+static_assert(sizeof(EcmAttrs) == 7 * sizeof(float));
+
+// Groups: Signal Amplifier
+struct SignalAmplifierAttrs
+{
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float power = 0.0f;
+
+    static constexpr Attr kFields[5] = {
+        Attr::capacity, Attr::cpu, Attr::duration, Attr::maxTargetRangeBonus,
+        Attr::power,
+    };
+};
+static_assert(sizeof(SignalAmplifierAttrs) == 5 * sizeof(float));
+
 // Groups: Tracking Enhancer
 struct TrackingEnhancerAttrs
 {
     float capNeedBonus = 0.0f;
     float capacity = 0.0f;
     float cpu = 0.0f;
+    float falloffBonus = 0.0f;
+    float maxRangeBonus = 0.0f;
     float power = 0.0f;
+    float trackingSpeedBonus = 0.0f;
 
-    static constexpr Attr kFields[4] = {
-        Attr::capNeedBonus, Attr::capacity, Attr::cpu, Attr::power,
+    static constexpr Attr kFields[7] = {
+        Attr::capNeedBonus, Attr::capacity, Attr::cpu, Attr::falloffBonus,
+        Attr::maxRangeBonus, Attr::power, Attr::trackingSpeedBonus,
     };
 };
-static_assert(sizeof(TrackingEnhancerAttrs) == 4 * sizeof(float));
+static_assert(sizeof(TrackingEnhancerAttrs) == 7 * sizeof(float));
 
-// Groups: Drone Tracking Modules, Frequency Mining Laser, Missile Guidance Computer, Remote Sensor Booster, Remote Tracking Computer, Scan Probe Launcher, Sensor Booster, Sensor Dampener, Tracking Computer, Weapon Disruptor
+// Groups: Sensor Booster
 struct SensorBoosterAttrs
 {
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmount = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -1211,14 +2179,23 @@ struct SensorBoosterAttrs
     float capacitorNeed = 0.0f;
     float capacity = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
     float duration = 0.0f;
     float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
     float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
     float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float overloadSensorModuleStrengthBonus = 0.0f;
     float power = 0.0f;
     float reloadTime = 0.0f;
     float shieldBonus = 0.0f;
@@ -1226,26 +2203,201 @@ struct SensorBoosterAttrs
     float shieldExplosiveDamageResonance = 0.0f;
     float shieldKineticDamageResonance = 0.0f;
     float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
     float speed = 0.0f;
+    float speedFactor = 0.0f;
     float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float warfareBuff1Value = 0.0f;
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
 
-    static constexpr Attr kFields[30] = {
+    static constexpr Attr kFields[55] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
-        Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus, Attr::hullEmDamageResonance,
+        Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosionDelayBonus,
+        Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus, Attr::hullEmDamageResonance,
         Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus,
-        Attr::power, Attr::reloadTime, Attr::shieldBonus, Attr::shieldEmDamageResonance,
-        Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speed,
-        Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value,
-        Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus, Attr::missileVelocityBonus,
+        Attr::overloadSensorModuleStrengthBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
+        Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
+        Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor, Attr::structureRigEwarCapUseBonus,
+        Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus,
+        Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus,
+        Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus, Attr::warfareBuff1Value,
+        Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
     };
 };
-static_assert(sizeof(SensorBoosterAttrs) == 30 * sizeof(float));
+static_assert(sizeof(SensorBoosterAttrs) == 55 * sizeof(float));
+
+// Groups: Remote Sensor Booster, Sensor Dampener
+struct RemoteSensorBoosterAttrs
+{
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float armorDamageAmount = 0.0f;
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
+    float duration = 0.0f;
+    float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
+    float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float falloffEffectiveness = 0.0f;
+    float hullEmDamageResonance = 0.0f;
+    float hullExplosiveDamageResonance = 0.0f;
+    float hullKineticDamageResonance = 0.0f;
+    float hullThermalDamageResonance = 0.0f;
+    float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float overloadSensorModuleStrengthBonus = 0.0f;
+    float power = 0.0f;
+    float reloadTime = 0.0f;
+    float shieldBonus = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speed = 0.0f;
+    float speedFactor = 0.0f;
+    float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
+    float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
+    float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
+
+    static constexpr Attr kFields[56] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
+        Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
+        Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
+        Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosionDelayBonus,
+        Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus, Attr::falloffEffectiveness,
+        Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance,
+        Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus,
+        Attr::missileVelocityBonus, Attr::overloadSensorModuleStrengthBonus, Attr::power, Attr::reloadTime,
+        Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance,
+        Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor,
+        Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus,
+        Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus,
+        Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus,
+        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
+    };
+};
+static_assert(sizeof(RemoteSensorBoosterAttrs) == 56 * sizeof(float));
+
+// Groups: Drone Tracking Modules, Missile Guidance Computer, Tracking Computer
+struct TrackingComputerAttrs
+{
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float armorDamageAmount = 0.0f;
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
+    float duration = 0.0f;
+    float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
+    float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float hullEmDamageResonance = 0.0f;
+    float hullExplosiveDamageResonance = 0.0f;
+    float hullKineticDamageResonance = 0.0f;
+    float hullThermalDamageResonance = 0.0f;
+    float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float overloadTrackingModuleStrengthBonus = 0.0f;
+    float power = 0.0f;
+    float reloadTime = 0.0f;
+    float shieldBonus = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speed = 0.0f;
+    float speedFactor = 0.0f;
+    float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
+    float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
+    float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
+
+    static constexpr Attr kFields[55] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
+        Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
+        Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
+        Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosionDelayBonus,
+        Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus, Attr::hullEmDamageResonance,
+        Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus,
+        Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus, Attr::missileVelocityBonus,
+        Attr::overloadTrackingModuleStrengthBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
+        Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
+        Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor, Attr::structureRigEwarCapUseBonus,
+        Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus,
+        Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus,
+        Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus, Attr::warfareBuff1Value,
+        Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
+    };
+};
+static_assert(sizeof(TrackingComputerAttrs) == 55 * sizeof(float));
 
 // Groups: Special Edition Implant
 struct SpecialEditionImplantAttrs
@@ -1253,14 +2405,24 @@ struct SpecialEditionImplantAttrs
     float armorHpBonus = 0.0f;
     float armorHpBonus2 = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capRechargeBonus = 0.0f;
     float capacitorCapacityBonus = 0.0f;
     float cpuOutputBonus2 = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
     float implantSetChristmas = 0.0f;
     float powerEngineeringOutputBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
@@ -1268,241 +2430,532 @@ struct SpecialEditionImplantAttrs
     float shieldCapacityBonus = 0.0f;
     float shieldHpBonus = 0.0f;
 
-    static constexpr Attr kFields[17] = {
-        Attr::armorHpBonus, Attr::armorHpBonus2, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty,
-        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty,
-        Attr::capRechargeBonus, Attr::capacitorCapacityBonus, Attr::cpuOutputBonus2, Attr::implantSetChristmas,
-        Attr::powerEngineeringOutputBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldCapacityBonus,
-        Attr::shieldHpBonus,
+    static constexpr Attr kFields[27] = {
+        Attr::armorHpBonus, Attr::armorHpBonus2, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty,
+        Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty,
+        Attr::boosterMissileVelocityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty,
+        Attr::boosterTurretOptimalRangePenalty, Attr::boosterTurretTrackingPenalty, Attr::capRechargeBonus, Attr::capacitorCapacityBonus,
+        Attr::cpuOutputBonus2, Attr::hydraDroneRangeBonus, Attr::hydraDroneTrackingBonus, Attr::hydraMissileExplosionVelocityBonus,
+        Attr::hydraMissileFlightTimeBonus, Attr::implantSetChristmas, Attr::powerEngineeringOutputBonus, Attr::remoteRepDurationCapBonus,
+        Attr::shieldBoostMultiplier, Attr::shieldCapacityBonus, Attr::shieldHpBonus,
     };
 };
-static_assert(sizeof(SpecialEditionImplantAttrs) == 17 * sizeof(float));
+static_assert(sizeof(SpecialEditionImplantAttrs) == 27 * sizeof(float));
+
+// Groups: Frequency Mining Laser, Scan Probe Launcher
+struct ScanProbeLauncherAttrs
+{
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float armorDamageAmount = 0.0f;
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
+    float duration = 0.0f;
+    float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
+    float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float hullEmDamageResonance = 0.0f;
+    float hullExplosiveDamageResonance = 0.0f;
+    float hullKineticDamageResonance = 0.0f;
+    float hullThermalDamageResonance = 0.0f;
+    float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float power = 0.0f;
+    float reloadTime = 0.0f;
+    float shieldBonus = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speed = 0.0f;
+    float speedFactor = 0.0f;
+    float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
+    float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
+    float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
+
+    static constexpr Attr kFields[54] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
+        Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
+        Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
+        Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosionDelayBonus,
+        Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus, Attr::hullEmDamageResonance,
+        Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus,
+        Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus, Attr::missileVelocityBonus,
+        Attr::power, Attr::reloadTime, Attr::shieldBonus, Attr::shieldEmDamageResonance,
+        Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus,
+        Attr::speed, Attr::speedFactor, Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus,
+        Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus,
+        Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus,
+        Attr::trackingSpeed, Attr::trackingSpeedBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value,
+        Attr::warfareBuff3Value, Attr::warpScrambleRange,
+    };
+};
+static_assert(sizeof(ScanProbeLauncherAttrs) == 54 * sizeof(float));
+
+// Groups: Remote Tracking Computer, Weapon Disruptor
+struct RemoteTrackingComputerAttrs
+{
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float armorDamageAmount = 0.0f;
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
+    float duration = 0.0f;
+    float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
+    float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float falloffEffectiveness = 0.0f;
+    float hullEmDamageResonance = 0.0f;
+    float hullExplosiveDamageResonance = 0.0f;
+    float hullKineticDamageResonance = 0.0f;
+    float hullThermalDamageResonance = 0.0f;
+    float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float overloadTrackingModuleStrengthBonus = 0.0f;
+    float power = 0.0f;
+    float reloadTime = 0.0f;
+    float shieldBonus = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speed = 0.0f;
+    float speedFactor = 0.0f;
+    float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
+    float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
+    float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
+
+    static constexpr Attr kFields[56] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
+        Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
+        Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
+        Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosionDelayBonus,
+        Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus, Attr::falloffEffectiveness,
+        Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance,
+        Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus,
+        Attr::missileVelocityBonus, Attr::overloadTrackingModuleStrengthBonus, Attr::power, Attr::reloadTime,
+        Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance,
+        Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor,
+        Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus,
+        Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus,
+        Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus,
+        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
+    };
+};
+static_assert(sizeof(RemoteTrackingComputerAttrs) == 56 * sizeof(float));
 
 // Groups: Booster
 struct BoosterAttrs
 {
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmountBonus = 0.0f;
     float armorHpBonus = 0.0f;
     float armorHpBonus2 = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMinerMaxRangeBonus = 0.0f;
     float boosterMiningLaserIceGasHarvesterDurationReductionAndCapacitor = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileDamageBonusPostPercent = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capNeedBonus = 0.0f;
     float capRechargeBonus = 0.0f;
     float capacitorCapacityBonus = 0.0f;
     float cpuOutputBonus2 = 0.0f;
+    float damageMultiplier = 0.0f;
+    float damageMultiplierBonus = 0.0f;
+    float droneMaxVelocityBonus = 0.0f;
+    float droneRangeBonus = 0.0f;
+    float droneTrackingBonus = 0.0f;
     float durationBonus = 0.0f;
     float durationSkillBonus = 0.0f;
+    float falloffBonus = 0.0f;
     float hullHpBonus = 0.0f;
     float iceHarvestCycleBonus = 0.0f;
+    float maxFlightTimeBonus = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileDamageMultiplierBonus = 0.0f;
     float passiveEmDamageResistanceBonus = 0.0f;
     float passiveExplosiveDamageResistanceBonus = 0.0f;
     float passiveKineticDamageResistanceBonus = 0.0f;
     float passiveThermicDamageResistanceBonus = 0.0f;
     float powerEngineeringOutputBonus = 0.0f;
+    float rangeSkillBonus = 0.0f;
     float rofBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldCapacityBonus = 0.0f;
+    float speedFBonus = 0.0f;
+    float stasisWebRangeAdd = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float turretSpeeBonus = 0.0f;
 
-    static constexpr Attr kFields[26] = {
-        Attr::armorDamageAmountBonus, Attr::armorHpBonus, Attr::armorHpBonus2, Attr::boosterArmorHPPenalty,
-        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMiningLaserIceGasHarvesterDurationReductionAndCapacitor, Attr::boosterShieldBoostAmountPenalty,
-        Attr::boosterShieldCapacityPenalty, Attr::capNeedBonus, Attr::capRechargeBonus, Attr::capacitorCapacityBonus,
-        Attr::cpuOutputBonus2, Attr::durationBonus, Attr::durationSkillBonus, Attr::hullHpBonus,
-        Attr::iceHarvestCycleBonus, Attr::passiveEmDamageResistanceBonus, Attr::passiveExplosiveDamageResistanceBonus, Attr::passiveKineticDamageResistanceBonus,
-        Attr::passiveThermicDamageResistanceBonus, Attr::powerEngineeringOutputBonus, Attr::rofBonus, Attr::shieldBoostMultiplier,
-        Attr::shieldCapacityBonus, Attr::turretSpeeBonus,
+    static constexpr Attr kFields[50] = {
+        Attr::aoeCloudSizeBonus, Attr::aoeVelocityBonus, Attr::armorDamageAmountBonus, Attr::armorHpBonus,
+        Attr::armorHpBonus2, Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
+        Attr::boosterCapacitorCapacityPenalty, Attr::boosterMinerMaxRangeBonus, Attr::boosterMiningLaserIceGasHarvesterDurationReductionAndCapacitor, Attr::boosterMissileAOECloudPenalty,
+        Attr::boosterMissileDamageBonusPostPercent, Attr::boosterMissileVelocityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty,
+        Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty, Attr::boosterTurretTrackingPenalty, Attr::capNeedBonus,
+        Attr::capRechargeBonus, Attr::capacitorCapacityBonus, Attr::cpuOutputBonus2, Attr::damageMultiplier,
+        Attr::damageMultiplierBonus, Attr::droneMaxVelocityBonus, Attr::droneRangeBonus, Attr::droneTrackingBonus,
+        Attr::durationBonus, Attr::durationSkillBonus, Attr::falloffBonus, Attr::hullHpBonus,
+        Attr::iceHarvestCycleBonus, Attr::maxFlightTimeBonus, Attr::maxRangeBonus, Attr::maxTargetRangeBonus,
+        Attr::missileDamageMultiplierBonus, Attr::passiveEmDamageResistanceBonus, Attr::passiveExplosiveDamageResistanceBonus, Attr::passiveKineticDamageResistanceBonus,
+        Attr::passiveThermicDamageResistanceBonus, Attr::powerEngineeringOutputBonus, Attr::rangeSkillBonus, Attr::rofBonus,
+        Attr::shieldBoostMultiplier, Attr::shieldCapacityBonus, Attr::speedFBonus, Attr::stasisWebRangeAdd,
+        Attr::trackingSpeedBonus, Attr::turretSpeeBonus,
     };
 };
-static_assert(sizeof(BoosterAttrs) == 26 * sizeof(float));
+static_assert(sizeof(BoosterAttrs) == 50 * sizeof(float));
 
 // Groups: Cyber Shields
 struct CyberShieldsAttrs
 {
     float armorHpBonus = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capNeedBonus = 0.0f;
     float capRechargeBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
     float powerNeedBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldCapacityBonus = 0.0f;
     float shieldHpBonus = 0.0f;
 
-    static constexpr Attr kFields[14] = {
-        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
-        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capNeedBonus,
-        Attr::capRechargeBonus, Attr::powerNeedBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier,
-        Attr::shieldCapacityBonus, Attr::shieldHpBonus,
+    static constexpr Attr kFields[24] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty, Attr::boosterMissileVelocityPenalty,
+        Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty,
+        Attr::boosterTurretTrackingPenalty, Attr::capNeedBonus, Attr::capRechargeBonus, Attr::hydraDroneRangeBonus,
+        Attr::hydraDroneTrackingBonus, Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus, Attr::powerNeedBonus,
+        Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldCapacityBonus, Attr::shieldHpBonus,
     };
 };
-static_assert(sizeof(CyberShieldsAttrs) == 14 * sizeof(float));
+static_assert(sizeof(CyberShieldsAttrs) == 24 * sizeof(float));
 
 // Groups: Cyber Navigation
 struct CyberNavigationAttrs
 {
     float armorHpBonus = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capNeedBonus = 0.0f;
     float capRechargeBonus = 0.0f;
     float durationBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldHpBonus = 0.0f;
+    float speedFBonus = 0.0f;
 
-    static constexpr Attr kFields[13] = {
-        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
-        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capNeedBonus,
-        Attr::capRechargeBonus, Attr::durationBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier,
-        Attr::shieldHpBonus,
+    static constexpr Attr kFields[24] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty, Attr::boosterMissileVelocityPenalty,
+        Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty,
+        Attr::boosterTurretTrackingPenalty, Attr::capNeedBonus, Attr::capRechargeBonus, Attr::durationBonus,
+        Attr::hydraDroneRangeBonus, Attr::hydraDroneTrackingBonus, Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus,
+        Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus, Attr::speedFBonus,
     };
 };
-static_assert(sizeof(CyberNavigationAttrs) == 13 * sizeof(float));
+static_assert(sizeof(CyberNavigationAttrs) == 24 * sizeof(float));
 
 // Groups: Cyber Missile
 struct CyberMissileAttrs
 {
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorHpBonus = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capRechargeBonus = 0.0f;
     float cpuNeedBonus = 0.0f;
+    float damageMultiplierBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
+    float maxFlightTimeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float rofBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldHpBonus = 0.0f;
+    float speedFactor = 0.0f;
 
-    static constexpr Attr kFields[13] = {
-        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
-        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus,
-        Attr::cpuNeedBonus, Attr::remoteRepDurationCapBonus, Attr::rofBonus, Attr::shieldBoostMultiplier,
-        Attr::shieldHpBonus,
+    static constexpr Attr kFields[29] = {
+        Attr::aoeCloudSizeBonus, Attr::aoeVelocityBonus, Attr::armorHpBonus, Attr::armorRepairBonus,
+        Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty,
+        Attr::boosterMissileAOECloudPenalty, Attr::boosterMissileVelocityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty,
+        Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty, Attr::boosterTurretTrackingPenalty, Attr::capRechargeBonus,
+        Attr::cpuNeedBonus, Attr::damageMultiplierBonus, Attr::hydraDroneRangeBonus, Attr::hydraDroneTrackingBonus,
+        Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus, Attr::maxFlightTimeBonus, Attr::missileVelocityBonus,
+        Attr::remoteRepDurationCapBonus, Attr::rofBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+        Attr::speedFactor,
     };
 };
-static_assert(sizeof(CyberMissileAttrs) == 13 * sizeof(float));
+static_assert(sizeof(CyberMissileAttrs) == 29 * sizeof(float));
 
 // Groups: Cyber Gunnery
 struct CyberGunneryAttrs
 {
     float armorHpBonus = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capNeedBonus = 0.0f;
     float capRechargeBonus = 0.0f;
     float cpuNeedBonus = 0.0f;
+    float damageMultiplierBonus = 0.0f;
+    float falloffBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
+    float rangeSkillBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldHpBonus = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float turretSpeeBonus = 0.0f;
 
-    static constexpr Attr kFields[14] = {
-        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
-        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capNeedBonus,
-        Attr::capRechargeBonus, Attr::cpuNeedBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier,
-        Attr::shieldHpBonus, Attr::turretSpeeBonus,
+    static constexpr Attr kFields[28] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty, Attr::boosterMissileVelocityPenalty,
+        Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty,
+        Attr::boosterTurretTrackingPenalty, Attr::capNeedBonus, Attr::capRechargeBonus, Attr::cpuNeedBonus,
+        Attr::damageMultiplierBonus, Attr::falloffBonus, Attr::hydraDroneRangeBonus, Attr::hydraDroneTrackingBonus,
+        Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus, Attr::rangeSkillBonus, Attr::remoteRepDurationCapBonus,
+        Attr::shieldBoostMultiplier, Attr::shieldHpBonus, Attr::trackingSpeedBonus, Attr::turretSpeeBonus,
     };
 };
-static_assert(sizeof(CyberGunneryAttrs) == 14 * sizeof(float));
+static_assert(sizeof(CyberGunneryAttrs) == 28 * sizeof(float));
 
 // Groups: Cyber Engineering
 struct CyberEngineeringAttrs
 {
     float armorHpBonus = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capNeedBonus = 0.0f;
     float capRechargeBonus = 0.0f;
     float capacitorCapacityBonus = 0.0f;
     float cpuNeedBonus = 0.0f;
     float cpuOutputBonus2 = 0.0f;
     float durationBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
     float powerEngineeringOutputBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldHpBonus = 0.0f;
 
-    static constexpr Attr kFields[17] = {
-        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
-        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capNeedBonus,
-        Attr::capRechargeBonus, Attr::capacitorCapacityBonus, Attr::cpuNeedBonus, Attr::cpuOutputBonus2,
-        Attr::durationBonus, Attr::powerEngineeringOutputBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier,
-        Attr::shieldHpBonus,
+    static constexpr Attr kFields[27] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty, Attr::boosterMissileVelocityPenalty,
+        Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty,
+        Attr::boosterTurretTrackingPenalty, Attr::capNeedBonus, Attr::capRechargeBonus, Attr::capacitorCapacityBonus,
+        Attr::cpuNeedBonus, Attr::cpuOutputBonus2, Attr::durationBonus, Attr::hydraDroneRangeBonus,
+        Attr::hydraDroneTrackingBonus, Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus, Attr::powerEngineeringOutputBonus,
+        Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
     };
 };
-static_assert(sizeof(CyberEngineeringAttrs) == 17 * sizeof(float));
+static_assert(sizeof(CyberEngineeringAttrs) == 27 * sizeof(float));
 
-// Groups: Cyber Learning, Cyber Production, Cyber Science, Cyber Targeting
+// Groups: Cyber Targeting
 struct CyberTargetingAttrs
 {
     float armorHpBonus = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capRechargeBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldHpBonus = 0.0f;
 
-    static constexpr Attr kFields[11] = {
-        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
-        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus,
-        Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    static constexpr Attr kFields[22] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty, Attr::boosterMissileVelocityPenalty,
+        Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty,
+        Attr::boosterTurretTrackingPenalty, Attr::capRechargeBonus, Attr::hydraDroneRangeBonus, Attr::hydraDroneTrackingBonus,
+        Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus, Attr::maxTargetRangeBonus, Attr::remoteRepDurationCapBonus,
+        Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
     };
 };
-static_assert(sizeof(CyberTargetingAttrs) == 11 * sizeof(float));
+static_assert(sizeof(CyberTargetingAttrs) == 22 * sizeof(float));
 
 // Groups: Cyber Electronic Systems
 struct CyberElectronicSystemsAttrs
 {
     float armorHpBonus = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capNeedBonus = 0.0f;
     float capRechargeBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldHpBonus = 0.0f;
+    float stasisWebRangeBonus = 0.0f;
+    float warpScrambleRangeBonus = 0.0f;
 
-    static constexpr Attr kFields[12] = {
-        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
-        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capNeedBonus,
-        Attr::capRechargeBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    static constexpr Attr kFields[24] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty, Attr::boosterMissileVelocityPenalty,
+        Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty,
+        Attr::boosterTurretTrackingPenalty, Attr::capNeedBonus, Attr::capRechargeBonus, Attr::hydraDroneRangeBonus,
+        Attr::hydraDroneTrackingBonus, Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus, Attr::remoteRepDurationCapBonus,
+        Attr::shieldBoostMultiplier, Attr::shieldHpBonus, Attr::stasisWebRangeBonus, Attr::warpScrambleRangeBonus,
     };
 };
-static_assert(sizeof(CyberElectronicSystemsAttrs) == 12 * sizeof(float));
+static_assert(sizeof(CyberElectronicSystemsAttrs) == 24 * sizeof(float));
 
 // Groups: Cyber Armor
 struct CyberArmorAttrs
@@ -1510,28 +2963,41 @@ struct CyberArmorAttrs
     float armorHpBonus = 0.0f;
     float armorHpBonus2 = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capNeedBonus = 0.0f;
     float capRechargeBonus = 0.0f;
     float durationSkillBonus = 0.0f;
     float hullHpBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float repairBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldHpBonus = 0.0f;
 
-    static constexpr Attr kFields[16] = {
-        Attr::armorHpBonus, Attr::armorHpBonus2, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty,
-        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty,
-        Attr::capNeedBonus, Attr::capRechargeBonus, Attr::durationSkillBonus, Attr::hullHpBonus,
-        Attr::remoteRepDurationCapBonus, Attr::repairBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    static constexpr Attr kFields[26] = {
+        Attr::armorHpBonus, Attr::armorHpBonus2, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty,
+        Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty,
+        Attr::boosterMissileVelocityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty,
+        Attr::boosterTurretOptimalRangePenalty, Attr::boosterTurretTrackingPenalty, Attr::capNeedBonus, Attr::capRechargeBonus,
+        Attr::durationSkillBonus, Attr::hullHpBonus, Attr::hydraDroneRangeBonus, Attr::hydraDroneTrackingBonus,
+        Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus, Attr::remoteRepDurationCapBonus, Attr::repairBonus,
+        Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
     };
 };
-static_assert(sizeof(CyberArmorAttrs) == 16 * sizeof(float));
+static_assert(sizeof(CyberArmorAttrs) == 26 * sizeof(float));
 
 // Groups: CPU Enhancer
 struct CpuEnhancerAttrs
@@ -1557,6 +3023,8 @@ struct RemoteArmorRepairerAttrs
     float capacity = 0.0f;
     float cpu = 0.0f;
     float duration = 0.0f;
+    float falloffEffectiveness = 0.0f;
+    float maxRange = 0.0f;
     float mediumRemoteRepFittingMultiplier = 0.0f;
     float overloadArmorDamageAmount = 0.0f;
     float overloadSelfDurationBonus = 0.0f;
@@ -1566,14 +3034,95 @@ struct RemoteArmorRepairerAttrs
     float shipBonusRole3 = 0.0f;
     float shipBonusRole4 = 0.0f;
 
-    static constexpr Attr kFields[13] = {
+    static constexpr Attr kFields[15] = {
         Attr::armorDamageAmount, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
-        Attr::duration, Attr::mediumRemoteRepFittingMultiplier, Attr::overloadArmorDamageAmount, Attr::overloadSelfDurationBonus,
-        Attr::power, Attr::repairMultiplierBonusMax, Attr::repairMultiplierBonusPerCycle, Attr::shipBonusRole3,
-        Attr::shipBonusRole4,
+        Attr::duration, Attr::falloffEffectiveness, Attr::maxRange, Attr::mediumRemoteRepFittingMultiplier,
+        Attr::overloadArmorDamageAmount, Attr::overloadSelfDurationBonus, Attr::power, Attr::repairMultiplierBonusMax,
+        Attr::repairMultiplierBonusPerCycle, Attr::shipBonusRole3, Attr::shipBonusRole4,
     };
 };
-static_assert(sizeof(RemoteArmorRepairerAttrs) == 13 * sizeof(float));
+static_assert(sizeof(RemoteArmorRepairerAttrs) == 15 * sizeof(float));
+
+// Groups: Missile Launcher Rapid Torpedo, Missile Launcher XL Cruise, Missile Launcher XL Torpedo
+struct MissileLauncherXlCruiseAttrs
+{
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float armorDamageAmount = 0.0f;
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float chargeRate = 0.0f;
+    float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
+    float duration = 0.0f;
+    float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
+    float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float hullEmDamageResonance = 0.0f;
+    float hullExplosiveDamageResonance = 0.0f;
+    float hullKineticDamageResonance = 0.0f;
+    float hullThermalDamageResonance = 0.0f;
+    float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float overloadDamageModifier = 0.0f;
+    float overloadRofBonus = 0.0f;
+    float power = 0.0f;
+    float reloadTime = 0.0f;
+    float shieldBonus = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speed = 0.0f;
+    float speedFactor = 0.0f;
+    float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
+    float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
+    float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
+
+    static constexpr Attr kFields[57] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
+        Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
+        Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
+        Attr::cpu, Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus,
+        Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus,
+        Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance,
+        Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus,
+        Attr::missileVelocityBonus, Attr::overloadDamageModifier, Attr::overloadRofBonus, Attr::power,
+        Attr::reloadTime, Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance,
+        Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus, Attr::speed,
+        Attr::speedFactor, Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus,
+        Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus,
+        Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus, Attr::trackingSpeed,
+        Attr::trackingSpeedBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::warpScrambleRange,
+    };
+};
+static_assert(sizeof(MissileLauncherXlCruiseAttrs) == 57 * sizeof(float));
 
 // Groups: Remote Hull Repairer
 struct RemoteHullRepairerAttrs
@@ -1582,20 +3131,27 @@ struct RemoteHullRepairerAttrs
     float capacity = 0.0f;
     float cpu = 0.0f;
     float duration = 0.0f;
+    float falloffEffectiveness = 0.0f;
+    float maxRange = 0.0f;
     float overloadSelfDurationBonus = 0.0f;
     float power = 0.0f;
     float structureDamageAmount = 0.0f;
 
-    static constexpr Attr kFields[7] = {
+    static constexpr Attr kFields[9] = {
         Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
-        Attr::overloadSelfDurationBonus, Attr::power, Attr::structureDamageAmount,
+        Attr::falloffEffectiveness, Attr::maxRange, Attr::overloadSelfDurationBonus, Attr::power,
+        Attr::structureDamageAmount,
     };
 };
-static_assert(sizeof(RemoteHullRepairerAttrs) == 7 * sizeof(float));
+static_assert(sizeof(RemoteHullRepairerAttrs) == 9 * sizeof(float));
 
 // Groups: Warp Disrupt Field Generator
 struct WarpDisruptFieldGeneratorAttrs
 {
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmount = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -1604,14 +3160,22 @@ struct WarpDisruptFieldGeneratorAttrs
     float capacitorNeed = 0.0f;
     float capacity = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
     float duration = 0.0f;
     float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
     float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
     float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
     float overloadSelfDurationBonus = 0.0f;
     float power = 0.0f;
     float reloadTime = 0.0f;
@@ -1620,26 +3184,45 @@ struct WarpDisruptFieldGeneratorAttrs
     float shieldExplosiveDamageResonance = 0.0f;
     float shieldKineticDamageResonance = 0.0f;
     float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
     float speed = 0.0f;
+    float speedFactor = 0.0f;
+    float speedFactorBonus = 0.0f;
     float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float warfareBuff1Value = 0.0f;
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
 
-    static constexpr Attr kFields[31] = {
+    static constexpr Attr kFields[56] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
-        Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus, Attr::hullEmDamageResonance,
+        Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosionDelayBonus,
+        Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus, Attr::hullEmDamageResonance,
         Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus,
+        Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus, Attr::missileVelocityBonus,
         Attr::overloadSelfDurationBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
         Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
-        Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
-        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor, Attr::speedFactorBonus,
+        Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus,
+        Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus,
+        Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus,
+        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
     };
 };
-static_assert(sizeof(WarpDisruptFieldGeneratorAttrs) == 31 * sizeof(float));
+static_assert(sizeof(WarpDisruptFieldGeneratorAttrs) == 56 * sizeof(float));
 
 // Groups: Auxiliary Power Core
 struct AuxiliaryPowerCoreAttrs
@@ -1658,6 +3241,10 @@ static_assert(sizeof(AuxiliaryPowerCoreAttrs) == 4 * sizeof(float));
 // Groups: Missile Launcher Bomb, Missile Launcher Defender
 struct MissileLauncherBombAttrs
 {
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmount = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -1667,14 +3254,22 @@ struct MissileLauncherBombAttrs
     float capacity = 0.0f;
     float chargeRate = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
     float duration = 0.0f;
     float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
     float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
     float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
     float moduleReactivationDelay = 0.0f;
     float power = 0.0f;
     float reloadTime = 0.0f;
@@ -1683,26 +3278,44 @@ struct MissileLauncherBombAttrs
     float shieldExplosiveDamageResonance = 0.0f;
     float shieldKineticDamageResonance = 0.0f;
     float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
     float speed = 0.0f;
+    float speedFactor = 0.0f;
     float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float warfareBuff1Value = 0.0f;
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
 
-    static constexpr Attr kFields[32] = {
+    static constexpr Attr kFields[56] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
-        Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
+        Attr::cpu, Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus,
+        Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus,
         Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance,
-        Attr::kineticDamageResistanceBonus, Attr::moduleReactivationDelay, Attr::power, Attr::reloadTime,
+        Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus,
+        Attr::missileVelocityBonus, Attr::moduleReactivationDelay, Attr::power, Attr::reloadTime,
         Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance,
-        Attr::shieldThermalDamageResonance, Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus,
-        Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor,
+        Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus,
+        Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus,
+        Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus,
+        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
     };
 };
-static_assert(sizeof(MissileLauncherBombAttrs) == 32 * sizeof(float));
+static_assert(sizeof(MissileLauncherBombAttrs) == 56 * sizeof(float));
 
 // Groups: Gang Coordinator
 struct GangCoordinatorAttrs
@@ -1711,20 +3324,22 @@ struct GangCoordinatorAttrs
     float capacity = 0.0f;
     float cpu = 0.0f;
     float duration = 0.0f;
+    float maxRange = 0.0f;
     float power = 0.0f;
     float reloadTime = 0.0f;
     float warfareLinkCPUAdd = 0.0f;
 
-    static constexpr Attr kFields[7] = {
+    static constexpr Attr kFields[8] = {
         Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
-        Attr::power, Attr::reloadTime, Attr::warfareLinkCPUAdd,
+        Attr::maxRange, Attr::power, Attr::reloadTime, Attr::warfareLinkCPUAdd,
     };
 };
-static_assert(sizeof(GangCoordinatorAttrs) == 7 * sizeof(float));
+static_assert(sizeof(GangCoordinatorAttrs) == 8 * sizeof(float));
 
 // Groups: Siege Module
 struct SiegeModuleAttrs
 {
+    float activationBlockedStrenght = 0.0f;
     float armorDamageAmountBonus = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -1737,16 +3352,24 @@ struct SiegeModuleAttrs
     float capacitorNeed = 0.0f;
     float capacity = 0.0f;
     float cpu = 0.0f;
+    float droneDamageBonus = 0.0f;
     float duration = 0.0f;
     float ewCapacitorNeedBonus = 0.0f;
+    float falloffBonus = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
+    float industrialCoreBonusCommandBurstRange = 0.0f;
+    float industrialCoreBonusDroneDamageHP = 0.0f;
+    float industrialCoreBonusDroneVelocity = 0.0f;
     float industrialCoreBonusMiningBurstStrength = 0.0f;
     float industrialCoreLocalLogisticsAmountBonus = 0.0f;
     float industrialCoreLocalLogisticsDurationBonus = 0.0f;
     float industrialCoreRemoteLogisticsDurationBonus = 0.0f;
+    float industrialCoreRemoteLogisticsRangeBonus = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
     float power = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldEmDamageResonance = 0.0f;
@@ -1757,24 +3380,32 @@ struct SiegeModuleAttrs
     float siegeLauncherROFBonus = 0.0f;
     float siegeLocalLogisticsAmountBonus = 0.0f;
     float siegeLocalLogisticsDurationBonus = 0.0f;
+    float siegeMissileDamageBonus = 0.0f;
     float siegeRemoteLogisticsAmountBonus = 0.0f;
     float siegeRemoteLogisticsDurationBonus = 0.0f;
+    float siegeRemoteLogisticsRangeBonus = 0.0f;
+    float siegeTorpedoVelocityBonus = 0.0f;
+    float siegeTurretDamageBonus = 0.0f;
+    float speedFactor = 0.0f;
 
-    static constexpr Attr kFields[34] = {
-        Attr::armorDamageAmountBonus, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
-        Attr::armorThermalDamageResonance, Attr::bastionMissileROFBonus, Attr::bastionModeArmorRepairCapDurationBonus, Attr::bastionModeShieldBoosterCapDurationBonus,
-        Attr::bastionTurretROFBonus, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
-        Attr::duration, Attr::ewCapacitorNeedBonus, Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance,
-        Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance, Attr::industrialCoreBonusMiningBurstStrength, Attr::industrialCoreLocalLogisticsAmountBonus,
-        Attr::industrialCoreLocalLogisticsDurationBonus, Attr::industrialCoreRemoteLogisticsDurationBonus, Attr::power, Attr::shieldBoostMultiplier,
-        Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
-        Attr::siegeHAWMissileROFBonus, Attr::siegeLauncherROFBonus, Attr::siegeLocalLogisticsAmountBonus, Attr::siegeLocalLogisticsDurationBonus,
-        Attr::siegeRemoteLogisticsAmountBonus, Attr::siegeRemoteLogisticsDurationBonus,
+    static constexpr Attr kFields[48] = {
+        Attr::activationBlockedStrenght, Attr::armorDamageAmountBonus, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance,
+        Attr::armorKineticDamageResonance, Attr::armorThermalDamageResonance, Attr::bastionMissileROFBonus, Attr::bastionModeArmorRepairCapDurationBonus,
+        Attr::bastionModeShieldBoosterCapDurationBonus, Attr::bastionTurretROFBonus, Attr::capacitorNeed, Attr::capacity,
+        Attr::cpu, Attr::droneDamageBonus, Attr::duration, Attr::ewCapacitorNeedBonus,
+        Attr::falloffBonus, Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance,
+        Attr::hullThermalDamageResonance, Attr::industrialCoreBonusCommandBurstRange, Attr::industrialCoreBonusDroneDamageHP, Attr::industrialCoreBonusDroneVelocity,
+        Attr::industrialCoreBonusMiningBurstStrength, Attr::industrialCoreLocalLogisticsAmountBonus, Attr::industrialCoreLocalLogisticsDurationBonus, Attr::industrialCoreRemoteLogisticsDurationBonus,
+        Attr::industrialCoreRemoteLogisticsRangeBonus, Attr::maxRangeBonus, Attr::missileVelocityBonus, Attr::power,
+        Attr::shieldBoostMultiplier, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance,
+        Attr::shieldThermalDamageResonance, Attr::siegeHAWMissileROFBonus, Attr::siegeLauncherROFBonus, Attr::siegeLocalLogisticsAmountBonus,
+        Attr::siegeLocalLogisticsDurationBonus, Attr::siegeMissileDamageBonus, Attr::siegeRemoteLogisticsAmountBonus, Attr::siegeRemoteLogisticsDurationBonus,
+        Attr::siegeRemoteLogisticsRangeBonus, Attr::siegeTorpedoVelocityBonus, Attr::siegeTurretDamageBonus, Attr::speedFactor,
     };
 };
-static_assert(sizeof(SiegeModuleAttrs) == 34 * sizeof(float));
+static_assert(sizeof(SiegeModuleAttrs) == 48 * sizeof(float));
 
-// Groups: Capital Mobility Modules, Micro Jump Drive, Micro Jump Field Generators, Super Weapon, Warp Core Stabilizer
+// Groups: Capital Mobility Modules, Micro Jump Drive, Micro Jump Field Generators
 struct MicroJumpDriveAttrs
 {
     float capacitorNeed = 0.0f;
@@ -1813,18 +3444,19 @@ struct AncillaryShieldBoosterAttrs
 };
 static_assert(sizeof(AncillaryShieldBoosterAttrs) == 10 * sizeof(float));
 
-// Groups: Drone Control Range Module, Drone Damage Modules, Drone Navigation Computer, Drone Tracking Enhancer, ECM Stabilizer, Fighter Support Unit, Missile Guidance Enhancer, Scanning Upgrade
+// Groups: Drone Damage Modules
 struct DroneDamageModulesAttrs
 {
     float capacity = 0.0f;
     float cpu = 0.0f;
+    float droneDamageBonus = 0.0f;
     float power = 0.0f;
 
-    static constexpr Attr kFields[3] = {
-        Attr::capacity, Attr::cpu, Attr::power,
+    static constexpr Attr kFields[4] = {
+        Attr::capacity, Attr::cpu, Attr::droneDamageBonus, Attr::power,
     };
 };
-static_assert(sizeof(DroneDamageModulesAttrs) == 3 * sizeof(float));
+static_assert(sizeof(DroneDamageModulesAttrs) == 4 * sizeof(float));
 
 // Groups: Rig Core
 struct RigCoreAttrs
@@ -1838,16 +3470,17 @@ struct RigCoreAttrs
     float durationBonus = 0.0f;
     float powerEngineeringOutputBonus = 0.0f;
     float powerNeedBonus = 0.0f;
+    float rangeSkillBonus = 0.0f;
     float repairBonus = 0.0f;
     float upgradeCost = 0.0f;
 
-    static constexpr Attr kFields[11] = {
+    static constexpr Attr kFields[12] = {
         Attr::capNeedBonus, Attr::capRechargeBonus, Attr::capacitorCapacityBonus, Attr::capacity,
         Attr::cpuNeedBonus, Attr::cpuOutputBonus2, Attr::durationBonus, Attr::powerEngineeringOutputBonus,
-        Attr::powerNeedBonus, Attr::repairBonus, Attr::upgradeCost,
+        Attr::powerNeedBonus, Attr::rangeSkillBonus, Attr::repairBonus, Attr::upgradeCost,
     };
 };
-static_assert(sizeof(RigCoreAttrs) == 11 * sizeof(float));
+static_assert(sizeof(RigCoreAttrs) == 12 * sizeof(float));
 
 // Groups: Armor Resistance Shift Hardener
 struct ArmorResistanceShiftHardenerAttrs
@@ -1875,7 +3508,7 @@ struct ArmorResistanceShiftHardenerAttrs
 };
 static_assert(sizeof(ArmorResistanceShiftHardenerAttrs) == 13 * sizeof(float));
 
-// Groups: Interdiction Nullifier, Signature Suppressor
+// Groups: Signature Suppressor
 struct SignatureSuppressorAttrs
 {
     float capacitorNeed = 0.0f;
@@ -1891,6 +3524,60 @@ struct SignatureSuppressorAttrs
     };
 };
 static_assert(sizeof(SignatureSuppressorAttrs) == 6 * sizeof(float));
+
+// Groups: Cyber Learning, Cyber Production, Cyber Science
+struct CyberLearningAttrs
+{
+    float armorHpBonus = 0.0f;
+    float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
+    float boosterArmorHPPenalty = 0.0f;
+    float boosterArmorRepairAmountPenalty = 0.0f;
+    float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
+    float boosterShieldBoostAmountPenalty = 0.0f;
+    float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
+    float capRechargeBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
+    float remoteRepDurationCapBonus = 0.0f;
+    float shieldBoostMultiplier = 0.0f;
+    float shieldHpBonus = 0.0f;
+
+    static constexpr Attr kFields[21] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty, Attr::boosterMissileVelocityPenalty,
+        Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty,
+        Attr::boosterTurretTrackingPenalty, Attr::capRechargeBonus, Attr::hydraDroneRangeBonus, Attr::hydraDroneTrackingBonus,
+        Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier,
+        Attr::shieldHpBonus,
+    };
+};
+static_assert(sizeof(CyberLearningAttrs) == 21 * sizeof(float));
+
+// Groups: Warp Core Stabilizer
+struct WarpCoreStabilizerAttrs
+{
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float moduleReactivationDelay = 0.0f;
+    float power = 0.0f;
+
+    static constexpr Attr kFields[7] = {
+        Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
+        Attr::maxTargetRangeBonus, Attr::moduleReactivationDelay, Attr::power,
+    };
+};
+static_assert(sizeof(WarpCoreStabilizerAttrs) == 7 * sizeof(float));
 
 // Groups: Armor Hardener
 struct ArmorHardenerAttrs
@@ -1963,43 +3650,283 @@ struct ShieldBoostAmplifierAttrs
 };
 static_assert(sizeof(ShieldBoostAmplifierAttrs) == 4 * sizeof(float));
 
+// Groups: Ballistic Control System
+struct BallisticControlSystemAttrs
+{
+    float aoeVelocityBonus = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float droneDamageBonus = 0.0f;
+    float missileDamageMultiplierBonus = 0.0f;
+    float power = 0.0f;
+    float speedMultiplier = 0.0f;
+
+    static constexpr Attr kFields[7] = {
+        Attr::aoeVelocityBonus, Attr::capacity, Attr::cpu, Attr::droneDamageBonus,
+        Attr::missileDamageMultiplierBonus, Attr::power, Attr::speedMultiplier,
+    };
+};
+static_assert(sizeof(BallisticControlSystemAttrs) == 7 * sizeof(float));
+
+// Groups: Advanced Beam Laser Crystal
+struct AdvancedBeamLaserCrystalChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capacitorBonus = 0.0f;
+    float crystalVolatilityChance = 0.0f;
+    float crystalVolatilityDamage = 0.0f;
+    float crystalsGetDamaged = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float hp = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeedMultiplier = 0.0f;
+    float volume = 0.0f;
+    float weaponRangeMultiplier = 0.0f;
+
+    static constexpr Attr kFields[17] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capacitorBonus, Attr::crystalVolatilityChance,
+        Attr::crystalVolatilityDamage, Attr::crystalsGetDamaged, Attr::emDamage, Attr::explosionDelay,
+        Attr::explosiveDamage, Attr::hp, Attr::kineticDamage, Attr::mass,
+        Attr::maxVelocity, Attr::thermalDamage, Attr::trackingSpeedMultiplier, Attr::volume,
+        Attr::weaponRangeMultiplier,
+    };
+};
+static_assert(sizeof(AdvancedBeamLaserCrystalChargeAttrs) == 17 * sizeof(float));
+
+// Groups: Advanced Pulse Laser Crystal
+struct AdvancedPulseLaserCrystalChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capacitorBonus = 0.0f;
+    float crystalVolatilityChance = 0.0f;
+    float crystalVolatilityDamage = 0.0f;
+    float crystalsGetDamaged = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float hp = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeedMultiplier = 0.0f;
+    float volume = 0.0f;
+    float weaponRangeMultiplier = 0.0f;
+
+    static constexpr Attr kFields[18] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capNeedBonus, Attr::capacitorBonus,
+        Attr::crystalVolatilityChance, Attr::crystalVolatilityDamage, Attr::crystalsGetDamaged, Attr::emDamage,
+        Attr::explosionDelay, Attr::explosiveDamage, Attr::hp, Attr::kineticDamage,
+        Attr::mass, Attr::maxVelocity, Attr::thermalDamage, Attr::trackingSpeedMultiplier,
+        Attr::volume, Attr::weaponRangeMultiplier,
+    };
+};
+static_assert(sizeof(AdvancedPulseLaserCrystalChargeAttrs) == 18 * sizeof(float));
+
+// Groups: Advanced Autocannon Ammo
+struct AdvancedAutocannonAmmoChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float fallofMultiplier = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeedMultiplier = 0.0f;
+    float volume = 0.0f;
+    float weaponRangeMultiplier = 0.0f;
+
+    static constexpr Attr kFields[14] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capacitorBonus, Attr::emDamage,
+        Attr::explosionDelay, Attr::explosiveDamage, Attr::fallofMultiplier, Attr::kineticDamage,
+        Attr::mass, Attr::maxVelocity, Attr::thermalDamage, Attr::trackingSpeedMultiplier,
+        Attr::volume, Attr::weaponRangeMultiplier,
+    };
+};
+static_assert(sizeof(AdvancedAutocannonAmmoChargeAttrs) == 14 * sizeof(float));
+
+// Groups: Advanced Blaster Charge
+struct AdvancedBlasterChargeChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float fallofMultiplier = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeedMultiplier = 0.0f;
+    float volume = 0.0f;
+    float weaponRangeMultiplier = 0.0f;
+
+    static constexpr Attr kFields[15] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capNeedBonus, Attr::capacitorBonus,
+        Attr::emDamage, Attr::explosionDelay, Attr::explosiveDamage, Attr::fallofMultiplier,
+        Attr::kineticDamage, Attr::mass, Attr::maxVelocity, Attr::thermalDamage,
+        Attr::trackingSpeedMultiplier, Attr::volume, Attr::weaponRangeMultiplier,
+    };
+};
+static_assert(sizeof(AdvancedBlasterChargeChargeAttrs) == 15 * sizeof(float));
+
+// Groups: Advanced Railgun Charge
+struct AdvancedRailgunChargeChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeedMultiplier = 0.0f;
+    float volume = 0.0f;
+    float weaponRangeMultiplier = 0.0f;
+
+    static constexpr Attr kFields[14] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capNeedBonus, Attr::capacitorBonus,
+        Attr::emDamage, Attr::explosionDelay, Attr::explosiveDamage, Attr::kineticDamage,
+        Attr::mass, Attr::maxVelocity, Attr::thermalDamage, Attr::trackingSpeedMultiplier,
+        Attr::volume, Attr::weaponRangeMultiplier,
+    };
+};
+static_assert(sizeof(AdvancedRailgunChargeChargeAttrs) == 14 * sizeof(float));
+
+// Groups: Target Painter
+struct TargetPainterAttrs
+{
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float falloffEffectiveness = 0.0f;
+    float maxRange = 0.0f;
+    float overloadPainterStrengthBonus = 0.0f;
+    float power = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+
+    static constexpr Attr kFields[9] = {
+        Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
+        Attr::falloffEffectiveness, Attr::maxRange, Attr::overloadPainterStrengthBonus, Attr::power,
+        Attr::signatureRadiusBonus,
+    };
+};
+static_assert(sizeof(TargetPainterAttrs) == 9 * sizeof(float));
+
 // Groups: Cyber Leadership
 struct CyberLeadershipAttrs
 {
     float armorHpBonus = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capRechargeBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
     float mindlinkBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldHpBonus = 0.0f;
 
-    static constexpr Attr kFields[12] = {
-        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
-        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus,
-        Attr::mindlinkBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    static constexpr Attr kFields[22] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty, Attr::boosterMissileVelocityPenalty,
+        Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty,
+        Attr::boosterTurretTrackingPenalty, Attr::capRechargeBonus, Attr::hydraDroneRangeBonus, Attr::hydraDroneTrackingBonus,
+        Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus, Attr::mindlinkBonus, Attr::remoteRepDurationCapBonus,
+        Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
     };
 };
-static_assert(sizeof(CyberLeadershipAttrs) == 12 * sizeof(float));
+static_assert(sizeof(CyberLeadershipAttrs) == 22 * sizeof(float));
 
 // Groups: Mercoxit Mining Crystal, Mining Crystal
 struct MercoxitMiningCrystalChargeAttrs
 {
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
     float capNeedBonus = 0.0f;
     float capacitorBonus = 0.0f;
+    float crystalVolatilityChance = 0.0f;
+    float crystalVolatilityDamage = 0.0f;
+    float crystalsGetDamaged = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float hp = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
     float specializationAsteroidDurationMultiplier = 0.0f;
+    float thermalDamage = 0.0f;
     float volume = 0.0f;
 
-    static constexpr Attr kFields[4] = {
-        Attr::capNeedBonus, Attr::capacitorBonus, Attr::specializationAsteroidDurationMultiplier, Attr::volume,
+    static constexpr Attr kFields[17] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capNeedBonus, Attr::capacitorBonus,
+        Attr::crystalVolatilityChance, Attr::crystalVolatilityDamage, Attr::crystalsGetDamaged, Attr::emDamage,
+        Attr::explosionDelay, Attr::explosiveDamage, Attr::hp, Attr::kineticDamage,
+        Attr::mass, Attr::maxVelocity, Attr::specializationAsteroidDurationMultiplier, Attr::thermalDamage,
+        Attr::volume,
     };
 };
-static_assert(sizeof(MercoxitMiningCrystalChargeAttrs) == 4 * sizeof(float));
+static_assert(sizeof(MercoxitMiningCrystalChargeAttrs) == 17 * sizeof(float));
+
+// Groups: Bomb, Bomb ECM, Bomb Energy, SCARAB Breacher Pods, Scanner Probe, Survey Probe
+struct SurveyProbeChargeAttrs
+{
+    float agility = 0.0f;
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float hp = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float volume = 0.0f;
+
+    static constexpr Attr kFields[13] = {
+        Attr::agility, Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capacitorBonus,
+        Attr::emDamage, Attr::explosionDelay, Attr::explosiveDamage, Attr::hp,
+        Attr::kineticDamage, Attr::mass, Attr::maxVelocity, Attr::thermalDamage,
+        Attr::volume,
+    };
+};
+static_assert(sizeof(SurveyProbeChargeAttrs) == 13 * sizeof(float));
 
 // Groups: Cyberimplant
 struct CyberimplantAttrs
@@ -2008,38 +3935,64 @@ struct CyberimplantAttrs
     float ImplantSetRapture = 0.0f;
     float armorHpBonus = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterAttributeModifier = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capRechargeBonus = 0.0f;
+    float damageMultiplierBonusMaxModifier = 0.0f;
+    float damageMultiplierBonusPerCycleModifier = 0.0f;
     float durationBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
     float implantSetAmulet = 0.0f;
     float implantSetBloodraider = 0.0f;
     float implantSetGuristas = 0.0f;
+    float implantSetHydra = 0.0f;
+    float implantSetMordus = 0.0f;
+    float implantSetORE = 0.0f;
     float implantSetSavior = 0.0f;
     float implantSetSerpentis2 = 0.0f;
     float implantSetSyndicate = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float rangeSkillBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
+    float setBonusMimesis = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldHpBonus = 0.0f;
 
-    static constexpr Attr kFields[21] = {
+    static constexpr Attr kFields[39] = {
         Attr::ImplantSetNirvana, Attr::ImplantSetRapture, Attr::armorHpBonus, Attr::armorRepairBonus,
-        Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty, Attr::boosterAttributeModifier, Attr::boosterCapacitorCapacityPenalty,
-        Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus, Attr::durationBonus,
-        Attr::implantSetAmulet, Attr::implantSetBloodraider, Attr::implantSetGuristas, Attr::implantSetSavior,
-        Attr::implantSetSerpentis2, Attr::implantSetSyndicate, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier,
-        Attr::shieldHpBonus,
+        Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty, Attr::boosterAttributeModifier,
+        Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty, Attr::boosterMissileVelocityPenalty, Attr::boosterShieldBoostAmountPenalty,
+        Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty, Attr::boosterTurretTrackingPenalty,
+        Attr::capRechargeBonus, Attr::damageMultiplierBonusMaxModifier, Attr::damageMultiplierBonusPerCycleModifier, Attr::durationBonus,
+        Attr::hydraDroneRangeBonus, Attr::hydraDroneTrackingBonus, Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus,
+        Attr::implantSetAmulet, Attr::implantSetBloodraider, Attr::implantSetGuristas, Attr::implantSetHydra,
+        Attr::implantSetMordus, Attr::implantSetORE, Attr::implantSetSavior, Attr::implantSetSerpentis2,
+        Attr::implantSetSyndicate, Attr::maxRangeBonus, Attr::rangeSkillBonus, Attr::remoteRepDurationCapBonus,
+        Attr::setBonusMimesis, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
     };
 };
-static_assert(sizeof(CyberimplantAttrs) == 21 * sizeof(float));
+static_assert(sizeof(CyberimplantAttrs) == 39 * sizeof(float));
 
-// Groups: Breacher Pod Launchers, Festival Launcher, Precursor Weapon
+// Groups: Breacher Pod Launchers, Festival Launcher
 struct FestivalLauncherAttrs
 {
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmount = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -2049,14 +4002,22 @@ struct FestivalLauncherAttrs
     float capacity = 0.0f;
     float chargeRate = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
     float duration = 0.0f;
     float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
     float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
     float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
     float power = 0.0f;
     float reloadTime = 0.0f;
     float shieldBonus = 0.0f;
@@ -2064,53 +4025,83 @@ struct FestivalLauncherAttrs
     float shieldExplosiveDamageResonance = 0.0f;
     float shieldKineticDamageResonance = 0.0f;
     float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
     float speed = 0.0f;
+    float speedFactor = 0.0f;
     float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float warfareBuff1Value = 0.0f;
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
 
-    static constexpr Attr kFields[31] = {
+    static constexpr Attr kFields[55] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
-        Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
+        Attr::cpu, Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus,
+        Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus,
         Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance,
-        Attr::kineticDamageResistanceBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
+        Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus,
+        Attr::missileVelocityBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
         Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
-        Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
-        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor, Attr::structureRigEwarCapUseBonus,
+        Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus,
+        Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus,
+        Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus, Attr::warfareBuff1Value,
+        Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
     };
 };
-static_assert(sizeof(FestivalLauncherAttrs) == 31 * sizeof(float));
+static_assert(sizeof(FestivalLauncherAttrs) == 55 * sizeof(float));
 
 // Groups: Cyber Resource Processing
 struct CyberResourceProcessingAttrs
 {
     float armorHpBonus = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capRechargeBonus = 0.0f;
     float durationBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
     float iceHarvestCycleBonus = 0.0f;
     float miningUpgradeCPUReductionBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldHpBonus = 0.0f;
 
-    static constexpr Attr kFields[14] = {
-        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
-        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus,
-        Attr::durationBonus, Attr::iceHarvestCycleBonus, Attr::miningUpgradeCPUReductionBonus, Attr::remoteRepDurationCapBonus,
-        Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    static constexpr Attr kFields[24] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty, Attr::boosterMissileVelocityPenalty,
+        Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty,
+        Attr::boosterTurretTrackingPenalty, Attr::capRechargeBonus, Attr::durationBonus, Attr::hydraDroneRangeBonus,
+        Attr::hydraDroneTrackingBonus, Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus, Attr::iceHarvestCycleBonus,
+        Attr::miningUpgradeCPUReductionBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
     };
 };
-static_assert(sizeof(CyberResourceProcessingAttrs) == 14 * sizeof(float));
+static_assert(sizeof(CyberResourceProcessingAttrs) == 24 * sizeof(float));
 
 // Groups: Cynosural Field Generator
 struct CynosuralFieldGeneratorAttrs
@@ -2121,13 +4112,14 @@ struct CynosuralFieldGeneratorAttrs
     float duration = 0.0f;
     float moduleReactivationDelay = 0.0f;
     float power = 0.0f;
+    float speedFactor = 0.0f;
 
-    static constexpr Attr kFields[6] = {
+    static constexpr Attr kFields[7] = {
         Attr::capacity, Attr::covertCloakCPUAdd, Attr::cpu, Attr::duration,
-        Attr::moduleReactivationDelay, Attr::power,
+        Attr::moduleReactivationDelay, Attr::power, Attr::speedFactor,
     };
 };
-static_assert(sizeof(CynosuralFieldGeneratorAttrs) == 6 * sizeof(float));
+static_assert(sizeof(CynosuralFieldGeneratorAttrs) == 7 * sizeof(float));
 
 // Groups: Mining Upgrade
 struct MiningUpgradeAttrs
@@ -2138,14 +4130,52 @@ struct MiningUpgradeAttrs
     float cpuPenaltyPercent = 0.0f;
     float duration = 0.0f;
     float iceHarvestCycleBonus = 0.0f;
+    float maxRange = 0.0f;
     float power = 0.0f;
 
-    static constexpr Attr kFields[7] = {
+    static constexpr Attr kFields[8] = {
         Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::cpuPenaltyPercent,
-        Attr::duration, Attr::iceHarvestCycleBonus, Attr::power,
+        Attr::duration, Attr::iceHarvestCycleBonus, Attr::maxRange, Attr::power,
     };
 };
-static_assert(sizeof(MiningUpgradeAttrs) == 7 * sizeof(float));
+static_assert(sizeof(MiningUpgradeAttrs) == 8 * sizeof(float));
+
+// Groups: Energy Neutralizer Drone, Stasis Webifying Drone
+struct EnergyNeutralizerDroneDroneAttrs
+{
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorCapacity = 0.0f;
+    float damageMultiplier = 0.0f;
+    float emDamage = 0.0f;
+    float explosiveDamage = 0.0f;
+    float falloff = 0.0f;
+    float kineticDamage = 0.0f;
+    float maxRange = 0.0f;
+    float maxVelocity = 0.0f;
+    float optimalSigRadius = 0.0f;
+    float radius = 0.0f;
+    float shieldCapacity = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float speedFactor = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeed = 0.0f;
+
+    static constexpr Attr kFields[22] = {
+        Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance, Attr::armorThermalDamageResonance,
+        Attr::capacitorCapacity, Attr::damageMultiplier, Attr::emDamage, Attr::explosiveDamage,
+        Attr::falloff, Attr::kineticDamage, Attr::maxRange, Attr::maxVelocity,
+        Attr::optimalSigRadius, Attr::radius, Attr::shieldCapacity, Attr::shieldEmDamageResonance,
+        Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speedFactor,
+        Attr::thermalDamage, Attr::trackingSpeed,
+    };
+};
+static_assert(sizeof(EnergyNeutralizerDroneDroneAttrs) == 22 * sizeof(float));
 
 // Groups: Cyber X Specials
 struct CyberXSpecialsAttrs
@@ -2153,62 +4183,337 @@ struct CyberXSpecialsAttrs
     float armorHpBonus = 0.0f;
     float armorHpBonus2 = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capRechargeBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldHpBonus = 0.0f;
 
-    static constexpr Attr kFields[12] = {
-        Attr::armorHpBonus, Attr::armorHpBonus2, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty,
-        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty,
-        Attr::capRechargeBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    static constexpr Attr kFields[22] = {
+        Attr::armorHpBonus, Attr::armorHpBonus2, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty,
+        Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty,
+        Attr::boosterMissileVelocityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty,
+        Attr::boosterTurretOptimalRangePenalty, Attr::boosterTurretTrackingPenalty, Attr::capRechargeBonus, Attr::hydraDroneRangeBonus,
+        Attr::hydraDroneTrackingBonus, Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus, Attr::remoteRepDurationCapBonus,
+        Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
     };
 };
-static_assert(sizeof(CyberXSpecialsAttrs) == 12 * sizeof(float));
+static_assert(sizeof(CyberXSpecialsAttrs) == 22 * sizeof(float));
 
-// Groups: Festival Charges, Interdiction Burst Probes, Interdiction Probe, Structure Festival Charges
+// Groups: Festival Charges, Interdiction Probe, Structure Festival Charges
 struct InterdictionProbeChargeAttrs
 {
+    float agility = 0.0f;
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
     float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float hp = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
     float speedMultiplier = 0.0f;
+    float thermalDamage = 0.0f;
     float volume = 0.0f;
 
-    static constexpr Attr kFields[3] = {
-        Attr::capacitorBonus, Attr::speedMultiplier, Attr::volume,
+    static constexpr Attr kFields[14] = {
+        Attr::agility, Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capacitorBonus,
+        Attr::emDamage, Attr::explosionDelay, Attr::explosiveDamage, Attr::hp,
+        Attr::kineticDamage, Attr::mass, Attr::maxVelocity, Attr::speedMultiplier,
+        Attr::thermalDamage, Attr::volume,
     };
 };
-static_assert(sizeof(InterdictionProbeChargeAttrs) == 3 * sizeof(float));
+static_assert(sizeof(InterdictionProbeChargeAttrs) == 14 * sizeof(float));
+
+// Groups: Interdiction Sphere Launcher
+struct InterdictionSphereLauncherAttrs
+{
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float armorDamageAmount = 0.0f;
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float chargeRate = 0.0f;
+    float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
+    float duration = 0.0f;
+    float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
+    float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float hullEmDamageResonance = 0.0f;
+    float hullExplosiveDamageResonance = 0.0f;
+    float hullKineticDamageResonance = 0.0f;
+    float hullThermalDamageResonance = 0.0f;
+    float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float overloadRofBonus = 0.0f;
+    float power = 0.0f;
+    float reloadTime = 0.0f;
+    float shieldBonus = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speed = 0.0f;
+    float speedFactor = 0.0f;
+    float speedFactorBonus = 0.0f;
+    float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
+    float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
+    float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
+
+    static constexpr Attr kFields[57] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
+        Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
+        Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
+        Attr::cpu, Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus,
+        Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus,
+        Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance,
+        Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus,
+        Attr::missileVelocityBonus, Attr::overloadRofBonus, Attr::power, Attr::reloadTime,
+        Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance,
+        Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor,
+        Attr::speedFactorBonus, Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus,
+        Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus,
+        Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus, Attr::trackingSpeed,
+        Attr::trackingSpeedBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::warpScrambleRange,
+    };
+};
+static_assert(sizeof(InterdictionSphereLauncherAttrs) == 57 * sizeof(float));
+
+// Groups: Electronic Warfare Drone
+struct ElectronicWarfareDroneDroneAttrs
+{
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorCapacity = 0.0f;
+    float damageMultiplier = 0.0f;
+    float emDamage = 0.0f;
+    float explosiveDamage = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float kineticDamage = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float maxVelocity = 0.0f;
+    float optimalSigRadius = 0.0f;
+    float radius = 0.0f;
+    float shieldCapacity = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speedFactor = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+
+    static constexpr Attr kFields[27] = {
+        Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance, Attr::armorThermalDamageResonance,
+        Attr::capacitorCapacity, Attr::damageMultiplier, Attr::emDamage, Attr::explosiveDamage,
+        Attr::falloff, Attr::falloffBonus, Attr::kineticDamage, Attr::maxRange,
+        Attr::maxRangeBonus, Attr::maxTargetRangeBonus, Attr::maxVelocity, Attr::optimalSigRadius,
+        Attr::radius, Attr::shieldCapacity, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance,
+        Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus, Attr::speedFactor,
+        Attr::thermalDamage, Attr::trackingSpeed, Attr::trackingSpeedBonus,
+    };
+};
+static_assert(sizeof(ElectronicWarfareDroneDroneAttrs) == 27 * sizeof(float));
+
+// Groups: Drone Control Range Module
+struct DroneControlRangeModuleAttrs
+{
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float droneRangeBonus = 0.0f;
+    float power = 0.0f;
+
+    static constexpr Attr kFields[4] = {
+        Attr::capacity, Attr::cpu, Attr::droneRangeBonus, Attr::power,
+    };
+};
+static_assert(sizeof(DroneControlRangeModuleAttrs) == 4 * sizeof(float));
+
+// Groups: Super Weapon
+struct SuperWeaponAttrs
+{
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float emDamage = 0.0f;
+    float explosiveDamage = 0.0f;
+    float kineticDamage = 0.0f;
+    float maxRange = 0.0f;
+    float moduleReactivationDelay = 0.0f;
+    float power = 0.0f;
+    float speedFactor = 0.0f;
+    float thermalDamage = 0.0f;
+
+    static constexpr Attr kFields[12] = {
+        Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
+        Attr::emDamage, Attr::explosiveDamage, Attr::kineticDamage, Attr::maxRange,
+        Attr::moduleReactivationDelay, Attr::power, Attr::speedFactor, Attr::thermalDamage,
+    };
+};
+static_assert(sizeof(SuperWeaponAttrs) == 12 * sizeof(float));
+
+// Groups: Clone Vat Bay
+struct CloneVatBayAttrs
+{
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float power = 0.0f;
+    float speedFactor = 0.0f;
+
+    static constexpr Attr kFields[5] = {
+        Attr::capacity, Attr::cpu, Attr::duration, Attr::power,
+        Attr::speedFactor,
+    };
+};
+static_assert(sizeof(CloneVatBayAttrs) == 5 * sizeof(float));
+
+// Groups: Covert Jump Portal Generator, Industrial Jump Portal Generator, Jump Portal Generator
+struct JumpPortalGeneratorAttrs
+{
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float power = 0.0f;
+    float speedFactor = 0.0f;
+
+    static constexpr Attr kFields[6] = {
+        Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
+        Attr::power, Attr::speedFactor,
+    };
+};
+static_assert(sizeof(JumpPortalGeneratorAttrs) == 6 * sizeof(float));
+
+// Groups: Fighter Support Unit, Scanning Upgrade
+struct FighterSupportUnitAttrs
+{
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float power = 0.0f;
+
+    static constexpr Attr kFields[3] = {
+        Attr::capacity, Attr::cpu, Attr::power,
+    };
+};
+static_assert(sizeof(FighterSupportUnitAttrs) == 3 * sizeof(float));
+
+// Groups: Drone Navigation Computer
+struct DroneNavigationComputerAttrs
+{
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float power = 0.0f;
+    float speedFactor = 0.0f;
+
+    static constexpr Attr kFields[4] = {
+        Attr::capacity, Attr::cpu, Attr::power, Attr::speedFactor,
+    };
+};
+static_assert(sizeof(DroneNavigationComputerAttrs) == 4 * sizeof(float));
 
 // Groups: Cyber Biology
 struct CyberBiologyAttrs
 {
     float armorHpBonus = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterAttributeModifier = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capRechargeBonus = 0.0f;
     float durationBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldHpBonus = 0.0f;
 
-    static constexpr Attr kFields[13] = {
-        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
-        Attr::boosterAttributeModifier, Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty,
-        Attr::capRechargeBonus, Attr::durationBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier,
-        Attr::shieldHpBonus,
+    static constexpr Attr kFields[23] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterAttributeModifier, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty,
+        Attr::boosterMissileVelocityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty,
+        Attr::boosterTurretOptimalRangePenalty, Attr::boosterTurretTrackingPenalty, Attr::capRechargeBonus, Attr::durationBonus,
+        Attr::hydraDroneRangeBonus, Attr::hydraDroneTrackingBonus, Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus,
+        Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
     };
 };
-static_assert(sizeof(CyberBiologyAttrs) == 13 * sizeof(float));
+static_assert(sizeof(CyberBiologyAttrs) == 23 * sizeof(float));
+
+// Groups: ECM Stabilizer
+struct EcmStabilizerAttrs
+{
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float ecmRangeBonus = 0.0f;
+    float power = 0.0f;
+
+    static constexpr Attr kFields[4] = {
+        Attr::capacity, Attr::cpu, Attr::ecmRangeBonus, Attr::power,
+    };
+};
+static_assert(sizeof(EcmStabilizerAttrs) == 4 * sizeof(float));
 
 // Groups: Rig Armor
 struct RigArmorAttrs
@@ -2275,33 +4580,43 @@ static_assert(sizeof(RigShieldAttrs) == 11 * sizeof(float));
 struct RigDronesAttrs
 {
     float capacity = 0.0f;
+    float damageMultiplierBonus = 0.0f;
     float drawback = 0.0f;
+    float droneMaxVelocityBonus = 0.0f;
+    float droneRangeBonus = 0.0f;
     float hullHpBonus = 0.0f;
+    float rangeSkillBonus = 0.0f;
     float rofBonus = 0.0f;
+    float speedFactorBonus = 0.0f;
     float upgradeCost = 0.0f;
+    float webSpeedFactorBonus = 0.0f;
 
-    static constexpr Attr kFields[5] = {
-        Attr::capacity, Attr::drawback, Attr::hullHpBonus, Attr::rofBonus,
-        Attr::upgradeCost,
+    static constexpr Attr kFields[11] = {
+        Attr::capacity, Attr::damageMultiplierBonus, Attr::drawback, Attr::droneMaxVelocityBonus,
+        Attr::droneRangeBonus, Attr::hullHpBonus, Attr::rangeSkillBonus, Attr::rofBonus,
+        Attr::speedFactorBonus, Attr::upgradeCost, Attr::webSpeedFactorBonus,
     };
 };
-static_assert(sizeof(RigDronesAttrs) == 5 * sizeof(float));
+static_assert(sizeof(RigDronesAttrs) == 11 * sizeof(float));
 
-// Groups: Rig Electronic Systems, Rig Navigation
+// Groups: Rig Electronic Systems
 struct RigElectronicSystemsAttrs
 {
     float capNeedBonus = 0.0f;
     float capacity = 0.0f;
     float drawback = 0.0f;
     float durationBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float rangeSkillBonus = 0.0f;
+    float scanSkillEwStrengthBonus = 0.0f;
     float upgradeCost = 0.0f;
 
-    static constexpr Attr kFields[5] = {
+    static constexpr Attr kFields[8] = {
         Attr::capNeedBonus, Attr::capacity, Attr::drawback, Attr::durationBonus,
-        Attr::upgradeCost,
+        Attr::maxTargetRangeBonus, Attr::rangeSkillBonus, Attr::scanSkillEwStrengthBonus, Attr::upgradeCost,
     };
 };
-static_assert(sizeof(RigElectronicSystemsAttrs) == 5 * sizeof(float));
+static_assert(sizeof(RigElectronicSystemsAttrs) == 8 * sizeof(float));
 
 // Groups: Rig Scanning
 struct RigScanningAttrs
@@ -2310,15 +4625,19 @@ struct RigScanningAttrs
     float capacity = 0.0f;
     float drawback = 0.0f;
     float durationBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float rangeSkillBonus = 0.0f;
+    float scanSkillEwStrengthBonus = 0.0f;
     float scanspeedBonus = 0.0f;
     float upgradeCost = 0.0f;
 
-    static constexpr Attr kFields[6] = {
+    static constexpr Attr kFields[9] = {
         Attr::capNeedBonus, Attr::capacity, Attr::drawback, Attr::durationBonus,
-        Attr::scanspeedBonus, Attr::upgradeCost,
+        Attr::maxTargetRangeBonus, Attr::rangeSkillBonus, Attr::scanSkillEwStrengthBonus, Attr::scanspeedBonus,
+        Attr::upgradeCost,
     };
 };
-static_assert(sizeof(RigScanningAttrs) == 6 * sizeof(float));
+static_assert(sizeof(RigScanningAttrs) == 9 * sizeof(float));
 
 // Groups: Rig Energy Weapon, Rig Hybrid Weapon
 struct RigEnergyWeaponAttrs
@@ -2326,97 +4645,324 @@ struct RigEnergyWeaponAttrs
     float capNeedBonus = 0.0f;
     float capacity = 0.0f;
     float cpuNeedBonus = 0.0f;
+    float damageMultiplier = 0.0f;
     float drawback = 0.0f;
+    float falloffBonus = 0.0f;
+    float maxRangeBonus = 0.0f;
     float speedMultiplier = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+    float trackingSpeedMultiplier = 0.0f;
     float upgradeCost = 0.0f;
 
-    static constexpr Attr kFields[6] = {
-        Attr::capNeedBonus, Attr::capacity, Attr::cpuNeedBonus, Attr::drawback,
-        Attr::speedMultiplier, Attr::upgradeCost,
+    static constexpr Attr kFields[11] = {
+        Attr::capNeedBonus, Attr::capacity, Attr::cpuNeedBonus, Attr::damageMultiplier,
+        Attr::drawback, Attr::falloffBonus, Attr::maxRangeBonus, Attr::speedMultiplier,
+        Attr::trackingSpeedBonus, Attr::trackingSpeedMultiplier, Attr::upgradeCost,
     };
 };
-static_assert(sizeof(RigEnergyWeaponAttrs) == 6 * sizeof(float));
+static_assert(sizeof(RigEnergyWeaponAttrs) == 11 * sizeof(float));
 
 // Groups: Rig Launcher
 struct RigLauncherAttrs
 {
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float capacity = 0.0f;
+    float damageMultiplierBonus = 0.0f;
     float drawback = 0.0f;
+    float maxFlightTimeBonus = 0.0f;
+    float missileDamageMultiplierBonus = 0.0f;
+    float speedFactor = 0.0f;
     float speedMultiplier = 0.0f;
     float upgradeCost = 0.0f;
 
-    static constexpr Attr kFields[4] = {
-        Attr::capacity, Attr::drawback, Attr::speedMultiplier, Attr::upgradeCost,
+    static constexpr Attr kFields[10] = {
+        Attr::aoeCloudSizeBonus, Attr::aoeVelocityBonus, Attr::capacity, Attr::damageMultiplierBonus,
+        Attr::drawback, Attr::maxFlightTimeBonus, Attr::missileDamageMultiplierBonus, Attr::speedFactor,
+        Attr::speedMultiplier, Attr::upgradeCost,
     };
 };
-static_assert(sizeof(RigLauncherAttrs) == 4 * sizeof(float));
+static_assert(sizeof(RigLauncherAttrs) == 10 * sizeof(float));
 
 // Groups: Rig Projectile Weapon
 struct RigProjectileWeaponAttrs
 {
     float capacity = 0.0f;
     float cpuNeedBonus = 0.0f;
+    float damageMultiplier = 0.0f;
     float drawback = 0.0f;
+    float falloffBonus = 0.0f;
+    float maxRangeBonus = 0.0f;
     float speedMultiplier = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+    float trackingSpeedMultiplier = 0.0f;
     float upgradeCost = 0.0f;
 
-    static constexpr Attr kFields[5] = {
-        Attr::capacity, Attr::cpuNeedBonus, Attr::drawback, Attr::speedMultiplier,
-        Attr::upgradeCost,
+    static constexpr Attr kFields[10] = {
+        Attr::capacity, Attr::cpuNeedBonus, Attr::damageMultiplier, Attr::drawback,
+        Attr::falloffBonus, Attr::maxRangeBonus, Attr::speedMultiplier, Attr::trackingSpeedBonus,
+        Attr::trackingSpeedMultiplier, Attr::upgradeCost,
     };
 };
-static_assert(sizeof(RigProjectileWeaponAttrs) == 5 * sizeof(float));
+static_assert(sizeof(RigProjectileWeaponAttrs) == 10 * sizeof(float));
 
-// Groups: Rig Anchor, Rig Targeting
+// Groups: Rig Navigation
+struct RigNavigationAttrs
+{
+    float capNeedBonus = 0.0f;
+    float capacity = 0.0f;
+    float drawback = 0.0f;
+    float durationBonus = 0.0f;
+    float speedFBonus = 0.0f;
+    float upgradeCost = 0.0f;
+
+    static constexpr Attr kFields[6] = {
+        Attr::capNeedBonus, Attr::capacity, Attr::drawback, Attr::durationBonus,
+        Attr::speedFBonus, Attr::upgradeCost,
+    };
+};
+static_assert(sizeof(RigNavigationAttrs) == 6 * sizeof(float));
+
+// Groups: Rig Targeting
 struct RigTargetingAttrs
 {
     float capacity = 0.0f;
     float drawback = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float rangeSkillBonus = 0.0f;
+    float scanSkillEwStrengthBonus = 0.0f;
     float upgradeCost = 0.0f;
 
-    static constexpr Attr kFields[3] = {
-        Attr::capacity, Attr::drawback, Attr::upgradeCost,
+    static constexpr Attr kFields[6] = {
+        Attr::capacity, Attr::drawback, Attr::maxTargetRangeBonus, Attr::rangeSkillBonus,
+        Attr::scanSkillEwStrengthBonus, Attr::upgradeCost,
     };
 };
-static_assert(sizeof(RigTargetingAttrs) == 3 * sizeof(float));
+static_assert(sizeof(RigTargetingAttrs) == 6 * sizeof(float));
 
 // Groups: Cyber Scanning
 struct CyberScanningAttrs
 {
     float armorHpBonus = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capRechargeBonus = 0.0f;
     float durationBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldHpBonus = 0.0f;
 
-    static constexpr Attr kFields[12] = {
-        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
-        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus,
-        Attr::durationBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
+    static constexpr Attr kFields[22] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty, Attr::boosterMissileVelocityPenalty,
+        Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty,
+        Attr::boosterTurretTrackingPenalty, Attr::capRechargeBonus, Attr::durationBonus, Attr::hydraDroneRangeBonus,
+        Attr::hydraDroneTrackingBonus, Attr::hydraMissileExplosionVelocityBonus, Attr::hydraMissileFlightTimeBonus, Attr::remoteRepDurationCapBonus,
+        Attr::shieldBoostMultiplier, Attr::shieldHpBonus,
     };
 };
-static_assert(sizeof(CyberScanningAttrs) == 12 * sizeof(float));
+static_assert(sizeof(CyberScanningAttrs) == 22 * sizeof(float));
+
+// Groups: Burst Projectors
+struct BurstProjectorsAttrs
+{
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float explosionDelayBonus = 0.0f;
+    float falloffBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float power = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speedFactor = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+
+    static constexpr Attr kFields[16] = {
+        Attr::aoeCloudSizeBonus, Attr::aoeVelocityBonus, Attr::capacitorNeed, Attr::capacity,
+        Attr::cpu, Attr::duration, Attr::explosionDelayBonus, Attr::falloffBonus,
+        Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus, Attr::missileVelocityBonus,
+        Attr::power, Attr::signatureRadiusBonus, Attr::speedFactor, Attr::trackingSpeedBonus,
+    };
+};
+static_assert(sizeof(BurstProjectorsAttrs) == 16 * sizeof(float));
+
+// Groups: Nanite Repair Paste
+struct NaniteRepairPasteChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float hp = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float volume = 0.0f;
+
+    static constexpr Attr kFields[12] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capacitorBonus, Attr::emDamage,
+        Attr::explosionDelay, Attr::explosiveDamage, Attr::hp, Attr::kineticDamage,
+        Attr::mass, Attr::maxVelocity, Attr::thermalDamage, Attr::volume,
+    };
+};
+static_assert(sizeof(NaniteRepairPasteChargeAttrs) == 12 * sizeof(float));
+
+// Groups: Tracking Script
+struct TrackingScriptChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeCloudSizeBonusBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonusBonus = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float falloffBonusBonus = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxRangeBonusBonus = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeedBonusBonus = 0.0f;
+    float volume = 0.0f;
+
+    static constexpr Attr kFields[16] = {
+        Attr::aoeCloudSize, Attr::aoeCloudSizeBonusBonus, Attr::aoeVelocity, Attr::aoeVelocityBonusBonus,
+        Attr::capacitorBonus, Attr::emDamage, Attr::explosionDelay, Attr::explosiveDamage,
+        Attr::falloffBonusBonus, Attr::kineticDamage, Attr::mass, Attr::maxRangeBonusBonus,
+        Attr::maxVelocity, Attr::thermalDamage, Attr::trackingSpeedBonusBonus, Attr::volume,
+    };
+};
+static_assert(sizeof(TrackingScriptChargeAttrs) == 16 * sizeof(float));
 
 // Groups: Warp Disruption Script
 struct WarpDisruptionScriptChargeAttrs
 {
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
     float capNeedBonus = 0.0f;
     float capacitorBonus = 0.0f;
     float durationBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float signatureRadiusBonusBonus = 0.0f;
+    float thermalDamage = 0.0f;
     float volume = 0.0f;
+    float warpScrambleRangeBonus = 0.0f;
 
-    static constexpr Attr kFields[4] = {
-        Attr::capNeedBonus, Attr::capacitorBonus, Attr::durationBonus, Attr::volume,
+    static constexpr Attr kFields[15] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capNeedBonus, Attr::capacitorBonus,
+        Attr::durationBonus, Attr::emDamage, Attr::explosionDelay, Attr::explosiveDamage,
+        Attr::kineticDamage, Attr::mass, Attr::maxVelocity, Attr::signatureRadiusBonusBonus,
+        Attr::thermalDamage, Attr::volume, Attr::warpScrambleRangeBonus,
     };
 };
-static_assert(sizeof(WarpDisruptionScriptChargeAttrs) == 4 * sizeof(float));
+static_assert(sizeof(WarpDisruptionScriptChargeAttrs) == 15 * sizeof(float));
+
+// Groups: Tracking Disruption Script
+struct TrackingDisruptionScriptChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float falloffBonusBonus = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxRangeBonusBonus = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeedBonusBonus = 0.0f;
+    float volume = 0.0f;
+
+    static constexpr Attr kFields[14] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capacitorBonus, Attr::emDamage,
+        Attr::explosionDelay, Attr::explosiveDamage, Attr::falloffBonusBonus, Attr::kineticDamage,
+        Attr::mass, Attr::maxRangeBonusBonus, Attr::maxVelocity, Attr::thermalDamage,
+        Attr::trackingSpeedBonusBonus, Attr::volume,
+    };
+};
+static_assert(sizeof(TrackingDisruptionScriptChargeAttrs) == 14 * sizeof(float));
+
+// Groups: Sensor Booster Script, Sensor Dampener Script
+struct SensorBoosterScriptChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxTargetRangeBonusBonus = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float volume = 0.0f;
+
+    static constexpr Attr kFields[12] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capacitorBonus, Attr::emDamage,
+        Attr::explosionDelay, Attr::explosiveDamage, Attr::kineticDamage, Attr::mass,
+        Attr::maxTargetRangeBonusBonus, Attr::maxVelocity, Attr::thermalDamage, Attr::volume,
+    };
+};
+static_assert(sizeof(SensorBoosterScriptChargeAttrs) == 12 * sizeof(float));
+
+// Groups: Salvage Drone
+struct SalvageDroneDroneAttrs
+{
+    float capacitorCapacity = 0.0f;
+    float damageMultiplier = 0.0f;
+    float emDamage = 0.0f;
+    float explosiveDamage = 0.0f;
+    float falloff = 0.0f;
+    float kineticDamage = 0.0f;
+    float maxRange = 0.0f;
+    float maxVelocity = 0.0f;
+    float radius = 0.0f;
+    float shieldCapacity = 0.0f;
+    float speedFactor = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeed = 0.0f;
+
+    static constexpr Attr kFields[13] = {
+        Attr::capacitorCapacity, Attr::damageMultiplier, Attr::emDamage, Attr::explosiveDamage,
+        Attr::falloff, Attr::kineticDamage, Attr::maxRange, Attr::maxVelocity,
+        Attr::radius, Attr::shieldCapacity, Attr::speedFactor, Attr::thermalDamage,
+        Attr::trackingSpeed,
+    };
+};
+static_assert(sizeof(SalvageDroneDroneAttrs) == 13 * sizeof(float));
 
 // Groups: Ancillary Armor Repairer
 struct AncillaryArmorRepairerAttrs
@@ -2465,13 +5011,33 @@ struct SurveyProbeLauncherAttrs
     float power = 0.0f;
     float reloadTime = 0.0f;
     float speed = 0.0f;
+    float surveyProbeDurationBonus = 0.0f;
 
-    static constexpr Attr kFields[7] = {
+    static constexpr Attr kFields[8] = {
         Attr::capacity, Attr::chargeRate, Attr::cpu, Attr::duration,
-        Attr::power, Attr::reloadTime, Attr::speed,
+        Attr::power, Attr::reloadTime, Attr::speed, Attr::surveyProbeDurationBonus,
     };
 };
-static_assert(sizeof(SurveyProbeLauncherAttrs) == 7 * sizeof(float));
+static_assert(sizeof(SurveyProbeLauncherAttrs) == 8 * sizeof(float));
+
+// Groups: Drone Tracking Enhancer
+struct DroneTrackingEnhancerAttrs
+{
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float falloffBonus = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float power = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+
+    static constexpr Attr kFields[8] = {
+        Attr::aoeCloudSizeBonus, Attr::aoeVelocityBonus, Attr::capacity, Attr::cpu,
+        Attr::falloffBonus, Attr::maxRangeBonus, Attr::power, Attr::trackingSpeedBonus,
+    };
+};
+static_assert(sizeof(DroneTrackingEnhancerAttrs) == 8 * sizeof(float));
 
 // Groups: Jump Drive Economizer, Warp Accelerator
 struct WarpAcceleratorAttrs
@@ -2485,28 +5051,55 @@ struct WarpAcceleratorAttrs
 };
 static_assert(sizeof(WarpAcceleratorAttrs) == 2 * sizeof(float));
 
+// Groups: Rig Anchor
+struct RigAnchorAttrs
+{
+    float capacity = 0.0f;
+    float drawback = 0.0f;
+    float upgradeCost = 0.0f;
+
+    static constexpr Attr kFields[3] = {
+        Attr::capacity, Attr::drawback, Attr::upgradeCost,
+    };
+};
+static_assert(sizeof(RigAnchorAttrs) == 3 * sizeof(float));
+
 // Groups: Ship Modifiers
 struct ShipModifiersAttrs
 {
     float capacity = 0.0f;
     float modeAnhingaCruiseLauncherTorpedoLauncherRapidHeavyLauncherROFPostDiv = 0.0f;
+    float modeAnhingaMissileFlightTimePostDiv = 0.0f;
+    float modeAnhingaMissileMaxVelocityPostDiv = 0.0f;
     float modeArmorRepDurationPostDiv = 0.0f;
+    float modeDamageBonusPostDiv = 0.0f;
     float modeEmResistancePostDiv = 0.0f;
     float modeExplosiveResistancePostDiv = 0.0f;
     float modeKineticResistancePostDiv = 0.0f;
+    float modeLightMissileMaxVelocityBonusPostDivSkua = 0.0f;
     float modeMWDCapPostDiv = 0.0f;
+    float modeMWDSigPenaltyPostDiv = 0.0f;
+    float modeMWDVelocityPostDiv = 0.0f;
+    float modeMaxRangePostDiv = 0.0f;
+    float modeMaxTargetRangePostDiv = 0.0f;
     float modeRemoteRepairBonusPostDiv = 0.0f;
     float modeRemoteRepairCapacitorCostPostDiv = 0.0f;
+    float modeRocketMissileMaxVelocityBonusPostDivSkua = 0.0f;
     float modeThermicResistancePostDiv = 0.0f;
+    float modeTrackingPostDiv = 0.0f;
+    float modeVelocityPostDiv = 0.0f;
     float roleBonusMarauder = 0.0f;
 
-    static constexpr Attr kFields[11] = {
-        Attr::capacity, Attr::modeAnhingaCruiseLauncherTorpedoLauncherRapidHeavyLauncherROFPostDiv, Attr::modeArmorRepDurationPostDiv, Attr::modeEmResistancePostDiv,
-        Attr::modeExplosiveResistancePostDiv, Attr::modeKineticResistancePostDiv, Attr::modeMWDCapPostDiv, Attr::modeRemoteRepairBonusPostDiv,
-        Attr::modeRemoteRepairCapacitorCostPostDiv, Attr::modeThermicResistancePostDiv, Attr::roleBonusMarauder,
+    static constexpr Attr kFields[22] = {
+        Attr::capacity, Attr::modeAnhingaCruiseLauncherTorpedoLauncherRapidHeavyLauncherROFPostDiv, Attr::modeAnhingaMissileFlightTimePostDiv, Attr::modeAnhingaMissileMaxVelocityPostDiv,
+        Attr::modeArmorRepDurationPostDiv, Attr::modeDamageBonusPostDiv, Attr::modeEmResistancePostDiv, Attr::modeExplosiveResistancePostDiv,
+        Attr::modeKineticResistancePostDiv, Attr::modeLightMissileMaxVelocityBonusPostDivSkua, Attr::modeMWDCapPostDiv, Attr::modeMWDSigPenaltyPostDiv,
+        Attr::modeMWDVelocityPostDiv, Attr::modeMaxRangePostDiv, Attr::modeMaxTargetRangePostDiv, Attr::modeRemoteRepairBonusPostDiv,
+        Attr::modeRemoteRepairCapacitorCostPostDiv, Attr::modeRocketMissileMaxVelocityBonusPostDivSkua, Attr::modeThermicResistancePostDiv, Attr::modeTrackingPostDiv,
+        Attr::modeVelocityPostDiv, Attr::roleBonusMarauder,
     };
 };
-static_assert(sizeof(ShipModifiersAttrs) == 11 * sizeof(float));
+static_assert(sizeof(ShipModifiersAttrs) == 22 * sizeof(float));
 
 // Groups: Entosis Link
 struct EntosisLinkAttrs
@@ -2516,14 +5109,106 @@ struct EntosisLinkAttrs
     float cpu = 0.0f;
     float duration = 0.0f;
     float entosisCPUAdd = 0.0f;
+    float maxRange = 0.0f;
     float power = 0.0f;
 
-    static constexpr Attr kFields[6] = {
+    static constexpr Attr kFields[7] = {
         Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
-        Attr::entosisCPUAdd, Attr::power,
+        Attr::entosisCPUAdd, Attr::maxRange, Attr::power,
     };
 };
-static_assert(sizeof(EntosisLinkAttrs) == 6 * sizeof(float));
+static_assert(sizeof(EntosisLinkAttrs) == 7 * sizeof(float));
+
+// Groups: Missile Guidance Enhancer
+struct MissileGuidanceEnhancerAttrs
+{
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float explosionDelayBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float power = 0.0f;
+
+    static constexpr Attr kFields[7] = {
+        Attr::aoeCloudSizeBonus, Attr::aoeVelocityBonus, Attr::capacity, Attr::cpu,
+        Attr::explosionDelayBonus, Attr::missileVelocityBonus, Attr::power,
+    };
+};
+static_assert(sizeof(MissileGuidanceEnhancerAttrs) == 7 * sizeof(float));
+
+// Groups: Guidance Disruption Script, Missile Guidance Script
+struct MissileGuidanceScriptChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeCloudSizeBonusBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonusBonus = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosionDelayBonusBonus = 0.0f;
+    float explosiveDamage = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float missileVelocityBonusBonus = 0.0f;
+    float thermalDamage = 0.0f;
+    float volume = 0.0f;
+
+    static constexpr Attr kFields[15] = {
+        Attr::aoeCloudSize, Attr::aoeCloudSizeBonusBonus, Attr::aoeVelocity, Attr::aoeVelocityBonusBonus,
+        Attr::capacitorBonus, Attr::emDamage, Attr::explosionDelay, Attr::explosionDelayBonusBonus,
+        Attr::explosiveDamage, Attr::kineticDamage, Attr::mass, Attr::maxVelocity,
+        Attr::missileVelocityBonusBonus, Attr::thermalDamage, Attr::volume,
+    };
+};
+static_assert(sizeof(MissileGuidanceScriptChargeAttrs) == 15 * sizeof(float));
+
+// Groups: Structure Area Denial Ammunition, Structure ECM script
+struct StructureEcmScriptChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float volume = 0.0f;
+
+    static constexpr Attr kFields[11] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capacitorBonus, Attr::emDamage,
+        Attr::explosionDelay, Attr::explosiveDamage, Attr::kineticDamage, Attr::mass,
+        Attr::maxVelocity, Attr::thermalDamage, Attr::volume,
+    };
+};
+static_assert(sizeof(StructureEcmScriptChargeAttrs) == 11 * sizeof(float));
+
+// Groups: Stasis Grappler
+struct StasisGrapplerAttrs
+{
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float falloff = 0.0f;
+    float falloffEffectiveness = 0.0f;
+    float maxRange = 0.0f;
+    float overloadRangeBonus = 0.0f;
+    float power = 0.0f;
+    float speedFactor = 0.0f;
+
+    static constexpr Attr kFields[10] = {
+        Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
+        Attr::falloff, Attr::falloffEffectiveness, Attr::maxRange, Attr::overloadRangeBonus,
+        Attr::power, Attr::speedFactor,
+    };
+};
+static_assert(sizeof(StasisGrapplerAttrs) == 10 * sizeof(float));
 
 // Groups: Capital Sensor Array
 struct CapitalSensorArrayAttrs
@@ -2533,20 +5218,26 @@ struct CapitalSensorArrayAttrs
     float cpu = 0.0f;
     float duration = 0.0f;
     float ewCapacitorNeedBonus = 0.0f;
+    float maxTargetRangeMultiplier = 0.0f;
     float power = 0.0f;
     float siegeLocalLogisticsCapacitorNeedBonus = 0.0f;
     float siegeLocalLogisticsDurationBonus = 0.0f;
 
-    static constexpr Attr kFields[8] = {
+    static constexpr Attr kFields[9] = {
         Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
-        Attr::ewCapacitorNeedBonus, Attr::power, Attr::siegeLocalLogisticsCapacitorNeedBonus, Attr::siegeLocalLogisticsDurationBonus,
+        Attr::ewCapacitorNeedBonus, Attr::maxTargetRangeMultiplier, Attr::power, Attr::siegeLocalLogisticsCapacitorNeedBonus,
+        Attr::siegeLocalLogisticsDurationBonus,
     };
 };
-static_assert(sizeof(CapitalSensorArrayAttrs) == 8 * sizeof(float));
+static_assert(sizeof(CapitalSensorArrayAttrs) == 9 * sizeof(float));
 
 // Groups: Ancillary Remote Armor Repairer
 struct AncillaryRemoteArmorRepairerAttrs
 {
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmount = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -2557,15 +5248,24 @@ struct AncillaryRemoteArmorRepairerAttrs
     float chargeRate = 0.0f;
     float chargedArmorDamageMultiplier = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
     float duration = 0.0f;
     float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
     float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float falloffEffectiveness = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
     float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
     float mediumRemoteRepFittingMultiplier = 0.0f;
+    float missileVelocityBonus = 0.0f;
     float overloadArmorDamageAmount = 0.0f;
     float overloadSelfDurationBonus = 0.0f;
     float power = 0.0f;
@@ -2577,32 +5277,54 @@ struct AncillaryRemoteArmorRepairerAttrs
     float shieldExplosiveDamageResonance = 0.0f;
     float shieldKineticDamageResonance = 0.0f;
     float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
     float speed = 0.0f;
+    float speedFactor = 0.0f;
     float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float warfareBuff1Value = 0.0f;
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
 
-    static constexpr Attr kFields[37] = {
+    static constexpr Attr kFields[62] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
-        Attr::chargedArmorDamageMultiplier, Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus,
-        Attr::explosiveDamageResistanceBonus, Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance,
-        Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus, Attr::mediumRemoteRepFittingMultiplier, Attr::overloadArmorDamageAmount,
-        Attr::overloadSelfDurationBonus, Attr::power, Attr::reloadTime, Attr::repairMultiplierBonusMax,
-        Attr::repairMultiplierBonusPerCycle, Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance,
-        Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speed, Attr::structureRigEwarCapUseBonus,
-        Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value,
-        Attr::warfareBuff3Value,
+        Attr::chargedArmorDamageMultiplier, Attr::cpu, Attr::damageMultiplier, Attr::duration,
+        Attr::emDamageResistanceBonus, Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus, Attr::falloff,
+        Attr::falloffBonus, Attr::falloffEffectiveness, Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance,
+        Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus, Attr::maxRange,
+        Attr::maxRangeBonus, Attr::maxTargetRangeBonus, Attr::mediumRemoteRepFittingMultiplier, Attr::missileVelocityBonus,
+        Attr::overloadArmorDamageAmount, Attr::overloadSelfDurationBonus, Attr::power, Attr::reloadTime,
+        Attr::repairMultiplierBonusMax, Attr::repairMultiplierBonusPerCycle, Attr::shieldBonus, Attr::shieldEmDamageResonance,
+        Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus,
+        Attr::speed, Attr::speedFactor, Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus,
+        Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus,
+        Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus,
+        Attr::trackingSpeed, Attr::trackingSpeedBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value,
+        Attr::warfareBuff3Value, Attr::warpScrambleRange,
     };
 };
-static_assert(sizeof(AncillaryRemoteArmorRepairerAttrs) == 37 * sizeof(float));
+static_assert(sizeof(AncillaryRemoteArmorRepairerAttrs) == 62 * sizeof(float));
 
 // Groups: Ancillary Remote Shield Booster
 struct AncillaryRemoteShieldBoosterAttrs
 {
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmount = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -2612,15 +5334,24 @@ struct AncillaryRemoteShieldBoosterAttrs
     float capacity = 0.0f;
     float chargeRate = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
     float duration = 0.0f;
     float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
     float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float falloffEffectiveness = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
     float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
     float mediumRemoteRepFittingMultiplier = 0.0f;
+    float missileVelocityBonus = 0.0f;
     float overloadSelfDurationBonus = 0.0f;
     float overloadShieldBonus = 0.0f;
     float power = 0.0f;
@@ -2630,31 +5361,53 @@ struct AncillaryRemoteShieldBoosterAttrs
     float shieldExplosiveDamageResonance = 0.0f;
     float shieldKineticDamageResonance = 0.0f;
     float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
     float speed = 0.0f;
+    float speedFactor = 0.0f;
     float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float warfareBuff1Value = 0.0f;
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
 
-    static constexpr Attr kFields[34] = {
+    static constexpr Attr kFields[59] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
-        Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
-        Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance,
-        Attr::kineticDamageResistanceBonus, Attr::mediumRemoteRepFittingMultiplier, Attr::overloadSelfDurationBonus, Attr::overloadShieldBonus,
-        Attr::power, Attr::reloadTime, Attr::shieldBonus, Attr::shieldEmDamageResonance,
-        Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speed,
-        Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value,
-        Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::cpu, Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus,
+        Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus,
+        Attr::falloffEffectiveness, Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance,
+        Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus,
+        Attr::maxTargetRangeBonus, Attr::mediumRemoteRepFittingMultiplier, Attr::missileVelocityBonus, Attr::overloadSelfDurationBonus,
+        Attr::overloadShieldBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
+        Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
+        Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor, Attr::structureRigEwarCapUseBonus,
+        Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus,
+        Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus,
+        Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus, Attr::warfareBuff1Value,
+        Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
     };
 };
-static_assert(sizeof(AncillaryRemoteShieldBoosterAttrs) == 34 * sizeof(float));
+static_assert(sizeof(AncillaryRemoteShieldBoosterAttrs) == 59 * sizeof(float));
 
 // Groups: Flex Armor Hardener
 struct FlexArmorHardenerAttrs
 {
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmount = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -2664,14 +5417,22 @@ struct FlexArmorHardenerAttrs
     float capacitorNeed = 0.0f;
     float capacity = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
     float duration = 0.0f;
     float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
     float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
     float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
     float overloadHardeningBonus = 0.0f;
     float overloadSelfDurationBonus = 0.0f;
     float power = 0.0f;
@@ -2681,31 +5442,53 @@ struct FlexArmorHardenerAttrs
     float shieldExplosiveDamageResonance = 0.0f;
     float shieldKineticDamageResonance = 0.0f;
     float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
     float speed = 0.0f;
+    float speedFactor = 0.0f;
     float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float warfareBuff1Value = 0.0f;
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
 
-    static constexpr Attr kFields[33] = {
+    static constexpr Attr kFields[57] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorHPBonusAdd,
         Attr::armorKineticDamageResonance, Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity,
-        Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
+        Attr::cpu, Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus,
+        Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus,
         Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance,
-        Attr::kineticDamageResistanceBonus, Attr::overloadHardeningBonus, Attr::overloadSelfDurationBonus, Attr::power,
+        Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus,
+        Attr::missileVelocityBonus, Attr::overloadHardeningBonus, Attr::overloadSelfDurationBonus, Attr::power,
         Attr::reloadTime, Attr::shieldBonus, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance,
-        Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::speed, Attr::structureRigEwarCapUseBonus,
-        Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value,
-        Attr::warfareBuff3Value,
+        Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus, Attr::speed,
+        Attr::speedFactor, Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus,
+        Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus,
+        Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus, Attr::trackingSpeed,
+        Attr::trackingSpeedBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::warpScrambleRange,
     };
 };
-static_assert(sizeof(FlexArmorHardenerAttrs) == 33 * sizeof(float));
+static_assert(sizeof(FlexArmorHardenerAttrs) == 57 * sizeof(float));
 
 // Groups: Flex Shield Hardener
 struct FlexShieldHardenerAttrs
 {
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmount = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -2714,14 +5497,22 @@ struct FlexShieldHardenerAttrs
     float capacitorNeed = 0.0f;
     float capacity = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
     float duration = 0.0f;
     float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
     float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
     float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
     float overloadHardeningBonus = 0.0f;
     float power = 0.0f;
     float reloadTime = 0.0f;
@@ -2730,47 +5521,80 @@ struct FlexShieldHardenerAttrs
     float shieldExplosiveDamageResonance = 0.0f;
     float shieldKineticDamageResonance = 0.0f;
     float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
     float speed = 0.0f;
+    float speedFactor = 0.0f;
     float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float warfareBuff1Value = 0.0f;
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
 
-    static constexpr Attr kFields[31] = {
+    static constexpr Attr kFields[55] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
-        Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus, Attr::hullEmDamageResonance,
+        Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosionDelayBonus,
+        Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus, Attr::hullEmDamageResonance,
         Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus,
+        Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus, Attr::missileVelocityBonus,
         Attr::overloadHardeningBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
         Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
-        Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
-        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value,
+        Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor, Attr::structureRigEwarCapUseBonus,
+        Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus,
+        Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus,
+        Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus, Attr::warfareBuff1Value,
+        Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
     };
 };
-static_assert(sizeof(FlexShieldHardenerAttrs) == 31 * sizeof(float));
+static_assert(sizeof(FlexShieldHardenerAttrs) == 55 * sizeof(float));
 
 // Groups: Flex Armor Hardener Script, Flex Shield Hardener Script
 struct FlexArmorHardenerScriptChargeAttrs
 {
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
     float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
     float emDamageResistanceBonusBonus = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
     float explosiveDamageResistanceBonusBonus = 0.0f;
+    float kineticDamage = 0.0f;
     float kineticDamageResistanceBonusBonus = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
     float thermalDamageResistanceBonusBonus = 0.0f;
     float volume = 0.0f;
 
-    static constexpr Attr kFields[6] = {
-        Attr::capacitorBonus, Attr::emDamageResistanceBonusBonus, Attr::explosiveDamageResistanceBonusBonus, Attr::kineticDamageResistanceBonusBonus,
-        Attr::thermalDamageResistanceBonusBonus, Attr::volume,
+    static constexpr Attr kFields[15] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capacitorBonus, Attr::emDamage,
+        Attr::emDamageResistanceBonusBonus, Attr::explosionDelay, Attr::explosiveDamage, Attr::explosiveDamageResistanceBonusBonus,
+        Attr::kineticDamage, Attr::kineticDamageResistanceBonusBonus, Attr::mass, Attr::maxVelocity,
+        Attr::thermalDamage, Attr::thermalDamageResistanceBonusBonus, Attr::volume,
     };
 };
-static_assert(sizeof(FlexArmorHardenerScriptChargeAttrs) == 6 * sizeof(float));
+static_assert(sizeof(FlexArmorHardenerScriptChargeAttrs) == 15 * sizeof(float));
 
 // Groups: Command Burst
 struct CommandBurstAttrs
 {
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
     float armorDamageAmount = 0.0f;
     float armorEmDamageResonance = 0.0f;
     float armorExplosiveDamageResonance = 0.0f;
@@ -2780,14 +5604,22 @@ struct CommandBurstAttrs
     float capacity = 0.0f;
     float chargeRate = 0.0f;
     float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
     float duration = 0.0f;
     float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
     float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
     float hullEmDamageResonance = 0.0f;
     float hullExplosiveDamageResonance = 0.0f;
     float hullKineticDamageResonance = 0.0f;
     float hullThermalDamageResonance = 0.0f;
     float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
     float power = 0.0f;
     float reloadTime = 0.0f;
     float shieldBonus = 0.0f;
@@ -2795,45 +5627,74 @@ struct CommandBurstAttrs
     float shieldExplosiveDamageResonance = 0.0f;
     float shieldKineticDamageResonance = 0.0f;
     float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
     float speed = 0.0f;
+    float speedFactor = 0.0f;
     float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
     float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
     float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
     float warfareBuff1Value = 0.0f;
     float warfareBuff2Value = 0.0f;
     float warfareBuff3Value = 0.0f;
     float warfareBuff4Value = 0.0f;
     float warfareLinkCPUAdd = 0.0f;
+    float warpScrambleRange = 0.0f;
 
-    static constexpr Attr kFields[33] = {
+    static constexpr Attr kFields[57] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
         Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
         Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
-        Attr::cpu, Attr::duration, Attr::emDamageResistanceBonus, Attr::explosiveDamageResistanceBonus,
+        Attr::cpu, Attr::damageMultiplier, Attr::duration, Attr::emDamageResistanceBonus,
+        Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus, Attr::falloff, Attr::falloffBonus,
         Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance, Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance,
-        Attr::kineticDamageResistanceBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
+        Attr::kineticDamageResistanceBonus, Attr::maxRange, Attr::maxRangeBonus, Attr::maxTargetRangeBonus,
+        Attr::missileVelocityBonus, Attr::power, Attr::reloadTime, Attr::shieldBonus,
         Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
-        Attr::speed, Attr::structureRigEwarCapUseBonus, Attr::structureRigPDCapUseBonus, Attr::thermalDamageResistanceBonus,
-        Attr::warfareBuff1Value, Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warfareBuff4Value,
-        Attr::warfareLinkCPUAdd,
+        Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor, Attr::structureRigEwarCapUseBonus,
+        Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus,
+        Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus,
+        Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus, Attr::warfareBuff1Value,
+        Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warfareBuff4Value, Attr::warfareLinkCPUAdd,
+        Attr::warpScrambleRange,
     };
 };
-static_assert(sizeof(CommandBurstAttrs) == 33 * sizeof(float));
+static_assert(sizeof(CommandBurstAttrs) == 57 * sizeof(float));
 
 // Groups: Armor Command Burst Charges, Expedition Command Burst Charges, Information Command Burst Charges, Mining Foreman Burst Charges, Shield Command Burst Charges, Skirmish Command Burst Charges
 struct ShieldCommandBurstChargesChargeAttrs
 {
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
     float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
     float volume = 0.0f;
     float warfareBuff1Multiplier = 0.0f;
     float warfareBuff2Multiplier = 0.0f;
     float warfareBuff3Multiplier = 0.0f;
 
-    static constexpr Attr kFields[5] = {
-        Attr::capacitorBonus, Attr::volume, Attr::warfareBuff1Multiplier, Attr::warfareBuff2Multiplier,
-        Attr::warfareBuff3Multiplier,
+    static constexpr Attr kFields[14] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capacitorBonus, Attr::emDamage,
+        Attr::explosionDelay, Attr::explosiveDamage, Attr::kineticDamage, Attr::mass,
+        Attr::maxVelocity, Attr::thermalDamage, Attr::volume, Attr::warfareBuff1Multiplier,
+        Attr::warfareBuff2Multiplier, Attr::warfareBuff3Multiplier,
     };
 };
-static_assert(sizeof(ShieldCommandBurstChargesChargeAttrs) == 5 * sizeof(float));
+static_assert(sizeof(ShieldCommandBurstChargesChargeAttrs) == 14 * sizeof(float));
 
 // Groups: Titan Phenomena Generator
 struct TitanPhenomenaGeneratorAttrs
@@ -2842,6 +5703,7 @@ struct TitanPhenomenaGeneratorAttrs
     float capacity = 0.0f;
     float cpu = 0.0f;
     float duration = 0.0f;
+    float maxRange = 0.0f;
     float moduleReactivationDelay = 0.0f;
     float power = 0.0f;
     float warfareBuff1Value = 0.0f;
@@ -2849,13 +5711,13 @@ struct TitanPhenomenaGeneratorAttrs
     float warfareBuff3Value = 0.0f;
     float warfareBuff4Value = 0.0f;
 
-    static constexpr Attr kFields[10] = {
+    static constexpr Attr kFields[11] = {
         Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::duration,
-        Attr::moduleReactivationDelay, Attr::power, Attr::warfareBuff1Value, Attr::warfareBuff2Value,
-        Attr::warfareBuff3Value, Attr::warfareBuff4Value,
+        Attr::maxRange, Attr::moduleReactivationDelay, Attr::power, Attr::warfareBuff1Value,
+        Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warfareBuff4Value,
     };
 };
-static_assert(sizeof(TitanPhenomenaGeneratorAttrs) == 10 * sizeof(float));
+static_assert(sizeof(TitanPhenomenaGeneratorAttrs) == 11 * sizeof(float));
 
 // Groups: Defensive Subsystem
 struct DefensiveSubsystemAttrs
@@ -2906,6 +5768,10 @@ struct OffensiveSubsystemAttrs
     float lowSlotModifier = 0.0f;
     float medSlotModifier = 0.0f;
     float powerOutput = 0.0f;
+    float remoteArmorRepairerFalloffBonus = 0.0f;
+    float remoteArmorRepairerOptimalBonus = 0.0f;
+    float remoteShieldBoosterFalloffBonus = 0.0f;
+    float roleBonusCommandBurstAoERange = 0.0f;
     float subsystemBonusAmarrOffensive = 0.0f;
     float subsystemBonusAmarrOffensive2 = 0.0f;
     float subsystemBonusAmarrOffensive3 = 0.0f;
@@ -2928,9 +5794,10 @@ struct OffensiveSubsystemAttrs
     float turretHardPointModifier = 0.0f;
     float warfareLinkCPUPenalty = 0.0f;
 
-    static constexpr Attr kFields[29] = {
+    static constexpr Attr kFields[33] = {
         Attr::capacitorCapacity, Attr::capacity, Attr::cpuOutput, Attr::hiSlotModifier,
         Attr::launcherHardPointModifier, Attr::lowSlotModifier, Attr::medSlotModifier, Attr::powerOutput,
+        Attr::remoteArmorRepairerFalloffBonus, Attr::remoteArmorRepairerOptimalBonus, Attr::remoteShieldBoosterFalloffBonus, Attr::roleBonusCommandBurstAoERange,
         Attr::subsystemBonusAmarrOffensive, Attr::subsystemBonusAmarrOffensive2, Attr::subsystemBonusAmarrOffensive3, Attr::subsystemBonusCaldariOffensive,
         Attr::subsystemBonusCaldariOffensive2, Attr::subsystemBonusCaldariOffensive3, Attr::subsystemBonusGallenteOffensive, Attr::subsystemBonusGallenteOffensive2,
         Attr::subsystemBonusGallenteOffensive3, Attr::subsystemBonusMinmatarOffensive, Attr::subsystemBonusMinmatarOffensive2, Attr::subsystemBonusMinmatarOffensive3,
@@ -2939,7 +5806,7 @@ struct OffensiveSubsystemAttrs
         Attr::warfareLinkCPUPenalty,
     };
 };
-static_assert(sizeof(OffensiveSubsystemAttrs) == 29 * sizeof(float));
+static_assert(sizeof(OffensiveSubsystemAttrs) == 33 * sizeof(float));
 
 // Groups: Propulsion Subsystem
 struct PropulsionSubsystemAttrs
@@ -2947,17 +5814,27 @@ struct PropulsionSubsystemAttrs
     float capacity = 0.0f;
     float hiSlotModifier = 0.0f;
     float lowSlotModifier = 0.0f;
+    float maxTargetRange = 0.0f;
     float medSlotModifier = 0.0f;
     float shipBonusRole1 = 0.0f;
     float shipBonusRole2 = 0.0f;
+    float subsystemBonusAmarrPropulsion = 0.0f;
+    float subsystemBonusAmarrPropulsion2 = 0.0f;
+    float subsystemBonusCaldariPropulsion = 0.0f;
+    float subsystemBonusCaldariPropulsion2 = 0.0f;
     float subsystemBonusGallentePropulsion = 0.0f;
+    float subsystemBonusGallentePropulsion2 = 0.0f;
+    float subsystemBonusMinmatarPropulsion = 0.0f;
+    float subsystemBonusMinmatarPropulsion2 = 0.0f;
 
-    static constexpr Attr kFields[7] = {
-        Attr::capacity, Attr::hiSlotModifier, Attr::lowSlotModifier, Attr::medSlotModifier,
-        Attr::shipBonusRole1, Attr::shipBonusRole2, Attr::subsystemBonusGallentePropulsion,
+    static constexpr Attr kFields[15] = {
+        Attr::capacity, Attr::hiSlotModifier, Attr::lowSlotModifier, Attr::maxTargetRange,
+        Attr::medSlotModifier, Attr::shipBonusRole1, Attr::shipBonusRole2, Attr::subsystemBonusAmarrPropulsion,
+        Attr::subsystemBonusAmarrPropulsion2, Attr::subsystemBonusCaldariPropulsion, Attr::subsystemBonusCaldariPropulsion2, Attr::subsystemBonusGallentePropulsion,
+        Attr::subsystemBonusGallentePropulsion2, Attr::subsystemBonusMinmatarPropulsion, Attr::subsystemBonusMinmatarPropulsion2,
     };
 };
-static_assert(sizeof(PropulsionSubsystemAttrs) == 7 * sizeof(float));
+static_assert(sizeof(PropulsionSubsystemAttrs) == 15 * sizeof(float));
 
 // Groups: Core Subsystem
 struct CoreSubsystemAttrs
@@ -2973,44 +5850,223 @@ struct CoreSubsystemAttrs
     float subsystemBonusAmarrCore2 = 0.0f;
     float subsystemBonusAmarrCore3 = 0.0f;
     float subsystemBonusCaldariCore = 0.0f;
+    float subsystemBonusCaldariCore2 = 0.0f;
     float subsystemBonusGallenteCore = 0.0f;
+    float subsystemBonusGallenteCore2 = 0.0f;
+    float subsystemBonusGallenteCore3 = 0.0f;
     float subsystemBonusMinmatarCore = 0.0f;
+    float subsystemBonusMinmatarCore2 = 0.0f;
+    float subsystemBonusMinmatarCore3 = 0.0f;
     float subsystemEnergyNeutFittingReduction = 0.0f;
 
-    static constexpr Attr kFields[14] = {
+    static constexpr Attr kFields[19] = {
         Attr::capacitorCapacity, Attr::capacity, Attr::cpuOutputBonus2, Attr::hiSlotModifier,
         Attr::lowSlotModifier, Attr::medSlotModifier, Attr::powerEngineeringOutputBonus, Attr::subsystemBonusAmarrCore,
-        Attr::subsystemBonusAmarrCore2, Attr::subsystemBonusAmarrCore3, Attr::subsystemBonusCaldariCore, Attr::subsystemBonusGallenteCore,
-        Attr::subsystemBonusMinmatarCore, Attr::subsystemEnergyNeutFittingReduction,
+        Attr::subsystemBonusAmarrCore2, Attr::subsystemBonusAmarrCore3, Attr::subsystemBonusCaldariCore, Attr::subsystemBonusCaldariCore2,
+        Attr::subsystemBonusGallenteCore, Attr::subsystemBonusGallenteCore2, Attr::subsystemBonusGallenteCore3, Attr::subsystemBonusMinmatarCore,
+        Attr::subsystemBonusMinmatarCore2, Attr::subsystemBonusMinmatarCore3, Attr::subsystemEnergyNeutFittingReduction,
     };
 };
-static_assert(sizeof(CoreSubsystemAttrs) == 14 * sizeof(float));
+static_assert(sizeof(CoreSubsystemAttrs) == 19 * sizeof(float));
+
+// Groups: Precursor Weapon
+struct PrecursorWeaponAttrs
+{
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float armorDamageAmount = 0.0f;
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float chargeRate = 0.0f;
+    float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
+    float damageMultiplierBonusMax = 0.0f;
+    float damageMultiplierBonusPerCycle = 0.0f;
+    float duration = 0.0f;
+    float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
+    float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float hullEmDamageResonance = 0.0f;
+    float hullExplosiveDamageResonance = 0.0f;
+    float hullKineticDamageResonance = 0.0f;
+    float hullThermalDamageResonance = 0.0f;
+    float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float optimalSigRadius = 0.0f;
+    float overloadDamageModifier = 0.0f;
+    float power = 0.0f;
+    float reloadTime = 0.0f;
+    float shieldBonus = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speed = 0.0f;
+    float speedFactor = 0.0f;
+    float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
+    float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
+    float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
+
+    static constexpr Attr kFields[59] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSizeBonus, Attr::aoeVelocity, Attr::aoeVelocityBonus,
+        Attr::armorDamageAmount, Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance,
+        Attr::armorThermalDamageResonance, Attr::capacitorNeed, Attr::capacity, Attr::chargeRate,
+        Attr::cpu, Attr::damageMultiplier, Attr::damageMultiplierBonusMax, Attr::damageMultiplierBonusPerCycle,
+        Attr::duration, Attr::emDamageResistanceBonus, Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus,
+        Attr::falloff, Attr::falloffBonus, Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance,
+        Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus, Attr::maxRange,
+        Attr::maxRangeBonus, Attr::maxTargetRangeBonus, Attr::missileVelocityBonus, Attr::optimalSigRadius,
+        Attr::overloadDamageModifier, Attr::power, Attr::reloadTime, Attr::shieldBonus,
+        Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance,
+        Attr::signatureRadiusBonus, Attr::speed, Attr::speedFactor, Attr::structureRigEwarCapUseBonus,
+        Attr::structureRigEwarFalloffBonus, Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus,
+        Attr::structureRigMissileExplosionRadiusBonus, Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus,
+        Attr::thermalDamageResistanceBonus, Attr::trackingSpeed, Attr::trackingSpeedBonus, Attr::warfareBuff1Value,
+        Attr::warfareBuff2Value, Attr::warfareBuff3Value, Attr::warpScrambleRange,
+    };
+};
+static_assert(sizeof(PrecursorWeaponAttrs) == 59 * sizeof(float));
+
+// Groups: Structure Warp Disruptor Script
+struct StructureWarpDisruptorScriptChargeAttrs
+{
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float volume = 0.0f;
+    float warpScrambleRangeBonus = 0.0f;
+
+    static constexpr Attr kFields[13] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capacitorBonus,
+        Attr::emDamage, Attr::explosionDelay, Attr::explosiveDamage, Attr::kineticDamage,
+        Attr::mass, Attr::maxVelocity, Attr::thermalDamage, Attr::volume,
+        Attr::warpScrambleRangeBonus,
+    };
+};
+static_assert(sizeof(StructureWarpDisruptorScriptChargeAttrs) == 13 * sizeof(float));
+
+// Groups: Advanced Exotic Plasma Charge, Exotic Plasma Charge
+struct ExoticPlasmaChargeChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float hp = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeedMultiplier = 0.0f;
+    float volume = 0.0f;
+    float weaponRangeMultiplier = 0.0f;
+
+    static constexpr Attr kFields[15] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capNeedBonus, Attr::capacitorBonus,
+        Attr::emDamage, Attr::explosionDelay, Attr::explosiveDamage, Attr::hp,
+        Attr::kineticDamage, Attr::mass, Attr::maxVelocity, Attr::thermalDamage,
+        Attr::trackingSpeedMultiplier, Attr::volume, Attr::weaponRangeMultiplier,
+    };
+};
+static_assert(sizeof(ExoticPlasmaChargeChargeAttrs) == 15 * sizeof(float));
 
 // Groups: Cyber Drones
 struct CyberDronesAttrs
 {
     float armorHpBonus = 0.0f;
     float armorRepairBonus = 0.0f;
+    float boosterAOEVelocityPenalty = 0.0f;
     float boosterArmorHPPenalty = 0.0f;
     float boosterArmorRepairAmountPenalty = 0.0f;
     float boosterCapacitorCapacityPenalty = 0.0f;
+    float boosterMissileAOECloudPenalty = 0.0f;
+    float boosterMissileVelocityPenalty = 0.0f;
     float boosterShieldBoostAmountPenalty = 0.0f;
     float boosterShieldCapacityPenalty = 0.0f;
+    float boosterTurretFalloffPenalty = 0.0f;
+    float boosterTurretOptimalRangePenalty = 0.0f;
+    float boosterTurretTrackingPenalty = 0.0f;
     float capRechargeBonus = 0.0f;
+    float damageMultiplierBonus = 0.0f;
+    float droneMaxVelocityBonus = 0.0f;
     float hullHpBonus = 0.0f;
+    float hydraDroneRangeBonus = 0.0f;
+    float hydraDroneTrackingBonus = 0.0f;
+    float hydraMissileExplosionVelocityBonus = 0.0f;
+    float hydraMissileFlightTimeBonus = 0.0f;
+    float maxVelocityBonus = 0.0f;
+    float rangeSkillBonus = 0.0f;
     float remoteRepDurationCapBonus = 0.0f;
     float shieldBoostMultiplier = 0.0f;
     float shieldCapacityBonus = 0.0f;
     float shieldHpBonus = 0.0f;
 
-    static constexpr Attr kFields[13] = {
-        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterArmorHPPenalty, Attr::boosterArmorRepairAmountPenalty,
-        Attr::boosterCapacitorCapacityPenalty, Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::capRechargeBonus,
-        Attr::hullHpBonus, Attr::remoteRepDurationCapBonus, Attr::shieldBoostMultiplier, Attr::shieldCapacityBonus,
-        Attr::shieldHpBonus,
+    static constexpr Attr kFields[27] = {
+        Attr::armorHpBonus, Attr::armorRepairBonus, Attr::boosterAOEVelocityPenalty, Attr::boosterArmorHPPenalty,
+        Attr::boosterArmorRepairAmountPenalty, Attr::boosterCapacitorCapacityPenalty, Attr::boosterMissileAOECloudPenalty, Attr::boosterMissileVelocityPenalty,
+        Attr::boosterShieldBoostAmountPenalty, Attr::boosterShieldCapacityPenalty, Attr::boosterTurretFalloffPenalty, Attr::boosterTurretOptimalRangePenalty,
+        Attr::boosterTurretTrackingPenalty, Attr::capRechargeBonus, Attr::damageMultiplierBonus, Attr::droneMaxVelocityBonus,
+        Attr::hullHpBonus, Attr::hydraDroneRangeBonus, Attr::hydraDroneTrackingBonus, Attr::hydraMissileExplosionVelocityBonus,
+        Attr::hydraMissileFlightTimeBonus, Attr::maxVelocityBonus, Attr::rangeSkillBonus, Attr::remoteRepDurationCapBonus,
+        Attr::shieldBoostMultiplier, Attr::shieldCapacityBonus, Attr::shieldHpBonus,
     };
 };
-static_assert(sizeof(CyberDronesAttrs) == 13 * sizeof(float));
+static_assert(sizeof(CyberDronesAttrs) == 27 * sizeof(float));
+
+// Groups: Mass Entanglers
+struct MassEntanglersAttrs
+{
+    float activationBlockedStrenght = 0.0f;
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float duration = 0.0f;
+    float maxVelocityBonus = 0.0f;
+    float power = 0.0f;
+    float speedFactorBonus = 0.0f;
+
+    static constexpr Attr kFields[8] = {
+        Attr::activationBlockedStrenght, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
+        Attr::duration, Attr::maxVelocityBonus, Attr::power, Attr::speedFactorBonus,
+    };
+};
+static_assert(sizeof(MassEntanglersAttrs) == 8 * sizeof(float));
 
 // Groups: Mutadaptive Remote Armor Repairer
 struct MutadaptiveRemoteArmorRepairerAttrs
@@ -3020,6 +6076,8 @@ struct MutadaptiveRemoteArmorRepairerAttrs
     float capacity = 0.0f;
     float cpu = 0.0f;
     float duration = 0.0f;
+    float falloffEffectiveness = 0.0f;
+    float maxRange = 0.0f;
     float mediumRemoteRepFittingMultiplier = 0.0f;
     float overloadArmorDamageAmount = 0.0f;
     float overloadSelfDurationBonus = 0.0f;
@@ -3027,13 +6085,212 @@ struct MutadaptiveRemoteArmorRepairerAttrs
     float repairMultiplierBonusMax = 0.0f;
     float repairMultiplierBonusPerCycle = 0.0f;
 
-    static constexpr Attr kFields[11] = {
+    static constexpr Attr kFields[13] = {
         Attr::armorDamageAmount, Attr::capacitorNeed, Attr::capacity, Attr::cpu,
-        Attr::duration, Attr::mediumRemoteRepFittingMultiplier, Attr::overloadArmorDamageAmount, Attr::overloadSelfDurationBonus,
-        Attr::power, Attr::repairMultiplierBonusMax, Attr::repairMultiplierBonusPerCycle,
+        Attr::duration, Attr::falloffEffectiveness, Attr::maxRange, Attr::mediumRemoteRepFittingMultiplier,
+        Attr::overloadArmorDamageAmount, Attr::overloadSelfDurationBonus, Attr::power, Attr::repairMultiplierBonusMax,
+        Attr::repairMultiplierBonusPerCycle,
     };
 };
-static_assert(sizeof(MutadaptiveRemoteArmorRepairerAttrs) == 11 * sizeof(float));
+static_assert(sizeof(MutadaptiveRemoteArmorRepairerAttrs) == 13 * sizeof(float));
+
+// Groups: Vorton Projector
+struct VortonProjectorAttrs
+{
+    float activationBlockedStrenght = 0.0f;
+    float aoeCloudSize = 0.0f;
+    float aoeCloudSizeBonus = 0.0f;
+    float aoeDamageReductionFactor = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float armorDamageAmount = 0.0f;
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float chargeRate = 0.0f;
+    float cpu = 0.0f;
+    float damageMultiplier = 0.0f;
+    float duration = 0.0f;
+    float emDamageResistanceBonus = 0.0f;
+    float explosionDelayBonus = 0.0f;
+    float explosiveDamageResistanceBonus = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float hullEmDamageResonance = 0.0f;
+    float hullExplosiveDamageResonance = 0.0f;
+    float hullKineticDamageResonance = 0.0f;
+    float hullThermalDamageResonance = 0.0f;
+    float kineticDamageResistanceBonus = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float missileVelocityBonus = 0.0f;
+    float overloadRofBonus = 0.0f;
+    float power = 0.0f;
+    float reloadTime = 0.0f;
+    float shieldBonus = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speed = 0.0f;
+    float speedFactor = 0.0f;
+    float structureRigEwarCapUseBonus = 0.0f;
+    float structureRigEwarFalloffBonus = 0.0f;
+    float structureRigEwarOptimalBonus = 0.0f;
+    float structureRigMaxTargetRangeBonus = 0.0f;
+    float structureRigMissileExploVeloBonus = 0.0f;
+    float structureRigMissileExplosionRadiusBonus = 0.0f;
+    float structureRigMissileVelocityBonus = 0.0f;
+    float structureRigPDCapUseBonus = 0.0f;
+    float structureRigPDRangeBonus = 0.0f;
+    float thermalDamageResistanceBonus = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+    float warfareBuff1Value = 0.0f;
+    float warfareBuff2Value = 0.0f;
+    float warfareBuff3Value = 0.0f;
+    float warpScrambleRange = 0.0f;
+
+    static constexpr Attr kFields[58] = {
+        Attr::activationBlockedStrenght, Attr::aoeCloudSize, Attr::aoeCloudSizeBonus, Attr::aoeDamageReductionFactor,
+        Attr::aoeVelocity, Attr::aoeVelocityBonus, Attr::armorDamageAmount, Attr::armorEmDamageResonance,
+        Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance, Attr::armorThermalDamageResonance, Attr::capacitorNeed,
+        Attr::capacity, Attr::chargeRate, Attr::cpu, Attr::damageMultiplier,
+        Attr::duration, Attr::emDamageResistanceBonus, Attr::explosionDelayBonus, Attr::explosiveDamageResistanceBonus,
+        Attr::falloff, Attr::falloffBonus, Attr::hullEmDamageResonance, Attr::hullExplosiveDamageResonance,
+        Attr::hullKineticDamageResonance, Attr::hullThermalDamageResonance, Attr::kineticDamageResistanceBonus, Attr::maxRange,
+        Attr::maxRangeBonus, Attr::maxTargetRangeBonus, Attr::missileVelocityBonus, Attr::overloadRofBonus,
+        Attr::power, Attr::reloadTime, Attr::shieldBonus, Attr::shieldEmDamageResonance,
+        Attr::shieldExplosiveDamageResonance, Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus,
+        Attr::speed, Attr::speedFactor, Attr::structureRigEwarCapUseBonus, Attr::structureRigEwarFalloffBonus,
+        Attr::structureRigEwarOptimalBonus, Attr::structureRigMaxTargetRangeBonus, Attr::structureRigMissileExploVeloBonus, Attr::structureRigMissileExplosionRadiusBonus,
+        Attr::structureRigMissileVelocityBonus, Attr::structureRigPDCapUseBonus, Attr::structureRigPDRangeBonus, Attr::thermalDamageResistanceBonus,
+        Attr::trackingSpeed, Attr::trackingSpeedBonus, Attr::warfareBuff1Value, Attr::warfareBuff2Value,
+        Attr::warfareBuff3Value, Attr::warpScrambleRange,
+    };
+};
+static_assert(sizeof(VortonProjectorAttrs) == 58 * sizeof(float));
+
+// Groups: Advanced Condenser Pack
+struct AdvancedCondenserPackChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float aoeVelocityBonus = 0.0f;
+    float capNeedBonus = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float fallofMultiplier = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float thermalDamage = 0.0f;
+    float volume = 0.0f;
+    float weaponRangeMultiplier = 0.0f;
+
+    static constexpr Attr kFields[15] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::aoeVelocityBonus, Attr::capNeedBonus,
+        Attr::capacitorBonus, Attr::emDamage, Attr::explosionDelay, Attr::explosiveDamage,
+        Attr::fallofMultiplier, Attr::kineticDamage, Attr::mass, Attr::maxVelocity,
+        Attr::thermalDamage, Attr::volume, Attr::weaponRangeMultiplier,
+    };
+};
+static_assert(sizeof(AdvancedCondenserPackChargeAttrs) == 15 * sizeof(float));
+
+// Groups: Interdiction Burst Probes
+struct InterdictionBurstProbesChargeAttrs
+{
+    float aoeCloudSize = 0.0f;
+    float aoeVelocity = 0.0f;
+    float capacitorBonus = 0.0f;
+    float emDamage = 0.0f;
+    float explosionDelay = 0.0f;
+    float explosiveDamage = 0.0f;
+    float hp = 0.0f;
+    float kineticDamage = 0.0f;
+    float mass = 0.0f;
+    float maxVelocity = 0.0f;
+    float speedMultiplier = 0.0f;
+    float thermalDamage = 0.0f;
+    float volume = 0.0f;
+
+    static constexpr Attr kFields[13] = {
+        Attr::aoeCloudSize, Attr::aoeVelocity, Attr::capacitorBonus, Attr::emDamage,
+        Attr::explosionDelay, Attr::explosiveDamage, Attr::hp, Attr::kineticDamage,
+        Attr::mass, Attr::maxVelocity, Attr::speedMultiplier, Attr::thermalDamage,
+        Attr::volume,
+    };
+};
+static_assert(sizeof(InterdictionBurstProbesChargeAttrs) == 13 * sizeof(float));
+
+// Groups: Interdiction Nullifier
+struct InterdictionNullifierAttrs
+{
+    float capacitorNeed = 0.0f;
+    float capacity = 0.0f;
+    float cpu = 0.0f;
+    float durationHighisGood = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float moduleReactivationDelay = 0.0f;
+    float power = 0.0f;
+
+    static constexpr Attr kFields[7] = {
+        Attr::capacitorNeed, Attr::capacity, Attr::cpu, Attr::durationHighisGood,
+        Attr::maxTargetRangeBonus, Attr::moduleReactivationDelay, Attr::power,
+    };
+};
+static_assert(sizeof(InterdictionNullifierAttrs) == 7 * sizeof(float));
+
+// Groups: Hybrid Drone
+struct HybridDroneDroneAttrs
+{
+    float armorEmDamageResonance = 0.0f;
+    float armorExplosiveDamageResonance = 0.0f;
+    float armorKineticDamageResonance = 0.0f;
+    float armorThermalDamageResonance = 0.0f;
+    float capacitorCapacity = 0.0f;
+    float damageMultiplier = 0.0f;
+    float emDamage = 0.0f;
+    float explosiveDamage = 0.0f;
+    float falloff = 0.0f;
+    float falloffBonus = 0.0f;
+    float kineticDamage = 0.0f;
+    float maxRange = 0.0f;
+    float maxRangeBonus = 0.0f;
+    float maxTargetRangeBonus = 0.0f;
+    float maxVelocity = 0.0f;
+    float optimalSigRadius = 0.0f;
+    float radius = 0.0f;
+    float shieldCapacity = 0.0f;
+    float shieldEmDamageResonance = 0.0f;
+    float shieldExplosiveDamageResonance = 0.0f;
+    float shieldKineticDamageResonance = 0.0f;
+    float shieldThermalDamageResonance = 0.0f;
+    float signatureRadiusBonus = 0.0f;
+    float speed = 0.0f;
+    float speedFactor = 0.0f;
+    float thermalDamage = 0.0f;
+    float trackingSpeed = 0.0f;
+    float trackingSpeedBonus = 0.0f;
+
+    static constexpr Attr kFields[28] = {
+        Attr::armorEmDamageResonance, Attr::armorExplosiveDamageResonance, Attr::armorKineticDamageResonance, Attr::armorThermalDamageResonance,
+        Attr::capacitorCapacity, Attr::damageMultiplier, Attr::emDamage, Attr::explosiveDamage,
+        Attr::falloff, Attr::falloffBonus, Attr::kineticDamage, Attr::maxRange,
+        Attr::maxRangeBonus, Attr::maxTargetRangeBonus, Attr::maxVelocity, Attr::optimalSigRadius,
+        Attr::radius, Attr::shieldCapacity, Attr::shieldEmDamageResonance, Attr::shieldExplosiveDamageResonance,
+        Attr::shieldKineticDamageResonance, Attr::shieldThermalDamageResonance, Attr::signatureRadiusBonus, Attr::speed,
+        Attr::speedFactor, Attr::thermalDamage, Attr::trackingSpeed, Attr::trackingSpeedBonus,
+    };
+};
+static_assert(sizeof(HybridDroneDroneAttrs) == 28 * sizeof(float));
 
 // Group -> layout. Generic code uses fields/fieldCount; hand-written code casts to the struct.
 struct GroupLayout
@@ -3053,9 +6310,9 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {47, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Cargo Scanner
     {48, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Ship Scanner
     {49, false, MiningSurveyChipsetAttrs::kFields, static_cast<uint8_t>(std::size(MiningSurveyChipsetAttrs::kFields))},  // Mining Survey Chipset
-    {52, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Warp Scrambler
+    {52, false, WarpScramblerAttrs::kFields, static_cast<uint8_t>(std::size(WarpScramblerAttrs::kFields))},  // Warp Scrambler
     {53, false, EnergyWeaponAttrs::kFields, static_cast<uint8_t>(std::size(EnergyWeaponAttrs::kFields))},  // Energy Weapon
-    {54, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Mining Laser
+    {54, false, MiningLaserAttrs::kFields, static_cast<uint8_t>(std::size(MiningLaserAttrs::kFields))},  // Mining Laser
     {55, false, ProjectileWeaponAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileWeaponAttrs::kFields))},  // Projectile Weapon
     {57, false, CapacitorRechargerAttrs::kFields, static_cast<uint8_t>(std::size(CapacitorRechargerAttrs::kFields))},  // Shield Power Relay
     {59, false, GyrostabilizerAttrs::kFields, static_cast<uint8_t>(std::size(GyrostabilizerAttrs::kFields))},  // Gyrostabilizer
@@ -3063,12 +6320,12 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {61, false, CapacitorBatteryAttrs::kFields, static_cast<uint8_t>(std::size(CapacitorBatteryAttrs::kFields))},  // Capacitor Battery
     {62, false, ArmorRepairUnitAttrs::kFields, static_cast<uint8_t>(std::size(ArmorRepairUnitAttrs::kFields))},  // Armor Repair Unit
     {63, false, HullRepairUnitAttrs::kFields, static_cast<uint8_t>(std::size(HullRepairUnitAttrs::kFields))},  // Hull Repair Unit
-    {65, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Stasis Web
+    {65, false, StasisWebAttrs::kFields, static_cast<uint8_t>(std::size(StasisWebAttrs::kFields))},  // Stasis Web
     {67, false, RemoteCapacitorTransmitterAttrs::kFields, static_cast<uint8_t>(std::size(RemoteCapacitorTransmitterAttrs::kFields))},  // Remote Capacitor Transmitter
     {68, false, RemoteCapacitorTransmitterAttrs::kFields, static_cast<uint8_t>(std::size(RemoteCapacitorTransmitterAttrs::kFields))},  // Energy Nosferatu
     {71, false, EnergyNeutralizerAttrs::kFields, static_cast<uint8_t>(std::size(EnergyNeutralizerAttrs::kFields))},  // Energy Neutralizer
-    {72, false, EnergyNeutralizerAttrs::kFields, static_cast<uint8_t>(std::size(EnergyNeutralizerAttrs::kFields))},  // Smart Bomb
-    {74, false, ProjectileWeaponAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileWeaponAttrs::kFields))},  // Hybrid Weapon
+    {72, false, SmartBombAttrs::kFields, static_cast<uint8_t>(std::size(SmartBombAttrs::kFields))},  // Smart Bomb
+    {74, false, HybridWeaponAttrs::kFields, static_cast<uint8_t>(std::size(HybridWeaponAttrs::kFields))},  // Hybrid Weapon
     {76, false, CapacitorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(CapacitorBoosterAttrs::kFields))},  // Capacitor Booster
     {77, false, ShieldHardenerAttrs::kFields, static_cast<uint8_t>(std::size(ShieldHardenerAttrs::kFields))},  // Shield Hardener
     {78, false, ReinforcedBulkheadAttrs::kFields, static_cast<uint8_t>(std::size(ReinforcedBulkheadAttrs::kFields))},  // Reinforced Bulkhead
@@ -3076,29 +6333,31 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {82, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Passive Targeting System
     {83, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Projectile Ammo
     {85, true, HybridChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(HybridChargeChargeAttrs::kFields))},  // Hybrid Charge
-    {86, true, HybridChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(HybridChargeChargeAttrs::kFields))},  // Frequency Crystal
-    {87, true, HybridChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(HybridChargeChargeAttrs::kFields))},  // Capacitor Booster Charge
-    {88, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Defender Missiles
-    {89, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Torpedo
-    {90, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Bomb
+    {86, true, FrequencyCrystalChargeAttrs::kFields, static_cast<uint8_t>(std::size(FrequencyCrystalChargeAttrs::kFields))},  // Frequency Crystal
+    {87, true, CapacitorBoosterChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(CapacitorBoosterChargeChargeAttrs::kFields))},  // Capacitor Booster Charge
+    {88, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Defender Missiles
+    {89, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Torpedo
+    {90, true, SurveyProbeChargeAttrs::kFields, static_cast<uint8_t>(std::size(SurveyProbeChargeAttrs::kFields))},  // Bomb
     {96, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Automated Targeting System
     {98, false, ArmorCoatingAttrs::kFields, static_cast<uint8_t>(std::size(ArmorCoatingAttrs::kFields))},  // Armor Coating
-    {201, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // ECM
-    {205, false, GyrostabilizerAttrs::kFields, static_cast<uint8_t>(std::size(GyrostabilizerAttrs::kFields))},  // Heat Sink
-    {208, false, SensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterAttrs::kFields))},  // Sensor Dampener
-    {209, false, SensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterAttrs::kFields))},  // Remote Tracking Computer
-    {210, false, MiningSurveyChipsetAttrs::kFields, static_cast<uint8_t>(std::size(MiningSurveyChipsetAttrs::kFields))},  // Signal Amplifier
+    {100, false, CombatDroneDroneAttrs::kFields, static_cast<uint8_t>(std::size(CombatDroneDroneAttrs::kFields))},  // Combat Drone
+    {101, false, MiningDroneDroneAttrs::kFields, static_cast<uint8_t>(std::size(MiningDroneDroneAttrs::kFields))},  // Mining Drone
+    {201, false, EcmAttrs::kFields, static_cast<uint8_t>(std::size(EcmAttrs::kFields))},  // ECM
+    {205, false, HeatSinkAttrs::kFields, static_cast<uint8_t>(std::size(HeatSinkAttrs::kFields))},  // Heat Sink
+    {208, false, RemoteSensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(RemoteSensorBoosterAttrs::kFields))},  // Sensor Dampener
+    {209, false, RemoteTrackingComputerAttrs::kFields, static_cast<uint8_t>(std::size(RemoteTrackingComputerAttrs::kFields))},  // Remote Tracking Computer
+    {210, false, SignalAmplifierAttrs::kFields, static_cast<uint8_t>(std::size(SignalAmplifierAttrs::kFields))},  // Signal Amplifier
     {211, false, TrackingEnhancerAttrs::kFields, static_cast<uint8_t>(std::size(TrackingEnhancerAttrs::kFields))},  // Tracking Enhancer
     {212, false, SensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterAttrs::kFields))},  // Sensor Booster
-    {213, false, SensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterAttrs::kFields))},  // Tracking Computer
+    {213, false, TrackingComputerAttrs::kFields, static_cast<uint8_t>(std::size(TrackingComputerAttrs::kFields))},  // Tracking Computer
     {285, false, CpuEnhancerAttrs::kFields, static_cast<uint8_t>(std::size(CpuEnhancerAttrs::kFields))},  // CPU Enhancer
-    {290, false, SensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterAttrs::kFields))},  // Remote Sensor Booster
-    {291, false, SensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterAttrs::kFields))},  // Weapon Disruptor
+    {290, false, RemoteSensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(RemoteSensorBoosterAttrs::kFields))},  // Remote Sensor Booster
+    {291, false, RemoteTrackingComputerAttrs::kFields, static_cast<uint8_t>(std::size(RemoteTrackingComputerAttrs::kFields))},  // Weapon Disruptor
     {295, false, ShieldResistanceAmplifierAttrs::kFields, static_cast<uint8_t>(std::size(ShieldResistanceAmplifierAttrs::kFields))},  // Shield Resistance Amplifier
     {300, false, CyberimplantAttrs::kFields, static_cast<uint8_t>(std::size(CyberimplantAttrs::kFields))},  // Cyberimplant
-    {302, false, GyrostabilizerAttrs::kFields, static_cast<uint8_t>(std::size(GyrostabilizerAttrs::kFields))},  // Magnetic Field Stabilizer
+    {302, false, HeatSinkAttrs::kFields, static_cast<uint8_t>(std::size(HeatSinkAttrs::kFields))},  // Magnetic Field Stabilizer
     {303, false, BoosterAttrs::kFields, static_cast<uint8_t>(std::size(BoosterAttrs::kFields))},  // Booster
-    {315, false, MicroJumpDriveAttrs::kFields, static_cast<uint8_t>(std::size(MicroJumpDriveAttrs::kFields))},  // Warp Core Stabilizer
+    {315, false, WarpCoreStabilizerAttrs::kFields, static_cast<uint8_t>(std::size(WarpCoreStabilizerAttrs::kFields))},  // Warp Core Stabilizer
     {316, false, GangCoordinatorAttrs::kFields, static_cast<uint8_t>(std::size(GangCoordinatorAttrs::kFields))},  // Gang Coordinator
     {325, false, RemoteArmorRepairerAttrs::kFields, static_cast<uint8_t>(std::size(RemoteArmorRepairerAttrs::kFields))},  // Remote Armor Repairer
     {326, false, ArmorCoatingAttrs::kFields, static_cast<uint8_t>(std::size(ArmorCoatingAttrs::kFields))},  // Energized Armor Membrane
@@ -3107,75 +6366,79 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {330, false, CloakingDeviceAttrs::kFields, static_cast<uint8_t>(std::size(CloakingDeviceAttrs::kFields))},  // Cloaking Device
     {338, false, ShieldBoostAmplifierAttrs::kFields, static_cast<uint8_t>(std::size(ShieldBoostAmplifierAttrs::kFields))},  // Shield Boost Amplifier
     {339, false, AuxiliaryPowerCoreAttrs::kFields, static_cast<uint8_t>(std::size(AuxiliaryPowerCoreAttrs::kFields))},  // Auxiliary Power Core
-    {367, false, GyrostabilizerAttrs::kFields, static_cast<uint8_t>(std::size(GyrostabilizerAttrs::kFields))},  // Ballistic Control System
-    {372, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Advanced Autocannon Ammo
-    {373, true, HybridChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(HybridChargeChargeAttrs::kFields))},  // Advanced Railgun Charge
-    {374, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Advanced Beam Laser Crystal
-    {375, true, HybridChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(HybridChargeChargeAttrs::kFields))},  // Advanced Pulse Laser Crystal
+    {367, false, BallisticControlSystemAttrs::kFields, static_cast<uint8_t>(std::size(BallisticControlSystemAttrs::kFields))},  // Ballistic Control System
+    {372, true, AdvancedAutocannonAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(AdvancedAutocannonAmmoChargeAttrs::kFields))},  // Advanced Autocannon Ammo
+    {373, true, AdvancedRailgunChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(AdvancedRailgunChargeChargeAttrs::kFields))},  // Advanced Railgun Charge
+    {374, true, AdvancedBeamLaserCrystalChargeAttrs::kFields, static_cast<uint8_t>(std::size(AdvancedBeamLaserCrystalChargeAttrs::kFields))},  // Advanced Beam Laser Crystal
+    {375, true, AdvancedPulseLaserCrystalChargeAttrs::kFields, static_cast<uint8_t>(std::size(AdvancedPulseLaserCrystalChargeAttrs::kFields))},  // Advanced Pulse Laser Crystal
     {376, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Advanced Artillery Ammo
-    {377, true, HybridChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(HybridChargeChargeAttrs::kFields))},  // Advanced Blaster Charge
-    {379, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Target Painter
-    {384, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Light Missile
-    {385, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Heavy Missile
-    {386, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Cruise Missile
-    {387, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Rocket
-    {394, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Auto-Targeting Light Missile
-    {395, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Auto-Targeting Heavy Missile
-    {396, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Auto-Targeting Cruise Missile
-    {407, false, DroneDamageModulesAttrs::kFields, static_cast<uint8_t>(std::size(DroneDamageModulesAttrs::kFields))},  // Fighter Support Unit
-    {464, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Strip Miner
-    {476, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // XL Torpedo
-    {479, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Scanner Probe
-    {481, false, SensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterAttrs::kFields))},  // Scan Probe Launcher
+    {377, true, AdvancedBlasterChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(AdvancedBlasterChargeChargeAttrs::kFields))},  // Advanced Blaster Charge
+    {379, false, TargetPainterAttrs::kFields, static_cast<uint8_t>(std::size(TargetPainterAttrs::kFields))},  // Target Painter
+    {384, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Light Missile
+    {385, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Heavy Missile
+    {386, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Cruise Missile
+    {387, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Rocket
+    {394, true, AutoTargetingLightMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(AutoTargetingLightMissileChargeAttrs::kFields))},  // Auto-Targeting Light Missile
+    {395, true, AutoTargetingLightMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(AutoTargetingLightMissileChargeAttrs::kFields))},  // Auto-Targeting Heavy Missile
+    {396, true, AutoTargetingLightMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(AutoTargetingLightMissileChargeAttrs::kFields))},  // Auto-Targeting Cruise Missile
+    {407, false, FighterSupportUnitAttrs::kFields, static_cast<uint8_t>(std::size(FighterSupportUnitAttrs::kFields))},  // Fighter Support Unit
+    {464, false, MiningLaserAttrs::kFields, static_cast<uint8_t>(std::size(MiningLaserAttrs::kFields))},  // Strip Miner
+    {476, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // XL Torpedo
+    {479, true, SurveyProbeChargeAttrs::kFields, static_cast<uint8_t>(std::size(SurveyProbeChargeAttrs::kFields))},  // Scanner Probe
+    {481, false, ScanProbeLauncherAttrs::kFields, static_cast<uint8_t>(std::size(ScanProbeLauncherAttrs::kFields))},  // Scan Probe Launcher
     {482, true, MercoxitMiningCrystalChargeAttrs::kFields, static_cast<uint8_t>(std::size(MercoxitMiningCrystalChargeAttrs::kFields))},  // Mining Crystal
-    {483, false, SensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterAttrs::kFields))},  // Frequency Mining Laser
-    {492, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Survey Probe
+    {483, false, ScanProbeLauncherAttrs::kFields, static_cast<uint8_t>(std::size(ScanProbeLauncherAttrs::kFields))},  // Frequency Mining Laser
+    {492, true, SurveyProbeChargeAttrs::kFields, static_cast<uint8_t>(std::size(SurveyProbeChargeAttrs::kFields))},  // Survey Probe
     {500, true, InterdictionProbeChargeAttrs::kFields, static_cast<uint8_t>(std::size(InterdictionProbeChargeAttrs::kFields))},  // Festival Charges
     {501, false, FestivalLauncherAttrs::kFields, static_cast<uint8_t>(std::size(FestivalLauncherAttrs::kFields))},  // Festival Launcher
     {506, false, MissileLauncherLightAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherLightAttrs::kFields))},  // Missile Launcher Cruise
-    {507, false, ProjectileWeaponAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileWeaponAttrs::kFields))},  // Missile Launcher Rocket
-    {508, false, ProjectileWeaponAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileWeaponAttrs::kFields))},  // Missile Launcher Torpedo
+    {507, false, MissileLauncherTorpedoAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherTorpedoAttrs::kFields))},  // Missile Launcher Rocket
+    {508, false, MissileLauncherTorpedoAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherTorpedoAttrs::kFields))},  // Missile Launcher Torpedo
     {509, false, MissileLauncherLightAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherLightAttrs::kFields))},  // Missile Launcher Light
     {510, false, MissileLauncherLightAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherLightAttrs::kFields))},  // Missile Launcher Heavy
     {511, false, MissileLauncherLightAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherLightAttrs::kFields))},  // Missile Launcher Rapid Light
     {512, false, MissileLauncherBombAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherBombAttrs::kFields))},  // Missile Launcher Defender
-    {514, false, DroneDamageModulesAttrs::kFields, static_cast<uint8_t>(std::size(DroneDamageModulesAttrs::kFields))},  // ECM Stabilizer
+    {514, false, EcmStabilizerAttrs::kFields, static_cast<uint8_t>(std::size(EcmStabilizerAttrs::kFields))},  // ECM Stabilizer
     {515, false, SiegeModuleAttrs::kFields, static_cast<uint8_t>(std::size(SiegeModuleAttrs::kFields))},  // Siege Module
-    {524, false, MissileLauncherLightAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherLightAttrs::kFields))},  // Missile Launcher XL Torpedo
-    {538, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Data Miners
+    {524, false, MissileLauncherXlCruiseAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherXlCruiseAttrs::kFields))},  // Missile Launcher XL Torpedo
+    {538, false, MiningLaserAttrs::kFields, static_cast<uint8_t>(std::size(MiningLaserAttrs::kFields))},  // Data Miners
+    {544, false, EnergyNeutralizerDroneDroneAttrs::kFields, static_cast<uint8_t>(std::size(EnergyNeutralizerDroneDroneAttrs::kFields))},  // Energy Neutralizer Drone
     {546, false, MiningUpgradeAttrs::kFields, static_cast<uint8_t>(std::size(MiningUpgradeAttrs::kFields))},  // Mining Upgrade
     {548, true, InterdictionProbeChargeAttrs::kFields, static_cast<uint8_t>(std::size(InterdictionProbeChargeAttrs::kFields))},  // Interdiction Probe
     {585, false, RemoteHullRepairerAttrs::kFields, static_cast<uint8_t>(std::size(RemoteHullRepairerAttrs::kFields))},  // Remote Hull Repairer
-    {588, false, MicroJumpDriveAttrs::kFields, static_cast<uint8_t>(std::size(MicroJumpDriveAttrs::kFields))},  // Super Weapon
-    {589, false, MissileLauncherLightAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherLightAttrs::kFields))},  // Interdiction Sphere Launcher
-    {590, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Jump Portal Generator
-    {644, false, DroneDamageModulesAttrs::kFields, static_cast<uint8_t>(std::size(DroneDamageModulesAttrs::kFields))},  // Drone Navigation Computer
+    {588, false, SuperWeaponAttrs::kFields, static_cast<uint8_t>(std::size(SuperWeaponAttrs::kFields))},  // Super Weapon
+    {589, false, InterdictionSphereLauncherAttrs::kFields, static_cast<uint8_t>(std::size(InterdictionSphereLauncherAttrs::kFields))},  // Interdiction Sphere Launcher
+    {590, false, JumpPortalGeneratorAttrs::kFields, static_cast<uint8_t>(std::size(JumpPortalGeneratorAttrs::kFields))},  // Jump Portal Generator
+    {639, false, ElectronicWarfareDroneDroneAttrs::kFields, static_cast<uint8_t>(std::size(ElectronicWarfareDroneDroneAttrs::kFields))},  // Electronic Warfare Drone
+    {640, false, MiningDroneDroneAttrs::kFields, static_cast<uint8_t>(std::size(MiningDroneDroneAttrs::kFields))},  // Logistic Drone
+    {641, false, EnergyNeutralizerDroneDroneAttrs::kFields, static_cast<uint8_t>(std::size(EnergyNeutralizerDroneDroneAttrs::kFields))},  // Stasis Webifying Drone
+    {644, false, DroneNavigationComputerAttrs::kFields, static_cast<uint8_t>(std::size(DroneNavigationComputerAttrs::kFields))},  // Drone Navigation Computer
     {645, false, DroneDamageModulesAttrs::kFields, static_cast<uint8_t>(std::size(DroneDamageModulesAttrs::kFields))},  // Drone Damage Modules
-    {646, false, SensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterAttrs::kFields))},  // Drone Tracking Modules
-    {647, false, DroneDamageModulesAttrs::kFields, static_cast<uint8_t>(std::size(DroneDamageModulesAttrs::kFields))},  // Drone Control Range Module
-    {648, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Advanced Rocket
-    {650, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Tractor Beam
-    {653, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Advanced Light Missile
-    {654, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Advanced Heavy Assault Missile
-    {655, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Advanced Heavy Missile
-    {656, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Advanced Cruise Missile
-    {657, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Advanced Torpedo
+    {646, false, TrackingComputerAttrs::kFields, static_cast<uint8_t>(std::size(TrackingComputerAttrs::kFields))},  // Drone Tracking Modules
+    {647, false, DroneControlRangeModuleAttrs::kFields, static_cast<uint8_t>(std::size(DroneControlRangeModuleAttrs::kFields))},  // Drone Control Range Module
+    {648, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Advanced Rocket
+    {650, false, MiningLaserAttrs::kFields, static_cast<uint8_t>(std::size(MiningLaserAttrs::kFields))},  // Tractor Beam
+    {653, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Advanced Light Missile
+    {654, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Advanced Heavy Assault Missile
+    {655, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Advanced Heavy Missile
+    {656, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Advanced Cruise Missile
+    {657, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Advanced Torpedo
     {658, false, CynosuralFieldGeneratorAttrs::kFields, static_cast<uint8_t>(std::size(CynosuralFieldGeneratorAttrs::kFields))},  // Cynosural Field Generator
     {663, true, MercoxitMiningCrystalChargeAttrs::kFields, static_cast<uint8_t>(std::size(MercoxitMiningCrystalChargeAttrs::kFields))},  // Mercoxit Mining Crystal
-    {737, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Gas Cloud Scoops
+    {737, false, MiningLaserAttrs::kFields, static_cast<uint8_t>(std::size(MiningLaserAttrs::kFields))},  // Gas Cloud Scoops
     {738, false, CyberArmorAttrs::kFields, static_cast<uint8_t>(std::size(CyberArmorAttrs::kFields))},  // Cyber Armor
     {739, false, CyberDronesAttrs::kFields, static_cast<uint8_t>(std::size(CyberDronesAttrs::kFields))},  // Cyber Drones
     {740, false, CyberElectronicSystemsAttrs::kFields, static_cast<uint8_t>(std::size(CyberElectronicSystemsAttrs::kFields))},  // Cyber Electronic Systems
     {741, false, CyberEngineeringAttrs::kFields, static_cast<uint8_t>(std::size(CyberEngineeringAttrs::kFields))},  // Cyber Engineering
     {742, false, CyberGunneryAttrs::kFields, static_cast<uint8_t>(std::size(CyberGunneryAttrs::kFields))},  // Cyber Gunnery
-    {743, false, CyberTargetingAttrs::kFields, static_cast<uint8_t>(std::size(CyberTargetingAttrs::kFields))},  // Cyber Production
+    {743, false, CyberLearningAttrs::kFields, static_cast<uint8_t>(std::size(CyberLearningAttrs::kFields))},  // Cyber Production
     {744, false, CyberLeadershipAttrs::kFields, static_cast<uint8_t>(std::size(CyberLeadershipAttrs::kFields))},  // Cyber Leadership
-    {745, false, CyberTargetingAttrs::kFields, static_cast<uint8_t>(std::size(CyberTargetingAttrs::kFields))},  // Cyber Learning
+    {745, false, CyberLearningAttrs::kFields, static_cast<uint8_t>(std::size(CyberLearningAttrs::kFields))},  // Cyber Learning
     {746, false, CyberMissileAttrs::kFields, static_cast<uint8_t>(std::size(CyberMissileAttrs::kFields))},  // Cyber Missile
     {747, false, CyberNavigationAttrs::kFields, static_cast<uint8_t>(std::size(CyberNavigationAttrs::kFields))},  // Cyber Navigation
-    {748, false, CyberTargetingAttrs::kFields, static_cast<uint8_t>(std::size(CyberTargetingAttrs::kFields))},  // Cyber Science
+    {748, false, CyberLearningAttrs::kFields, static_cast<uint8_t>(std::size(CyberLearningAttrs::kFields))},  // Cyber Science
     {749, false, CyberShieldsAttrs::kFields, static_cast<uint8_t>(std::size(CyberShieldsAttrs::kFields))},  // Cyber Shields
-    {762, false, OverdriveInjectorSystemAttrs::kFields, static_cast<uint8_t>(std::size(OverdriveInjectorSystemAttrs::kFields))},  // Inertial Stabilizer
+    {762, false, InertialStabilizerAttrs::kFields, static_cast<uint8_t>(std::size(InertialStabilizerAttrs::kFields))},  // Inertial Stabilizer
     {763, false, NanofiberInternalStructureAttrs::kFields, static_cast<uint8_t>(std::size(NanofiberInternalStructureAttrs::kFields))},  // Nanofiber Internal Structure
     {764, false, OverdriveInjectorSystemAttrs::kFields, static_cast<uint8_t>(std::size(OverdriveInjectorSystemAttrs::kFields))},  // Overdrive Injector System
     {765, false, NanofiberInternalStructureAttrs::kFields, static_cast<uint8_t>(std::size(NanofiberInternalStructureAttrs::kFields))},  // Expanded Cargohold
@@ -3184,8 +6447,8 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {768, false, CapacitorFluxCoilAttrs::kFields, static_cast<uint8_t>(std::size(CapacitorFluxCoilAttrs::kFields))},  // Capacitor Flux Coil
     {769, false, ReactorControlUnitAttrs::kFields, static_cast<uint8_t>(std::size(ReactorControlUnitAttrs::kFields))},  // Reactor Control Unit
     {770, false, ShieldFluxCoilAttrs::kFields, static_cast<uint8_t>(std::size(ShieldFluxCoilAttrs::kFields))},  // Shield Flux Coil
-    {771, false, ProjectileWeaponAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileWeaponAttrs::kFields))},  // Missile Launcher Heavy Assault
-    {772, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Heavy Assault Missile
+    {771, false, MissileLauncherTorpedoAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherTorpedoAttrs::kFields))},  // Missile Launcher Heavy Assault
+    {772, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Heavy Assault Missile
     {773, false, RigArmorAttrs::kFields, static_cast<uint8_t>(std::size(RigArmorAttrs::kFields))},  // Rig Armor
     {774, false, RigShieldAttrs::kFields, static_cast<uint8_t>(std::size(RigShieldAttrs::kFields))},  // Rig Shield
     {775, false, RigEnergyWeaponAttrs::kFields, static_cast<uint8_t>(std::size(RigEnergyWeaponAttrs::kFields))},  // Rig Energy Weapon
@@ -3194,33 +6457,34 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {778, false, RigDronesAttrs::kFields, static_cast<uint8_t>(std::size(RigDronesAttrs::kFields))},  // Rig Drones
     {779, false, RigLauncherAttrs::kFields, static_cast<uint8_t>(std::size(RigLauncherAttrs::kFields))},  // Rig Launcher
     {781, false, RigCoreAttrs::kFields, static_cast<uint8_t>(std::size(RigCoreAttrs::kFields))},  // Rig Core
-    {782, false, RigElectronicSystemsAttrs::kFields, static_cast<uint8_t>(std::size(RigElectronicSystemsAttrs::kFields))},  // Rig Navigation
+    {782, false, RigNavigationAttrs::kFields, static_cast<uint8_t>(std::size(RigNavigationAttrs::kFields))},  // Rig Navigation
     {783, false, CyberXSpecialsAttrs::kFields, static_cast<uint8_t>(std::size(CyberXSpecialsAttrs::kFields))},  // Cyber X Specials
     {786, false, RigElectronicSystemsAttrs::kFields, static_cast<uint8_t>(std::size(RigElectronicSystemsAttrs::kFields))},  // Rig Electronic Systems
-    {815, false, MiningSurveyChipsetAttrs::kFields, static_cast<uint8_t>(std::size(MiningSurveyChipsetAttrs::kFields))},  // Clone Vat Bay
-    {842, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Burst Projectors
+    {815, false, CloneVatBayAttrs::kFields, static_cast<uint8_t>(std::size(CloneVatBayAttrs::kFields))},  // Clone Vat Bay
+    {842, false, BurstProjectorsAttrs::kFields, static_cast<uint8_t>(std::size(BurstProjectorsAttrs::kFields))},  // Burst Projectors
     {862, false, MissileLauncherBombAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherBombAttrs::kFields))},  // Missile Launcher Bomb
-    {863, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Bomb ECM
-    {864, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Bomb Energy
+    {863, true, SurveyProbeChargeAttrs::kFields, static_cast<uint8_t>(std::size(SurveyProbeChargeAttrs::kFields))},  // Bomb ECM
+    {864, true, SurveyProbeChargeAttrs::kFields, static_cast<uint8_t>(std::size(SurveyProbeChargeAttrs::kFields))},  // Bomb Energy
     {899, false, WarpDisruptFieldGeneratorAttrs::kFields, static_cast<uint8_t>(std::size(WarpDisruptFieldGeneratorAttrs::kFields))},  // Warp Disrupt Field Generator
-    {907, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Tracking Script
+    {907, true, TrackingScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(TrackingScriptChargeAttrs::kFields))},  // Tracking Script
     {908, true, WarpDisruptionScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(WarpDisruptionScriptChargeAttrs::kFields))},  // Warp Disruption Script
-    {909, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Tracking Disruption Script
-    {910, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Sensor Booster Script
-    {911, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Sensor Dampener Script
-    {916, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Nanite Repair Paste
+    {909, true, TrackingDisruptionScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(TrackingDisruptionScriptChargeAttrs::kFields))},  // Tracking Disruption Script
+    {910, true, SensorBoosterScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterScriptChargeAttrs::kFields))},  // Sensor Booster Script
+    {911, true, SensorBoosterScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterScriptChargeAttrs::kFields))},  // Sensor Dampener Script
+    {916, true, NaniteRepairPasteChargeAttrs::kFields, static_cast<uint8_t>(std::size(NaniteRepairPasteChargeAttrs::kFields))},  // Nanite Repair Paste
     {954, false, DefensiveSubsystemAttrs::kFields, static_cast<uint8_t>(std::size(DefensiveSubsystemAttrs::kFields))},  // Defensive Subsystem
     {956, false, OffensiveSubsystemAttrs::kFields, static_cast<uint8_t>(std::size(OffensiveSubsystemAttrs::kFields))},  // Offensive Subsystem
     {957, false, PropulsionSubsystemAttrs::kFields, static_cast<uint8_t>(std::size(PropulsionSubsystemAttrs::kFields))},  // Propulsion Subsystem
     {958, false, CoreSubsystemAttrs::kFields, static_cast<uint8_t>(std::size(CoreSubsystemAttrs::kFields))},  // Core Subsystem
-    {1019, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // XL Cruise Missile
-    {1122, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Salvager
+    {1019, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // XL Cruise Missile
+    {1122, false, MiningLaserAttrs::kFields, static_cast<uint8_t>(std::size(MiningLaserAttrs::kFields))},  // Salvager
     {1150, false, ArmorResistanceShiftHardenerAttrs::kFields, static_cast<uint8_t>(std::size(ArmorResistanceShiftHardenerAttrs::kFields))},  // Armor Resistance Shift Hardener
     {1154, false, SignatureSuppressorAttrs::kFields, static_cast<uint8_t>(std::size(SignatureSuppressorAttrs::kFields))},  // Signature Suppressor
     {1156, false, AncillaryShieldBoosterAttrs::kFields, static_cast<uint8_t>(std::size(AncillaryShieldBoosterAttrs::kFields))},  // Ancillary Shield Booster
+    {1159, false, SalvageDroneDroneAttrs::kFields, static_cast<uint8_t>(std::size(SalvageDroneDroneAttrs::kFields))},  // Salvage Drone
     {1189, false, MicroJumpDriveAttrs::kFields, static_cast<uint8_t>(std::size(MicroJumpDriveAttrs::kFields))},  // Micro Jump Drive
     {1199, false, AncillaryArmorRepairerAttrs::kFields, static_cast<uint8_t>(std::size(AncillaryArmorRepairerAttrs::kFields))},  // Ancillary Armor Repairer
-    {1223, false, DroneDamageModulesAttrs::kFields, static_cast<uint8_t>(std::size(DroneDamageModulesAttrs::kFields))},  // Scanning Upgrade
+    {1223, false, FighterSupportUnitAttrs::kFields, static_cast<uint8_t>(std::size(FighterSupportUnitAttrs::kFields))},  // Scanning Upgrade
     {1226, false, SurveyProbeLauncherAttrs::kFields, static_cast<uint8_t>(std::size(SurveyProbeLauncherAttrs::kFields))},  // Survey Probe Launcher
     {1228, false, CyberTargetingAttrs::kFields, static_cast<uint8_t>(std::size(CyberTargetingAttrs::kFields))},  // Cyber Targeting
     {1229, false, CyberResourceProcessingAttrs::kFields, static_cast<uint8_t>(std::size(CyberResourceProcessingAttrs::kFields))},  // Cyber Resource Processing
@@ -3232,26 +6496,26 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {1238, false, ScanningUpgradeTimeAttrs::kFields, static_cast<uint8_t>(std::size(ScanningUpgradeTimeAttrs::kFields))},  // Scanning Upgrade Time
     {1245, false, MissileLauncherLightAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherLightAttrs::kFields))},  // Missile Launcher Rapid Heavy
     {1289, false, WarpAcceleratorAttrs::kFields, static_cast<uint8_t>(std::size(WarpAcceleratorAttrs::kFields))},  // Warp Accelerator
-    {1292, false, DroneDamageModulesAttrs::kFields, static_cast<uint8_t>(std::size(DroneDamageModulesAttrs::kFields))},  // Drone Tracking Enhancer
+    {1292, false, DroneTrackingEnhancerAttrs::kFields, static_cast<uint8_t>(std::size(DroneTrackingEnhancerAttrs::kFields))},  // Drone Tracking Enhancer
     {1299, false, WarpAcceleratorAttrs::kFields, static_cast<uint8_t>(std::size(WarpAcceleratorAttrs::kFields))},  // Jump Drive Economizer
     {1306, false, ShipModifiersAttrs::kFields, static_cast<uint8_t>(std::size(ShipModifiersAttrs::kFields))},  // Ship Modifiers
-    {1308, false, RigTargetingAttrs::kFields, static_cast<uint8_t>(std::size(RigTargetingAttrs::kFields))},  // Rig Anchor
+    {1308, false, RigAnchorAttrs::kFields, static_cast<uint8_t>(std::size(RigAnchorAttrs::kFields))},  // Rig Anchor
     {1313, false, EntosisLinkAttrs::kFields, static_cast<uint8_t>(std::size(EntosisLinkAttrs::kFields))},  // Entosis Link
-    {1395, false, DroneDamageModulesAttrs::kFields, static_cast<uint8_t>(std::size(DroneDamageModulesAttrs::kFields))},  // Missile Guidance Enhancer
-    {1396, false, SensorBoosterAttrs::kFields, static_cast<uint8_t>(std::size(SensorBoosterAttrs::kFields))},  // Missile Guidance Computer
-    {1400, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Missile Guidance Script
+    {1395, false, MissileGuidanceEnhancerAttrs::kFields, static_cast<uint8_t>(std::size(MissileGuidanceEnhancerAttrs::kFields))},  // Missile Guidance Enhancer
+    {1396, false, TrackingComputerAttrs::kFields, static_cast<uint8_t>(std::size(TrackingComputerAttrs::kFields))},  // Missile Guidance Computer
+    {1400, true, MissileGuidanceScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(MissileGuidanceScriptChargeAttrs::kFields))},  // Missile Guidance Script
     {1533, false, MicroJumpDriveAttrs::kFields, static_cast<uint8_t>(std::size(MicroJumpDriveAttrs::kFields))},  // Micro Jump Field Generators
-    {1546, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Structure Anti-Capital Missile
-    {1547, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Structure Anti-Subcapital Missile
-    {1548, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Guided Bomb
-    {1549, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Structure ECM script
-    {1551, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Structure Warp Disruptor Script
-    {1569, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Guidance Disruption Script
-    {1672, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Stasis Grappler
-    {1673, false, MissileLauncherLightAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherLightAttrs::kFields))},  // Missile Launcher Rapid Torpedo
-    {1674, false, MissileLauncherLightAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherLightAttrs::kFields))},  // Missile Launcher XL Cruise
-    {1677, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Advanced XL Torpedo
-    {1678, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Advanced XL Cruise Missile
+    {1546, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Structure Anti-Capital Missile
+    {1547, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Structure Anti-Subcapital Missile
+    {1548, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Guided Bomb
+    {1549, true, StructureEcmScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(StructureEcmScriptChargeAttrs::kFields))},  // Structure ECM script
+    {1551, true, StructureWarpDisruptorScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(StructureWarpDisruptorScriptChargeAttrs::kFields))},  // Structure Warp Disruptor Script
+    {1569, true, MissileGuidanceScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(MissileGuidanceScriptChargeAttrs::kFields))},  // Guidance Disruption Script
+    {1672, false, StasisGrapplerAttrs::kFields, static_cast<uint8_t>(std::size(StasisGrapplerAttrs::kFields))},  // Stasis Grappler
+    {1673, false, MissileLauncherXlCruiseAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherXlCruiseAttrs::kFields))},  // Missile Launcher Rapid Torpedo
+    {1674, false, MissileLauncherXlCruiseAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherXlCruiseAttrs::kFields))},  // Missile Launcher XL Cruise
+    {1677, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Advanced XL Torpedo
+    {1678, true, CruiseMissileChargeAttrs::kFields, static_cast<uint8_t>(std::size(CruiseMissileChargeAttrs::kFields))},  // Advanced XL Cruise Missile
     {1697, false, AncillaryRemoteShieldBoosterAttrs::kFields, static_cast<uint8_t>(std::size(AncillaryRemoteShieldBoosterAttrs::kFields))},  // Ancillary Remote Shield Booster
     {1698, false, AncillaryRemoteArmorRepairerAttrs::kFields, static_cast<uint8_t>(std::size(AncillaryRemoteArmorRepairerAttrs::kFields))},  // Ancillary Remote Armor Repairer
     {1699, false, FlexArmorHardenerAttrs::kFields, static_cast<uint8_t>(std::size(FlexArmorHardenerAttrs::kFields))},  // Flex Armor Hardener
@@ -3268,27 +6532,28 @@ inline constexpr GroupLayout kGroupLayouts[] = {
     {1774, true, ShieldCommandBurstChargesChargeAttrs::kFields, static_cast<uint8_t>(std::size(ShieldCommandBurstChargesChargeAttrs::kFields))},  // Armor Command Burst Charges
     {1815, false, TitanPhenomenaGeneratorAttrs::kFields, static_cast<uint8_t>(std::size(TitanPhenomenaGeneratorAttrs::kFields))},  // Titan Phenomena Generator
     {1976, true, InterdictionProbeChargeAttrs::kFields, static_cast<uint8_t>(std::size(InterdictionProbeChargeAttrs::kFields))},  // Structure Festival Charges
-    {1986, false, FestivalLauncherAttrs::kFields, static_cast<uint8_t>(std::size(FestivalLauncherAttrs::kFields))},  // Precursor Weapon
-    {1987, true, HybridChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(HybridChargeChargeAttrs::kFields))},  // Exotic Plasma Charge
+    {1986, false, PrecursorWeaponAttrs::kFields, static_cast<uint8_t>(std::size(PrecursorWeaponAttrs::kFields))},  // Precursor Weapon
+    {1987, true, ExoticPlasmaChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(ExoticPlasmaChargeChargeAttrs::kFields))},  // Exotic Plasma Charge
     {1988, false, GyrostabilizerAttrs::kFields, static_cast<uint8_t>(std::size(GyrostabilizerAttrs::kFields))},  // Entropic Radiation Sink
-    {1989, true, HybridChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(HybridChargeChargeAttrs::kFields))},  // Advanced Exotic Plasma Charge
-    {2004, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Citizen Mining Laser
-    {2008, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Mass Entanglers
+    {1989, true, ExoticPlasmaChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(ExoticPlasmaChargeChargeAttrs::kFields))},  // Advanced Exotic Plasma Charge
+    {2004, false, MiningLaserAttrs::kFields, static_cast<uint8_t>(std::size(MiningLaserAttrs::kFields))},  // Citizen Mining Laser
+    {2008, false, MassEntanglersAttrs::kFields, static_cast<uint8_t>(std::size(MassEntanglersAttrs::kFields))},  // Mass Entanglers
     {2018, false, MutadaptiveRemoteArmorRepairerAttrs::kFields, static_cast<uint8_t>(std::size(MutadaptiveRemoteArmorRepairerAttrs::kFields))},  // Mutadaptive Remote Armor Repairer
-    {4060, false, MissileLauncherLightAttrs::kFields, static_cast<uint8_t>(std::size(MissileLauncherLightAttrs::kFields))},  // Vorton Projector
-    {4061, true, HybridChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(HybridChargeChargeAttrs::kFields))},  // Advanced Condenser Pack
+    {4060, false, VortonProjectorAttrs::kFields, static_cast<uint8_t>(std::size(VortonProjectorAttrs::kFields))},  // Vorton Projector
+    {4061, true, AdvancedCondenserPackChargeAttrs::kFields, static_cast<uint8_t>(std::size(AdvancedCondenserPackChargeAttrs::kFields))},  // Advanced Condenser Pack
     {4062, true, HybridChargeChargeAttrs::kFields, static_cast<uint8_t>(std::size(HybridChargeChargeAttrs::kFields))},  // Condenser Pack
     {4067, false, GyrostabilizerAttrs::kFields, static_cast<uint8_t>(std::size(GyrostabilizerAttrs::kFields))},  // Vorton Projector Upgrade
-    {4088, true, InterdictionProbeChargeAttrs::kFields, static_cast<uint8_t>(std::size(InterdictionProbeChargeAttrs::kFields))},  // Interdiction Burst Probes
-    {4117, false, SignatureSuppressorAttrs::kFields, static_cast<uint8_t>(std::size(SignatureSuppressorAttrs::kFields))},  // Interdiction Nullifier
-    {4127, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Covert Jump Portal Generator
-    {4138, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Gas Cloud Harvesters
-    {4174, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Compressors
-    {4184, false, CargoScannerAttrs::kFields, static_cast<uint8_t>(std::size(CargoScannerAttrs::kFields))},  // Industrial Jump Portal Generator
-    {4186, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // Structure Area Denial Ammunition
+    {4088, true, InterdictionBurstProbesChargeAttrs::kFields, static_cast<uint8_t>(std::size(InterdictionBurstProbesChargeAttrs::kFields))},  // Interdiction Burst Probes
+    {4117, false, InterdictionNullifierAttrs::kFields, static_cast<uint8_t>(std::size(InterdictionNullifierAttrs::kFields))},  // Interdiction Nullifier
+    {4127, false, JumpPortalGeneratorAttrs::kFields, static_cast<uint8_t>(std::size(JumpPortalGeneratorAttrs::kFields))},  // Covert Jump Portal Generator
+    {4138, false, MiningLaserAttrs::kFields, static_cast<uint8_t>(std::size(MiningLaserAttrs::kFields))},  // Gas Cloud Harvesters
+    {4174, false, MiningLaserAttrs::kFields, static_cast<uint8_t>(std::size(MiningLaserAttrs::kFields))},  // Compressors
+    {4184, false, JumpPortalGeneratorAttrs::kFields, static_cast<uint8_t>(std::size(JumpPortalGeneratorAttrs::kFields))},  // Industrial Jump Portal Generator
+    {4186, true, StructureEcmScriptChargeAttrs::kFields, static_cast<uint8_t>(std::size(StructureEcmScriptChargeAttrs::kFields))},  // Structure Area Denial Ammunition
     {4769, false, MicroJumpDriveAttrs::kFields, static_cast<uint8_t>(std::size(MicroJumpDriveAttrs::kFields))},  // Capital Mobility Modules
     {4807, false, FestivalLauncherAttrs::kFields, static_cast<uint8_t>(std::size(FestivalLauncherAttrs::kFields))},  // Breacher Pod Launchers
-    {4808, true, ProjectileAmmoChargeAttrs::kFields, static_cast<uint8_t>(std::size(ProjectileAmmoChargeAttrs::kFields))},  // SCARAB Breacher Pods
+    {4808, true, SurveyProbeChargeAttrs::kFields, static_cast<uint8_t>(std::size(SurveyProbeChargeAttrs::kFields))},  // SCARAB Breacher Pods
     {4905, true, ShieldCommandBurstChargesChargeAttrs::kFields, static_cast<uint8_t>(std::size(ShieldCommandBurstChargesChargeAttrs::kFields))},  // Expedition Command Burst Charges
+    {5239, false, HybridDroneDroneAttrs::kFields, static_cast<uint8_t>(std::size(HybridDroneDroneAttrs::kFields))},  // Hybrid Drone
 };
 }  // namespace fitschema

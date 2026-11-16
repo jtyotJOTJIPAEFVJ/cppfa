@@ -97,6 +97,18 @@ def main():
             for section, k, ek in REMOTE:
                 if ref[section].get(k) is not None:
                     pairs.append((ek, ref[section][k], got.get(ek)))
+        dmg = ref.get('damage')
+        if dmg:
+            for part in ('modules', 'drones'):
+                pairs.append((f'dps.{part}', dmg['dps'][part], got.get(f'dps.{part}')))
+                for name, parts in dmg['applied'].items():
+                    pairs.append((f'applied.{part}', parts[part], got.get(f'applied.{name}.{part}')))
+            for m in ref['modules']:
+                pos = m['position']
+                if str(pos) in dmg['moduleDps']:
+                    pairs.append(('module.dps', dmg['moduleDps'][str(pos)], got.get(f'mod.{pos}.dps'), m))
+                for name, v in dmg['moduleApplied'].get(str(pos), {}).items():
+                    pairs.append(('module.applied', v, got.get(f'mod.{pos}.applied.{name}'), m))
         for m in ref['modules']:
             p = f"mod.{m['position']}."
             for attr, v in m['attrs'].items():

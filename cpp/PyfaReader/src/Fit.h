@@ -31,6 +31,8 @@ struct FitModule
     std::optional<int> chargeID;
     ModuleState state = ModuleState::Online;
     int position = 0;
+    std::optional<int> spoolType;  // pyfa Module.spoolType (eos.const.SpoolType), empty = the default
+    double spoolAmount = 0;
     std::map<int, double> mutators;  // attributeID -> mutated value
 
     bool isMutated() const { return baseItemID && mutaplasmidID; }

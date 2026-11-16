@@ -3,12 +3,13 @@
 //
 // Usage:
 //   PyfaReader [--game <eve.db>] [--save <saveddata.db>] [<fit name> | #<fitID>]
-//   PyfaReader [--game ...] [--save ...] --engine-dump <out.tsv>
-//   PyfaReader [--game ...] [--save ...] --search-check [maxFits]
+//   PyfaReader [--game ...] [--save ...] --engine-dump <out.tsv> [--no-reload] [--spool FRACTION]
+//   PyfaReader [--game ...] [--save ...] --search-check [maxFits] [--no-reload] [--spool FRACTION]
 //   PyfaReader [--game ...] [--save ...] --bench [fitID [seconds [goal]]]   (profiling case)
 //   PyfaReader [--game ...] [--save ...] --optimize <fitID> <goal> [--racks mid,low,rig,high] [--price-cap ISK]
 //              [--allow-officer] [--top K] [--results N] [--dump-kinds] [--slots m,l,r[,h]] [--threads N]
-//              [--no-ancillary] [--no-cap-boosters] [--max-reps N] [--cap-stable] [--min-cap-recharge GJ/s] [--remote-weight W]
+//              [--no-ancillary] [--no-cap-boosters] [--no-polarized] [--max-reps N] [--cap-stable] [--min-cap-recharge GJ/s] [--remote-weight W]
+//              [--target frigate|cruiser|battleship|em,th,ki,ex,sig,speed,radius,distance[,speedFactor]]   (appliedDps)
 //   PyfaReader [--game ...] [--save ...] --optimize-check <fitID>[,<fitID>...] [goal|all] [--slots m,l,r[,h]]
 //              [--verbose]   (stage 1 vs brute force; default 2 mid / 2 low / 1 rig / 2 high open, racks
 //              as --racks: mid, low and rig unless given; also the --optimize constraint options)
@@ -107,6 +108,11 @@ fitengine::FitInput toEngineInput(const Fit& fit, const GameData& gd, std::vecto
         mi.typeID = *m.itemID;
         mi.chargeID = m.chargeID.value_or(0);
         mi.state = static_cast<fitengine::State>(static_cast<int>(m.state));
+        if (m.spoolType && *m.spoolType >= 0 && *m.spoolType <= 3)
+        {
+            mi.spoolType = static_cast<fitengine::SpoolType>(*m.spoolType);
+            mi.spoolAmount = static_cast<float>(m.spoolAmount);
+        }
         if (m.isMutated())
             mi.baseTypeID = *m.baseItemID;
         for (const auto& [attr, v] : m.mutators)
@@ -114,12 +120,50 @@ fitengine::FitInput toEngineInput(const Fit& fit, const GameData& gd, std::vecto
         in.modules.push_back(std::move(mi));
         positions.push_back(m.position);
     }
+    for (const FitDrone& d : fit.drones)
+    {
+        if (d.amountActive <= 0)
+            continue;
+        fitengine::DroneInput di;
+        di.typeID = d.itemID;
+        di.amount = d.amountActive;
+        if (d.isMutated())
+            di.baseTypeID = *d.baseItemID;
+        for (const auto& [attr, v] : d.mutators)
+            di.mutators.emplace_back(attr, static_cast<float>(v));
+        in.drones.push_back(std::move(di));
+    }
     for (const FitItem& i : fit.appliedImplants())
         in.implants.push_back({i.itemID, i.active});
     for (const FitItem& b : fit.boosters)
         in.boosters.push_back({b.itemID, b.active, b.sideEffects});
     return in;
 }
+
+// Targets --engine-dump reports applied damage against ("applied.<name>"), the same as
+// tools/pyfa_reference.py's REFERENCE_TARGETS: a fast frigate close, a cruiser at mid
+// range, a slow battleship far out (resists em/thermal/kinetic/explosive).
+struct ReferenceTarget
+{
+    const char* name;
+    fitengine::DamageTarget target;
+};
+std::vector<ReferenceTarget> referenceTargets()
+{
+    auto make = [](float em, float th, float ki, float ex, float sig, float speed, float radius, float distance) {
+        fitengine::DamageTarget t;
+        t.em = em, t.thermal = th, t.kinetic = ki, t.explosive = ex;
+        t.signatureRadius = sig, t.maxVelocity = speed, t.radius = radius, t.distance = distance;
+        return t;
+    };
+    return {{"frigate", make(0.3f, 0.4f, 0.5f, 0.6f, 35, 3000, 40, 2000)},
+            {"cruiser", make(0.5f, 0.45f, 0.4f, 0.35f, 125, 900, 120, 15000)},
+            {"battleship", make(0.25f, 0.35f, 0.45f, 0.55f, 420, 120, 300, 45000)}};
+}
+
+// --engine-dump / --search-check options: pyfa's reload setting and default spool-up for every fit
+bool dumpFactorReload = true;
+float dumpSpoolup = 1;
 
 int engineDump(const GameData& gd, const Database& save, const fs::path& outPath)
 {
@@ -145,6 +189,8 @@ int engineDump(const GameData& gd, const Database& save, const fs::path& outPath
             continue;
         std::vector<int> positions;
         fitengine::FitInput in = toEngineInput(*fit, gd, positions);
+        in.factorReload = dumpFactorReload;
+        in.spoolup = dumpSpoolup;
         fitengine::FitResult r;
         try
         {
@@ -177,6 +223,29 @@ int engineDump(const GameData& gd, const Database& save, const fs::path& outPath
         }
         put("remote.shield", r.remoteRepair[fitengine::Shield]);
         put("remote.armor", r.remoteRepair[fitengine::Armor]);
+        // Damage: modules and drones separately (pyfa also counts fighters, the engine doesn't).
+        double moduleDps = 0, droneDps = 0;
+        for (const auto& m : r.modules)
+            moduleDps += m.dps;
+        for (const auto& dr : r.drones)
+            droneDps += dr.dps;
+        put("dps.modules", moduleDps);
+        put("dps.drones", droneDps);
+        for (const ReferenceTarget& rt : referenceTargets())
+        {
+            fitengine::FitResult a = engine.evaluate(in, &rt.target);
+            double mods = 0, drones = 0;
+            for (size_t i = 0; i < a.modules.size(); ++i)
+            {
+                mods += a.modules[i].appliedDps;
+                if (a.modules[i].dps > 0)
+                    put("mod." + std::to_string(positions[i]) + ".applied." + rt.name, a.modules[i].appliedDps);
+            }
+            for (const auto& dr : a.drones)
+                drones += dr.appliedDps;
+            put(std::string("applied.") + rt.name + ".modules", mods);
+            put(std::string("applied.") + rt.name + ".drones", drones);
+        }
         put("cap.peakRecharge", r.capPeakRecharge);
         put("cap.recharge", r.capRecharge);
         put("cap.used", r.capUsed);
@@ -192,6 +261,7 @@ int engineDump(const GameData& gd, const Database& save, const fs::path& outPath
             put(p + "averageCycleTime", m.averageCycleTime);
             put(p + "capUse", m.capUse);
             put(p + "numShots", m.numShots);
+            put(p + "dps", m.dps);
         }
         for (const auto& w : r.warnings)
             std::cerr << "fit " << id << ": " << w << "\n";
@@ -215,11 +285,13 @@ int searchCheck(const GameData& gd, const Database& save, int maxFits)
     const Goal goals[] = {Goal::ShieldPassive, Goal::ArmorPassive,  Goal::HullPassive,   Goal::ShieldActive,
                           Goal::ArmorActive,   Goal::ShieldResists, Goal::ArmorResists, Goal::ShieldRemote,
                           Goal::ArmorRemote,   Goal::LocalShieldRemoteShield, Goal::LocalShieldRemoteArmor,
-                          Goal::LocalArmorRemoteShield, Goal::LocalArmorRemoteArmor};
+                          Goal::LocalArmorRemoteShield, Goal::LocalArmorRemoteArmor, Goal::AppliedDps};
     const char* goalNames[] = {"shieldPassive", "armorPassive", "hullPassive", "shieldActive", "armorActive", "shieldResists",
                                "armorResists", "shieldRemote", "armorRemote",
                                "localShieldRemoteShield", "localShieldRemoteArmor", "localArmorRemoteShield",
-                               "localArmorRemoteArmor"};
+                               "localArmorRemoteArmor", "appliedDps"};
+    // AppliedDps against the cruiser reference target (the frigate one is out of most weapons' reach)
+    const DamageTarget target = referenceTargets()[1].target;
 
     size_t fits = 0, tests = 0, mismatches = 0, detailMismatches = 0, instructions = 0, dynamic = 0, orderFits = 0;
     double planSeconds = 0, fullSeconds = 0, buildSeconds = 0;
@@ -253,6 +325,9 @@ int searchCheck(const GameData& gd, const Database& save, int maxFits)
         spec.base.modeTypeID = in.modeTypeID;
         spec.base.implants = in.implants;
         spec.base.boosters = in.boosters;
+        spec.base.drones = in.drones;
+        spec.base.factorReload = in.factorReload = dumpFactorReload;
+        spec.base.spoolup = in.spoolup = dumpSpoolup;
         for (size_t i = 0; i < in.modules.size(); ++i)
             if (!std::binary_search(idx.begin(), idx.end(), i))
                 spec.base.modules.push_back(in.modules[i]);
@@ -295,22 +370,24 @@ int searchCheck(const GameData& gd, const Database& save, int maxFits)
             for (size_t s = 0; s < choice.size(); ++s)
                 choice[s] = std::uniform_int_distribution<int>(-1, static_cast<int>(spec.slots[s].size()) - 1)(rng);
             auto t1 = std::chrono::steady_clock::now();
-            FitResult full = engine.evaluate(plan.fitFor(choice.data()));
+            FitResult full = engine.evaluate(plan.fitFor(choice.data()), &target);
             fullSeconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - t1).count();
             ++fullCalls;
             for (size_t g = 0; g < std::size(goals); ++g)
             {
+                Objective objective(goals[g]);
+                objective.target = target;
                 auto t2 = std::chrono::steady_clock::now();
-                TestResult got = plan.evaluate(choice.data(), goals[g]);
+                TestResult got = plan.evaluate(choice.data(), objective);
                 planSeconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - t2).count();
                 ++planCalls;
-                TestResult want = toTestResult(full, goals[g]);
+                TestResult want = toTestResult(full, objective);
                 ++tests;
                 // The detail must reproduce the test's own numbers exactly when
                 // recombined with the shared totals code (as the optimizer does).
                 {
                     static thread_local TestDetail detail;
-                    TestResult again = plan.evaluate(choice.data(), goals[g], &detail);
+                    TestResult again = plan.evaluate(choice.data(), objective, &detail);
                     CapSums cs = capSums(detail.modules.data(), detail.moduleCount);
                     float recharge = cs.added + detail.capPeak;
                     bool same = cs.used == again.capUsed && recharge == again.capRecharge;
@@ -332,13 +409,21 @@ int searchCheck(const GameData& gd, const Database& save, int maxFits)
                                                             detail.divider[static_cast<size_t>(l)]);
                         same &= parts.local == again.localRep && parts.remote == again.remoteRep;
                     }
+                    if (goals[g] == Goal::AppliedDps)
+                    {
+                        float applied = detail.droneAppliedDps;  // same order as the engine's totals
+                        for (int i = 0; i < detail.moduleCount; ++i)
+                            applied += detail.modules[static_cast<size_t>(i)].appliedDps;
+                        same &= applied == again.goal;
+                    }
                     if (!same && detailMismatches++ < 10)
                         std::cerr << "fit " << fit->id << " " << goalNames[g] << ": detail doesn't reproduce the test\n";
                 }
                 bool ok = close(got.goal, want.goal) && close(got.cpuUsed, want.cpuUsed) &&
                           close(got.powerUsed, want.powerUsed) && close(got.calibrationUsed, want.calibrationUsed) &&
                           close(got.cpuOutput, want.cpuOutput) && close(got.powerOutput, want.powerOutput) &&
-                          close(got.capUsed, want.capUsed) && close(got.capRecharge, want.capRecharge);
+                          close(got.capUsed, want.capUsed) && close(got.capRecharge, want.capRecharge) &&
+                          (goals[g] != Goal::AppliedDps || close(got.dps, want.dps));
                 if (!ok && mismatches++ < 10)
                     std::cerr << "fit " << fit->id << " (" << ship->name << ") " << goalNames[g] << ": plan goal "
                               << got.goal << " cpu " << got.cpuUsed << " cap " << got.capUsed << "/" << got.capRecharge
@@ -713,6 +798,7 @@ int wmain(int argc, wchar_t* argv[])
     std::optional<std::array<std::string, 3>> benchArgs;  // fitID, seconds, goal
     std::optional<int64_t> optimizeFit;
     fitengine::opt::Options optimizeOpt;
+    optimizeOpt.target = referenceTargets()[1].target;  // appliedDps default: the cruiser target
     std::vector<int64_t> checkFits;
     std::vector<fitengine::Goal> checkGoals;
     std::optional<std::array<int, fitengine::opt::RackCount>> slotsOverride;
@@ -735,6 +821,10 @@ int wmain(int argc, wchar_t* argv[])
             saveDb = argv[++i];
         else if (arg == L"--engine-dump" && i + 1 < argc)
             engineDumpPath = argv[++i];
+        else if (arg == L"--no-reload")
+            dumpFactorReload = false;
+        else if (arg == L"--spool" && i + 1 < argc)
+            dumpSpoolup = std::stof(toUtf8(std::wstring(argv[++i])));
         else if (arg == L"--bench")
         {
             std::array<std::string, 3> a{"0", "10", "armorActive"};
@@ -751,10 +841,42 @@ int wmain(int argc, wchar_t* argv[])
             {
                 std::cerr << "unknown goal (shieldPassive, armorPassive, hullPassive, shieldActive, armorActive, shieldResists, armorResists, "
                              "shieldRemote, armorRemote, localShieldRemoteShield, localShieldRemoteArmor, "
-                             "localArmorRemoteShield, localArmorRemoteArmor)\n";
+                             "localArmorRemoteShield, localArmorRemoteArmor, appliedDps)\n";
                 return 1;
             }
             optimizeOpt.goal = *goal;
+        }
+        else if (arg == L"--target" && i + 1 < argc)
+        {
+            // appliedDps: em,thermal,kinetic,explosive,signature,speed,radius,distance[,speedFactor]
+            // or a reference target's name (frigate, cruiser, battleship)
+            std::string spec = toUtf8(std::wstring(argv[++i]));
+            bool named = false;
+            for (const ReferenceTarget& rt : referenceTargets())
+                if (spec == rt.name)
+                    optimizeOpt.target = rt.target, named = true;
+            if (!named)
+            {
+                std::vector<float> v;
+                for (size_t at = 0; at <= spec.size();)
+                {
+                    size_t end = spec.find(',', at);
+                    if (end == std::string::npos)
+                        end = spec.size();
+                    v.push_back(std::stof(spec.substr(at, end - at)));
+                    at = end + 1;
+                }
+                if (v.size() < 8)
+                {
+                    std::cerr << "--target needs em,thermal,kinetic,explosive,signature,speed,radius,distance[,speedFactor]\n";
+                    return 1;
+                }
+                fitengine::DamageTarget& t = optimizeOpt.target;
+                t.em = v[0], t.thermal = v[1], t.kinetic = v[2], t.explosive = v[3];
+                t.signatureRadius = v[4] > 0 ? v[4] : std::numeric_limits<float>::infinity();
+                t.maxVelocity = v[5], t.radius = v[6], t.distance = v[7];
+                t.speedFactor = v.size() > 8 ? v[8] : 1.0f;
+            }
         }
         else if (arg == L"--racks" && i + 1 < argc)
         {
@@ -770,6 +892,8 @@ int wmain(int argc, wchar_t* argv[])
             optimizeOpt.allowAncillary = false;
         else if (arg == L"--no-cap-boosters")
             optimizeOpt.allowCapBoosters = false;
+        else if (arg == L"--no-polarized")
+            optimizeOpt.excludePolarized = true;
         else if (arg == L"--max-reps" && i + 1 < argc)
             optimizeOpt.maxReps = std::stoi(toUtf8(std::wstring(argv[++i])));
         else if (arg == L"--remote-weight" && i + 1 < argc)

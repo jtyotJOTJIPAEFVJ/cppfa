@@ -18,8 +18,9 @@ Test commands on saved fits (whole racks, no request; same constraint, refine an
 
 ```
 PyfaReader.exe --optimize <fitID> <goal> [--racks mid,low,rig,high] [--price-cap ISK] [--allow-officer] [--top K]
-               [--results N] [--dump-kinds] [--slots m,l,r[,h]] [--no-ancillary] [--no-cap-boosters] [--max-reps N]
+               [--results N] [--dump-kinds] [--slots m,l,r[,h]] [--no-ancillary] [--no-cap-boosters] [--no-polarized] [--max-reps N]
                [--cap-stable] [--min-cap-recharge GJ/s] [--remote-weight W]
+               [--target frigate|cruiser|battleship|em,th,ki,ex,sig,speed,radius,distance[,speedFactor]]
 PyfaReader.exe --optimize-check <fitID>[,<fitID>...] [goal|all] [--racks ...] [--slots m,l,r[,h]] [--verbose]
 ```
 
@@ -46,6 +47,7 @@ PyfaReader.exe --optimize-check <fitID>[,<fitID>...] [goal|all] [--racks ...] [-
   "character": {"defaultLevel": 5, "skills": [{"skillID": 3416, "level": 4}]},
   "implants": [{"typeID": 13219, "active": true}],
   "boosters": [{"typeID": 28674, "active": true, "sideEffects": [5869]}],
+  "drones": [{"typeID": 2488, "amount": 5}],
   "modules": [
     {"position": 0, "slot": "low", "typeID": 2048, "chargeID": 0, "state": "online", "optimize": false},
     {"position": 1, "slot": "low", "typeID": 0, "optimize": true},
@@ -72,11 +74,16 @@ PyfaReader.exe --optimize-check <fitID>[,<fitID>...] [goal|all] [--racks ...] [-
 | `character` | object | no | Omitted: all skills at V. `defaultLevel` (0-5, default 5) is the level of every skill not listed in `skills`. `skills` is a list of `{skillID, level}` overrides. For a real pyfa character, send `defaultLevel: 0` and every skill: `[{"skillID": s.itemID, "level": s.level} for s in fit.character.skills]`. |
 | `implants` | list | no | `{typeID, active}`. The implants that apply to the fit: `fit.appliedImplants`, which pyfa takes from the character or the fit according to `implantLocation`. |
 | `boosters` | list | no | `{typeID, active, sideEffects}`. `sideEffects` lists the effectIDs of the side effects that are switched on: `[e.ID for e in booster.activeSideEffectEffects]`. |
+| `factorReload` | bool | no (true) | pyfa's `Fit.factorReload` (the global "factor in reload time" option): reload time in the modules' average cycle, so in capacitor use, sustained local and remote repair and damage. Capacitor boosters always count it, as in pyfa. |
+| `spoolup` | number | no (1) | pyfa's default spool-up (`globalDefaultSpoolupPercentage`, 0..1 of the maximum bonus): mutadaptive remote repairers and entropic disintegrators. A module's own setting (`spoolType`) wins. |
+| `drones` | list | no | `{typeID, amount, baseTypeID, mutators}`: the drones in space, `amount` = `Drone.amountActive` (entries with 0 are ignored); mutated drones as modules. Only the `appliedDps` goal uses them. |
 | `modules` | list | no | One entry per entry of `fit.modules`, empty slots included. See below. |
-| `goal` | string | yes | `shieldPassive`, `armorPassive`, `hullPassive` (EHP, uniform damage profile), `shieldActive`, `armorActive` (effective sustainable repair, EHP/s), `shieldResists`, `armorResists` (resists only: EHP per HP of the layer, 1 / mean resonance for the uniform damage profile; HP and repair modules are worth nothing), or `shieldRemote`, `armorRemote` (outgoing remote repair, HP/s: pyfa's `Module.getRemoteReps` per remote repairer, reload factored in and mutadaptive repairers fully spooled, the capacitor left after every other module shared between them most cap-efficient first, like the local sustainable tank; open high slots for them), or `localShieldRemoteShield`, `localShieldRemoteArmor`, `localArmorRemoteShield`, `localArmorRemoteArmor` (balanced local tank and remote repair, see below). |
+| `goal` | string | yes | `shieldPassive`, `armorPassive`, `hullPassive` (EHP, uniform damage profile), `shieldActive`, `armorActive` (effective sustainable repair, EHP/s), `shieldResists`, `armorResists` (resists only: EHP per HP of the layer, 1 / mean resonance for the uniform damage profile; HP and repair modules are worth nothing), or `shieldRemote`, `armorRemote` (outgoing remote repair, HP/s: pyfa's `Module.getRemoteReps` per remote repairer, reload and spool-up as `factorReload` / `spoolup`, the capacitor left after every other module shared between them most cap-efficient first, like the local sustainable tank; open high slots for them), or `localShieldRemoteShield`, `localShieldRemoteArmor`, `localArmorRemoteShield`, `localArmorRemoteArmor` (balanced local tank and remote repair, see below), or `appliedDps` (damage per second applied to `target`, see below). |
+| `target` | object | for `appliedDps` | `{em, thermal, kinetic, explosive, signatureRadius, maxVelocity, radius, distance, speedFactor}`: the target's resists (0..1), signature radius (m; missing, null or <= 0 = none, i.e. infinite, as pyfa's profiles without one), max velocity (m/s), radius (m), the distance (m, surface to surface) and the share of its velocity it moves at (0..1, default 1). Tackle: `maxVelocityScrammed`, `signatureRadiusScrammed` (the target with its MWD / MJD off, used when the fit's scrambler reaches it; default unchanged), `webResistance`, `painterResistance` (1 = none, 0 = immune; default 1), `immune` (bool, pyfa `disallowOffensiveModifiers`). pyfa sends the fit's enabled Target tab entry (`service.target.getActiveTarget`). |
 | `priceCap` | number | no (0) | ISK per module (with its charge excluded). 0 = no cap. With a cap, modules without a known price are skipped. |
 | `allowOfficer` | bool | no (false) | Allow officer modules (metaGroup 5). |
 | `allowAncillary` | bool | no (true) | false: no ancillary shield boosters or armor repairers (local or remote) are proposed. Pinned ones stay. |
+| `excludePolarized` | bool | no (false) | `appliedDps`: no polarized weapons (types with `resistanceKiller`) are proposed. Pinned ones stay. |
 | `allowCapBoosters` | bool | no (true) | false: no capacitor boosters are proposed (e.g. for a tank that is stable without charges). Pinned ones stay. |
 | `maxReps` | int | no (0) | Active and remote goals: the most repairers of the goal in the fit, pinned active ones included (local ones of the goal's layer, or remote ones of it). 0 = no limit. |
 | `requireCapStable` | bool | no (false) | Only options with capacitor use within recharge (`stats.capStable`). |
@@ -88,6 +95,8 @@ PyfaReader.exe --optimize-check <fitID>[,<fitID>...] [goal|all] [--racks ...] [-
 | `prices` | object | no | `{"<typeID>": ISK}`. If it is given, saveddata's prices table isn't read. JSON keys are strings; Python's `json.dumps` writes int dict keys that way. |
 
 Balanced goals score a fit on two tests from one evaluation. **Local** is the effective sustainable local repair of the local layer (EHP/s, as `armorActive`/`shieldActive`) with the goal's remote repairers off. **Remote** is the remote repair of the remote layer (HP/s, as `armorRemote`/`shieldRemote`) with the goal's local repairers of the local layer off. So each side gets the capacitor on its own, and neither pays for the other's cap use. The score is the harmonic mean of local and `remoteWeight` × remote: 2ab / (a + b). It grows with either side but approaches twice the smaller one when they differ a lot, so piling onto one side gains little. With equal sides it is their value. `stats.localRep` and `stats.remoteRep` give the two sides. `stats.capStable` and `capUsed` still describe everything running at once. `maxReps` counts the local and the remote repairers together.
+
+`appliedDps` is pyfa's damage graph at one point: the attacker stands still, the target moves at `speedFactor × maxVelocity` straight across (angle 90°) at `distance`. Each active weapon's damage per second (reload and spool-up as `factorReload` / `spoolup` say) times the target's resists and its application: turrets the chance to hit (range and tracking, wrecking shots included), launchers the missile range (flight time, both whole-second ranges) and explosion (radius, velocity), vorton projectors their range and explosion, smartbombs their range; nothing beyond the fit's lock range (smartbombs and FoF missiles excepted). Drones in space count too, within lock and drone control range (they keep up with the target when faster, else they shoot from the ship). First the fit's webs, grapplers, target painters and scramblers (and web / painter drones) act on the target as in pyfa's graph with "apply projected": slower, bigger, a scrambled MWD switched off (`FIT_ENGINE.md`, "Tackle"). Bombs, doomsdays and defender missiles count no applied damage, breacher pods none at all. There is no stage-1 model for this goal: refine searches alone (`OPTIMIZER.md`), from the open slots' own modules and from the empty set.
 
 Module entries:
 
@@ -101,16 +110,18 @@ Module entries:
 | `baseTypeID` | int | Mutated modules: `Module.baseItemID`. |
 | `mutaplasmidID` | int | Mutated modules: `Module.mutaplasmidID`. Informational: the engine uses `baseTypeID` and `mutators`. |
 | `mutators` | object | `{"<attributeID>": value}`: `{str(m.attrID): m.value for m in mod.mutators.values()}`. |
+| `spoolType`, `spoolAmount` | int, number | The module's own spool-up setting (`Module.spoolType`, `eos.const.SpoolType` 0-3, and `spoolAmount`); missing = `spoolup`. Opened slots' new modules use `spoolup`. |
 | `optimize` | bool | true = this slot is open: the optimizer may put any module there, or leave it empty. |
 
 Rules:
-- Only high, med, low and rig slots can be optimized. A requested subsystem or service slot gets a warning and is kept as it is. High slots get no weapons (hardpoints aren't tracked); they are for remote repairers.
+- Only high, med, low and rig slots can be optimized. A requested subsystem or service slot gets a warning and is kept as it is. High slots get no weapons for the tank goals; they are for remote repairers. For `appliedDps` they get weapons (turrets, launchers, vorton projectors, smartbombs), each with every charge it can load, within the ship's free turret and launcher hardpoints (`turretSlotsLeft`, `launcherSlotsLeft` less the pinned weapons).
+- `appliedDps`: modules that take scripts (tracking and guidance computers, sensor boosters, HIC disruptors) are offered without a script and with each script. Webs, grapplers, target painters and scramblers are candidates too (fitted active).
 - An option that misses `requireCapStable` or `minCapRecharge` doesn't count as fitting, so it isn't reported. When none meets them (and the pinned part fits), the status is `infeasible` with reason `capacitor` and a message naming the closest set's capacitor numbers.
 - Per rack, the open slot count is the number of requested entries in that rack. It is capped by the free slots: the rack size (the ship's `medSlots`/`lowSlots`/`rigSlots`, as modified by the pinned fit, e.g. by subsystems) minus the rack's pinned modules. If the cap applies, there is a warning, and the extra requested positions come back empty.
 - Pinned modules keep their state, charge and mutations, and they count toward group limits (`maxGroupFitted`, `maxTypeFitted`), CPU, power and calibration.
 - **Abyssal (mutated) modules** are read-only: the engine evaluates them with their mutations (the mutator values over the base item's attributes, as pyfa does), but the optimizer never proposes new ones (abyssal types aren't published). A mutated module in an opened slot is offered back as it is: a candidate of its own, at no price (it is owned, so the price cap doesn't apply), at most as many times as the opened slots hold it. A found mutated module stays in its own slot when it is kept; in the response, its slot carries `baseTypeID` and `mutators` so the caller can put back the original module (mutaplasmid included).
 - **Module rule, assault damage controls**: any type with effect 7012 `moduleBonusAssaultDamageControl`. Its active bonus lasts about 12 s, so it doesn't count toward tank. These modules are never proposed, because a regular damage control is always better. A pinned one is evaluated at most online, which keeps its passive `damageControl` part. The response lists such modules in `clampedModules` and adds a warning. pyfa should tell the user, and may set the module online.
-- Drones, fighters, projected effects, fleet boosts from other fits, and damage profiles are not part of the request; the engine doesn't model them. The goal uses the uniform damage profile.
+- Fighters, projected effects onto the fit (its Projected tab), fleet boosts from other fits (command fits), and damage profiles are not part of the request; the engine doesn't model them (pyfa's dialog warns when the fit has any). The tank goals use the uniform damage profile. Drones are pinned: the optimizer doesn't choose them.
 
 ## Response
 
@@ -163,11 +174,11 @@ The numbers above are illustrative.
 | `start` | The input fit, as requested, with the module rules applied. `price` is the price of the modules and charges currently in the requested slots. |
 | `clampedModules` | Pinned modules evaluated with a lower state than requested: `{position, slot, typeID, name, state (as requested), evaluatedState}`. |
 | `options` | Best first: by goal, then, at an equal goal (within ~1e-7 relative), cheaper. Only options that fit (CPU, power and calibration) are returned; `fits` is always true. There are at most `results`, and they are pairwise distinct as module multisets. The list is empty with `"status": "infeasible"`, and with `"ok"` when no choice that fits reaches a goal above 0 (then `warnings` says so, with the free CPU / power / calibration). |
-| `options[].goal`, `gain` | Goal value (EHP, or EHP/s for active goals) and gain over `start.goal`. |
+| `options[].goal`, `gain` | Goal value (EHP, EHP/s for active goals, damage per second for `appliedDps`) and gain over `start.goal`. |
 | `options[].fits` | CPU, power and calibration within their outputs. |
 | `options[].price`, `priceDelta` | ISK of the modules and charges in the requested slots, and the difference from `start.price`. Unknown prices count as 0. |
 | `options[].changedSlots` | Requested slots whose module, charge or state differs from the request. |
-| `options[].stats` | Engine numbers for the whole fit with this option: `cpuUsed/cpuOutput` (tf), `powerUsed/powerOutput` (MW), `calibrationUsed/calibrationOutput`, `capUsed` (GJ/s used by active modules), `capRecharge` (GJ/s: peak recharge at 25 % plus cap boosters), and `capStable` (capUsed <= capRecharge; simplified). |
+| `options[].stats` | Engine numbers for the whole fit with this option: `cpuUsed/cpuOutput` (tf), `powerUsed/powerOutput` (MW), `calibrationUsed/calibrationOutput`, `capUsed` (GJ/s used by active modules), `capRecharge` (GJ/s: peak recharge at 25 % plus cap boosters), and `capStable` (capUsed <= capRecharge; simplified). | `appliedDps`: also `dps`, the raw damage per second (no resists, no application).
 | `options[].slots` | One entry per requested slot (high/med/low/rig), in position order: `position`, `slot`, `typeID` (0 = leave empty), `chargeID`, `state` (null if empty), `name`, `chargeName`, `unchanged`. |
 | `warnings` | Strings to show the user (slots that can't be opened, the free-slot cap, clamped modules, optimizer warnings). |
 | `stats` | Run statistics, informational. |

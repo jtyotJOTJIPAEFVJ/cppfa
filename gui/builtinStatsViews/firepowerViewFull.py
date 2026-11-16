@@ -82,6 +82,10 @@ class FirepowerViewFull(StatsView):
             setattr(self, "label%sDps%s" % (panel.capitalize(), attr), lbl)
 
             hbox.Add(lbl, 0, wx.ALIGN_CENTER)
+            # Applied to the Target tab's enabled target (hidden without one)
+            applied = wx.StaticText(parent, wx.ID_ANY, "")
+            setattr(self, "labelApplied%s" % attr, applied)
+            box.Add(applied, 0, wx.ALIGN_LEFT)
             self._cachedValues.append(0)
             counter += 1
         targetSizer = sizerFirepower
@@ -91,7 +95,7 @@ class FirepowerViewFull(StatsView):
 
         baseBox.Add(BitmapLoader.getStaticBitmap("volley_big", parent, "gui"), 0, wx.ALIGN_CENTER)
 
-        gridS = wx.GridSizer(2, 2, 0, 0)
+        gridS = wx.FlexGridSizer(3, 2, 0, 0)
 
         baseBox.Add(gridS, 0)
 
@@ -109,6 +113,9 @@ class FirepowerViewFull(StatsView):
         self._cachedValues.append(0)
 
         gridS.Add(lbl, 0, wx.ALIGN_LEFT)
+        gridS.Add(wx.StaticText(parent, wx.ID_ANY, ""), 0)
+        self.labelAppliedTotal = wx.StaticText(parent, wx.ID_ANY, "")
+        gridS.Add(self.labelAppliedTotal, 0, wx.ALIGN_LEFT)
 
         image = BitmapLoader.getBitmap("mining_small", "gui")
         self.miningyield = wx.BitmapButton(contentPanel, -1, image)
@@ -224,7 +231,35 @@ class FirepowerViewFull(StatsView):
                 self._cachedValues[counter] = getattr(val, 'total', None)
             counter += 1
 
+        self.refreshApplied(fit)
         self.layoutIfNeeded()
+
+    def refreshApplied(self, fit):
+        """Applied damage against the fit's enabled target (Target tab) at the Target tab's range
+        and target speed, with the damage graph's code (service.appliedDamage)."""
+        from service.appliedDamage import getAppliedDamage
+        applied = getAppliedDamage(fit) if fit is not None else None
+        labels = ((self.labelAppliedWeapon, 'weapons', _t('Weapon')), (self.labelAppliedDrone, 'drones', _t('Drone')),
+                  (self.labelAppliedTotal, 'total', _t('Total')))
+        for label, attr, name in labels:
+            part = getattr(applied, attr, None)
+            # Without a target nothing shows; with one the total always does, the others when they deal damage
+            if applied is None or (attr != 'total' and not part.raw):
+                label.SetLabel('')
+                label.SetToolTip(None)
+                label.Hide()
+                continue
+            label.SetLabel('({})'.format(formatAmount(part.applied, 3, 0, 0)))
+            label.SetToolTip(wx.ToolTip(self.appliedToolTip(applied, part, name)))
+            label.Show()
+        self.panel.Layout()
+
+    @staticmethod
+    def appliedToolTip(applied, part, name):
+        if part is None or not part.raw:
+            return ''
+        return '{}: {:.3f}x\n{}: {:.3f}x'.format(_t('resists'), part.resistShare, _t('application'),
+                                                part.applicationShare)
 
 
 FirepowerViewFull.register()

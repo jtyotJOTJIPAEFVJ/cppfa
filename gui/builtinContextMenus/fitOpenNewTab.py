@@ -16,7 +16,7 @@ class OpenFitInNewTab(ContextMenuSingle):
         self.mainFrame = gui.mainFrame.MainFrame.getInstance()
 
     def display(self, callingWindow, srcContext, mainItem):
-        if srcContext not in ("projectedFit", "commandFit", "graphFitListMisc", "graphTgtListMisc"):
+        if srcContext not in ("projectedFit", "commandFit", "targetItem", "graphFitListMisc", "graphTgtListMisc"):
             return False
 
         if mainItem is None:

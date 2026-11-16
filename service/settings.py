@@ -588,6 +588,12 @@ class ModuleOptimizerSettings:
             'minCapRecharge': 0.0,
             # Balanced goals: EHP/s one remote HP/s is worth (the rep target's resist multiplier)
             'remoteWeight': 4.0,
+            # Applied damage goal: distance to the target (m, surface to surface) and the share of its
+            # speed it moves at (%, fully transversal)
+            'distance': 10000.0,
+            'targetSpeed': 100.0,
+            # Applied damage goal: don't propose polarized weapons
+            'excludePolarized': False,
             'results': 10,
             # 0 for all hardware threads
             'threads': 0,

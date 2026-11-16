@@ -22,7 +22,7 @@ from sqlalchemy import desc, select
 from sqlalchemy import func
 
 from eos.db import saveddata_session, sd_lock
-from eos.db.saveddata.fit import fits_table, projectedFits_table
+from eos.db.saveddata.fit import fits_table, fitTargets_table, projectedFits_table
 from eos.db.util import processEager, processWhere
 from eos.saveddata.price import Price
 from eos.saveddata.user import User
@@ -32,6 +32,7 @@ from eos.saveddata.targetProfile import TargetProfile
 from eos.saveddata.character import Character
 from eos.saveddata.implantSet import ImplantSet
 from eos.saveddata.fit import Fit, FitLite
+from eos.saveddata.fitTarget import FitTarget
 from eos.saveddata.module import Module
 from eos.saveddata.miscData import MiscData
 from eos.saveddata.override import Override
@@ -384,6 +385,11 @@ def getTargetProfileList(eager=None):
 
 def clearTargetProfiles():
     with sd_lock:
+        # Fit targets pointing at user profiles go with them
+        for fitTarget in getFitTargetsReferencing():
+            if fitTarget.fit is not None:
+                fitTarget.fit.fitTargets.remove(fitTarget)
+        saveddata_session.flush()
         deleted_rows = saveddata_session.query(TargetProfile).delete()
     commit()
     return deleted_rows
@@ -481,6 +487,18 @@ def getProjectedFits(fitID):
             return fits
     else:
         raise TypeError("Need integer as argument")
+
+
+def getFitTargetsReferencing(fitID=None, targetProfileID=None):
+    """Target rows (of any fit) whose target is the given fit or the given user target profile"""
+    if fitID is not None:
+        filter = fitTargets_table.c.targetFitID == fitID
+    elif targetProfileID is not None:
+        filter = fitTargets_table.c.targetProfileID == targetProfileID
+    else:
+        filter = fitTargets_table.c.targetProfileID.isnot(None)
+    with sd_lock:
+        return saveddata_session.query(FitTarget).filter(filter).all()
 
 
 def getSsoCharacters(clientHash, eager=None):

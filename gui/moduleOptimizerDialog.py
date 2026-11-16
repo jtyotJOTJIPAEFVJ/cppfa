@@ -28,6 +28,7 @@ import wx
 from logbook import Logger
 
 import gui.fitCommands as cmd
+import gui.globalEvents as GE
 from eos.const import FittingModuleState, FittingSlot
 from gui.fitCommands.helpers import ModuleInfo
 from gui.utils.dark import warningTextColor
@@ -35,6 +36,7 @@ from gui.utils.numberFormatter import formatAmount
 from service import moduleOptimizer as mo
 from service.fit import Fit
 from service.settings import ModuleOptimizerSettings
+from service import target as svcTarget
 
 pyfalog = Logger(__name__)
 _t = wx.GetTranslation
@@ -54,7 +56,8 @@ def goalLabels():
         'localShieldRemoteShield': _t('Local shield + remote shield repair, balanced'),
         'localShieldRemoteArmor': _t('Local shield + remote armor repair, balanced'),
         'localArmorRemoteShield': _t('Local armor + remote shield repair, balanced'),
-        'localArmorRemoteArmor': _t('Local armor + remote armor repair, balanced')}
+        'localArmorRemoteArmor': _t('Local armor + remote armor repair, balanced'),
+        'appliedDps': _t('Applied damage to the target (DPS)')}
 
 
 def slotLabels():
@@ -80,8 +83,11 @@ def isActiveGoal(goal):
 
 
 def goalCell(goal, value, stats):
-    """The Goal column; balanced goals add the two sides: local EHP/s and remote HP/s."""
+    """The Goal column; balanced goals add the two sides: local EHP/s and remote HP/s; the damage
+    goal the raw damage per second."""
     text = formatGoal(goal, value)
+    if mo.isDamageGoal(goal) and stats is not None and stats.dps is not None:
+        text += ' ({} {})'.format(formatAmount(stats.dps, 4, 0, 0), _t('raw'))
     if mo.isBalancedGoal(goal) and stats is not None and stats.localRep is not None:
         text += ' ({} / {})'.format(formatAmount(stats.localRep, 4, 0, 0), formatAmount(stats.remoteRep, 4, 0, 0))
     return text
@@ -99,7 +105,7 @@ def averageResist(value):
 def formatGoal(goal, value):
     if isResistGoal(goal):
         return '{:.2f}%'.format(averageResist(value) * 100)
-    return formatAmount(value, 4 if isActiveGoal(goal) else 5, 0, 0)
+    return formatAmount(value, 4 if isActiveGoal(goal) or mo.isDamageGoal(goal) else 5, 0, 0)
 
 
 def formatGain(goal, option, start):
@@ -169,6 +175,8 @@ class ModuleOptimizerDialog(wx.Frame):
         self.rows = []
         self.sortColumn = None
         self.appliedRank = None
+        self.priceUpdate = None
+        self.priceWarning = ''
 
         panel = wx.Panel(self)
         self.panel = panel
@@ -191,7 +199,10 @@ class ModuleOptimizerDialog(wx.Frame):
                                       'Balanced: local tank and remote repair together, each measured with the '
                                       'other side\'s repairers off; the score is the harmonic mean of local EHP/s '
                                       'and remote HP/s times the target resists multiplier, shown with '
-                                      '(local / remote).'))
+                                      '(local / remote). Applied damage: damage per second the weapons and '
+                                      'drones deal to the target enabled in the Target tab, at the distance '
+                                      'set below, with the target moving across; select high slots to '
+                                      'change weapons and ammo.'))
         options.Add(self.goalChoice, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
 
         priceLabel = wx.StaticText(panel, label=_t('Max price per module (M ISK):'))
@@ -279,6 +290,21 @@ class ModuleOptimizerDialog(wx.Frame):
         constraints.Add(self.minCapRecharge, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
         sizer.Add(constraints, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
+        # Applied damage goal: the target (Target tab) and the engagement
+        damage = wx.BoxSizer(wx.HORIZONTAL)
+        damage.Add(wx.StaticText(panel, label=_t('Damage target:')), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+        self.targetText = wx.StaticText(panel, label='', size=(520, -1), style=wx.ST_NO_AUTORESIZE | wx.ST_ELLIPSIZE_END)
+        self.targetText.SetToolTip(_t('The target enabled in the Target tab of the fit (a target profile or a fit): '
+                                      'its signature radius, speed and resists, at the range and target speed '
+                                      'set in the Target tab.'))
+        damage.Add(self.targetText, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+        self.excludePolarized = wx.CheckBox(panel, label=_t('Skip polarized weapons'))
+        self.excludePolarized.SetValue(self.settings.get('excludePolarized'))
+        self.excludePolarized.SetToolTip(_t('Don\'t propose polarized weapons: they deal the most damage but zero '
+                                            'the ship\'s resists. Fitted ones outside the selection stay.'))
+        damage.Add(self.excludePolarized, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
+        sizer.Add(damage, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
         # Progress
         progress = wx.BoxSizer(wx.HORIZONTAL)
         self.gauge = wx.Gauge(panel, range=1000, size=(200, -1))
@@ -316,6 +342,14 @@ class ModuleOptimizerDialog(wx.Frame):
         hint.SetForegroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_GRAYTEXT))
         hint.Wrap(800)
         bottom.Add(hint, 1, wx.ALIGN_CENTER_VERTICAL)
+        self.priceText = wx.StaticText(panel, label='')
+        self.priceText.SetForegroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_GRAYTEXT))
+        bottom.Add(self.priceText, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 8)
+        self.pricesButton = wx.Button(panel, label=_t('Update prices'))
+        self.pricesButton.SetToolTip(_t('Fetch market prices for every module, charge and drone the optimizer can '
+                                        'propose whose cached price is more than 7 days old, from the price source '
+                                        'set in pyfa\'s preferences. Items not sold on the market keep no price.'))
+        bottom.Add(self.pricesButton, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 8)
         self.exeButton = wx.Button(panel, label=_t('Optimizer path...'))
         bottom.Add(self.exeButton, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 8)
         sizer.Add(bottom, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
@@ -326,12 +360,17 @@ class ModuleOptimizerDialog(wx.Frame):
         self.SetClientSize(wx.Size(max(sizer.GetMinSize().width, 980), sizer.GetMinSize().height + 40))
         self.CenterOnParent()
 
+        self.updateTargetText()
         self.updateGoalControls()
+        self.updateWarnings()
+        self.mainFrame.Bind(GE.FIT_CHANGED, self.onFitChanged)
         self.goalChoice.Bind(wx.EVT_CHOICE, self.onGoalChanged)
         self.runButton.Bind(wx.EVT_BUTTON, self.onRun)
         self.cancelButton.Bind(wx.EVT_BUTTON, self.onCancel)
         self.onlineButton.Bind(wx.EVT_BUTTON, self.onSetOnline)
         self.exeButton.Bind(wx.EVT_BUTTON, self.onChooseExe)
+        self.pricesButton.Bind(wx.EVT_BUTTON, self.onUpdatePrices)
+        self.updatePriceText()
         self.list.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.onActivate)
         self.list.Bind(wx.EVT_LIST_ITEM_SELECTED, self.onSelect)
         self.list.Bind(wx.EVT_LIST_COL_CLICK, self.onColumnClick)
@@ -364,6 +403,47 @@ class ModuleOptimizerDialog(wx.Frame):
         self.slotsText.SetToolTip('\n'.join(details))
         self.panel.Layout()
 
+    def activeTarget(self):
+        fit = self.getFit()
+        if fit is None:
+            return None
+        try:
+            return svcTarget.getActiveTarget(fit)
+        except Exception:
+            pyfalog.exception('Failed to read the fit\'s target')
+            return None
+
+    def updateTargetText(self):
+        target = self.activeTarget()
+        if target is None:
+            self.targetText.SetLabel(_t('none (enable one in the Target tab)'))
+            return
+        sig = target.get('signatureRadius')
+        sigText = _t('no signature') if sig is None or sig == float('inf') else '{} m'.format(formatAmount(sig, 3, 0, 3))
+        from service import appliedDamage
+        distance, speedFactor = appliedDamage.engagement()
+        self.targetText.SetLabel(_t('{}: {}, {} m/s, {:.0f}/{:.0f}/{:.0f}/{:.0f}% - at {} km, {:.0f}% speed').format(
+            target['name'], sigText, formatAmount(target.get('maxVelocity') or 0, 4, 0, 3),
+            target['em'] * 100, target['thermal'] * 100, target['kinetic'] * 100, target['explosive'] * 100,
+            formatAmount(distance / 1000, 3, 0, 3), speedFactor * 100))
+
+    def onFitChanged(self, event):
+        event.Skip()
+        if not self:
+            return
+        fitIDs = getattr(event, 'fitIDs', ()) or ()
+        fitTarget = None
+        try:
+            fitTarget = svcTarget.getActiveFitTarget(self.fitID)
+        except Exception:
+            pass
+        targetFit = getattr(fitTarget, 'targetFit', None) if fitTarget is not None else None
+        targetFitID = getattr(targetFit, 'ID', None)
+        if not fitIDs or self.fitID in fitIDs or (targetFitID is not None and targetFitID in fitIDs):
+            self.updateTargetText()
+        if not fitIDs or self.fitID in fitIDs:
+            self.updateWarnings()
+
     def saveOptions(self):
         goal = mo.GOALS[max(0, self.goalChoice.GetSelection())]
         self.settings.set('goal', goal)
@@ -375,6 +455,7 @@ class ModuleOptimizerDialog(wx.Frame):
         self.settings.set('requireCapStable', self.requireCapStable.GetValue())
         self.settings.set('minCapRecharge', max(0.0, self.minCapRecharge.GetValue()))
         self.settings.set('remoteWeight', max(0.5, self.remoteWeight.GetValue()))
+        self.settings.set('excludePolarized', self.excludePolarized.GetValue())
         self.settings.set('results', self.resultCount.GetValue())
         self.settings.set('timeBudget', self.timeBudget.GetValue())
         return goal
@@ -384,7 +465,7 @@ class ModuleOptimizerDialog(wx.Frame):
     # -------------------------------------------------------------------------
 
     def onRun(self, event):
-        if self.run is not None:
+        if self.run is not None or self.priceUpdate is not None:
             return
         fit = self.getFit()
         if fit is None:
@@ -399,6 +480,14 @@ class ModuleOptimizerDialog(wx.Frame):
             wx.MessageBox(_t('None of the selected slots can be optimized: only high, mid, low and rig slots can.'),
                           _t('Optimize Modules'), wx.OK | wx.ICON_INFORMATION, self)
             return
+        target = None
+        if mo.isDamageGoal(goal):
+            target = self.activeTarget()
+            if target is None:
+                wx.MessageBox(_t('The applied damage goal needs a target: add a target profile or a fit in the '
+                                 'Target tab (at the bottom of the main window) and enable it.'),
+                              _t('Optimize Modules'), wx.OK | wx.ICON_INFORMATION, self)
+                return
         try:
             self.request = mo.buildRequest(
                 fit, positions, goal, priceCap=self.settings.get('priceCap'),
@@ -407,7 +496,10 @@ class ModuleOptimizerDialog(wx.Frame):
                 allowAncillary=self.settings.get('allowAncillary'),
                 allowCapBoosters=self.settings.get('allowCapBoosters'), maxReps=self.settings.get('maxReps'),
                 requireCapStable=self.settings.get('requireCapStable'),
-                minCapRecharge=self.settings.get('minCapRecharge'), remoteWeight=self.settings.get('remoteWeight'))
+                minCapRecharge=self.settings.get('minCapRecharge'), remoteWeight=self.settings.get('remoteWeight'),
+                target=target, distance=self.settings.get('distance'),
+                speedFactor=self.settings.get('targetSpeed') / 100.0,
+                excludePolarized=self.settings.get('excludePolarized'))
         except Exception as e:
             pyfalog.exception('Failed to build the optimizer request')
             wx.MessageBox(_t('Could not describe the fit to the optimizer:\n{}').format(e),
@@ -479,12 +571,114 @@ class ModuleOptimizerDialog(wx.Frame):
         self.setResult(result)
 
     def onCancel(self, event):
+        if self.priceUpdate is not None:
+            self.priceUpdate.cancel()
         if self.run is not None:
             self.run.cancel()
 
-    def setRunning(self, running):
+    # -------------------------------------------------------------------------
+    # Prices
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def formatAge(seconds):
+        days = seconds / 86400
+        if days >= 1:
+            return _t('{:.1f} days').format(days)
+        return _t('{:.0f} hours').format(seconds / 3600)
+
+    def updatePriceText(self):
+        try:
+            summary = mo.priceSummary()
+        except Exception:
+            pyfalog.exception('Failed to summarize cached prices')
+            self.priceText.SetLabel('')
+            return
+        if not summary['priced']:
+            label = _t('Prices: none cached')
+        else:
+            label = _t('Prices: {} of {} items, median {} old (oldest {})').format(
+                summary['priced'], summary['types'], self.formatAge(summary['medianAge']),
+                self.formatAge(summary['oldestAge']))
+        self.priceText.SetLabel(label)
+        self.priceText.SetToolTip(_t('{} items have no price from the last 7 days (not on the market, or not '
+                                     'fetched yet); Update prices fetches them.').format(summary['stale']))
+        self.panel.Layout()
+
+    def onUpdatePrices(self, event):
+        if self.run is not None or self.priceUpdate is not None:
+            return
+        stale = mo.stalePriceTypes()
+        if not stale:
+            self.phaseText.SetLabel(_t('All prices are less than 7 days old'))
+            return
+        self.priceUpdate = mo.PriceUpdate(stale, progress=self.onPriceProgress, finished=self.onPricesFinished)
+        self.setRunning(True, prices=True)
+        self.gauge.SetValue(0)
+        self.phaseText.SetLabel(_t('Updating prices: 0 / {}').format(len(stale)))
+        self.priceUpdate.start()
+
+    def onPriceProgress(self, done, total):
+        if not self:
+            return
+        self.gauge.SetValue(int(1000 * done / max(1, total)))
+        self.phaseText.SetLabel(_t('Updating prices: {} / {}').format(done, total))
+
+    def onPricesFinished(self, cancelled):
+        if not self:
+            return
+        update, self.priceUpdate = self.priceUpdate, None
+        self.setRunning(False)
+        self.updatePriceText()
+        done = update.done if update is not None else 0
+        self.phaseText.SetLabel(_t('Price update cancelled ({} items)').format(done) if cancelled
+                                else _t('Prices updated ({} items)').format(done))
+
+    def checkPrices(self, result):
+        """Compares the options' prices with pyfa's current ones (pyfa refreshes those older than
+        a day, as for fitted modules) and warns when they differ much."""
+        request = self.request
+        if result is None or not result.options or request is None:
+            return
+        sent = {int(k): v for k, v in (request.get('prices') or {}).items()}
+        typeIDs = set()
+        for option in result.options:
+            for choice in option.slots:
+                if not choice.isEmpty:
+                    typeIDs.add(choice.typeID)
+                    if choice.chargeID:
+                        typeIDs.add(choice.chargeID)
+        if not typeIDs:
+            return
+        from service.price import Price
+
+        def onPrices(requests):
+            if not self or self.result is not result:
+                return
+            now = {p.typeID: p.price for p in requests if p.price}
+            current = dict(sent)
+            current.update(now)
+            changed = []
+            for option in result.options:
+                then, nowPrice = mo.optionPrice(option, sent), mo.optionPrice(option, current)
+                if abs(nowPrice - then) > max(1e6, 0.1 * max(then, nowPrice)):
+                    changed.append('#{} {} \u2192 {}'.format(option.rank, formatIsk(then), formatIsk(nowPrice)))
+            if changed:
+                self.priceWarning = _t('Prices changed since the run (pyfa\'s current prices): {}{}. '
+                                       'Update prices and run again for a ranking by the new prices.').format(
+                    ', '.join(changed[:4]), ', ...' if len(changed) > 4 else '')
+            else:
+                self.priceWarning = ''
+            self.updateWarnings()
+            self.updatePriceText()
+
+        Price.getInstance().getPrices(sorted(typeIDs), onPrices, fetchTimeout=30)
+
+    def setRunning(self, running, prices=False):
+        """A run or a price update (prices) in progress: Cancel stops it, the rest waits."""
         self.runButton.Enable(not running)
         self.cancelButton.Enable(running)
+        self.pricesButton.Enable(not running)
         for control in (self.goalChoice, self.priceCap, self.allowOfficer, self.resultCount, self.timeBudget,
                         self.allowAncillary, self.allowCapBoosters, self.maxReps, self.requireCapStable, self.minCapRecharge,
                         self.exeButton):
@@ -494,6 +688,8 @@ class ModuleOptimizerDialog(wx.Frame):
     def updateGoalControls(self, running=False):
         goal = mo.GOALS[max(0, self.goalChoice.GetSelection())]
         self.remoteWeight.Enable(not running and mo.isBalancedGoal(goal))
+        for control in (self.excludePolarized,):
+            control.Enable(not running and mo.isDamageGoal(goal))
 
     def onGoalChanged(self, event):
         self.updateGoalControls(self.run is not None)
@@ -506,13 +702,33 @@ class ModuleOptimizerDialog(wx.Frame):
         self.result = result
         self.appliedRank = None
         self.sortColumn = None
+        self.priceWarning = ''
         self.rows = list(result.options) if result is not None else []
         self.updateWarnings()
         self.populate()
+        self.checkPrices(result)
+
+    def projectionWarning(self):
+        """The optimizer ignores what's projected onto the fit and command fits; pyfa doesn't."""
+        fit = self.getFit()
+        if fit is None:
+            return ''
+        try:
+            ignored = mo.ignoredProjections(fit)
+        except Exception:
+            pyfalog.exception('Failed to read the fit\'s projections')
+            return ''
+        if not ignored:
+            return ''
+        return _t('The optimizer ignores the {} on this fit (only the fit itself counts), so its numbers differ '
+                  'from what pyfa shows with them.').format(', '.join(ignored))
 
     def updateWarnings(self):
         result = self.result
         lines = []
+        projection = self.projectionWarning()
+        if projection:
+            lines.append(projection)
         if result is not None:
             if result.infeasible is not None:
                 # The optimizer's diagnosis: which resource, by how much, what to change.
@@ -523,6 +739,8 @@ class ModuleOptimizerDialog(wx.Frame):
             elif not result.options:
                 lines.append(_t('No options found.'))
             lines.extend(result.warnings)
+            if self.priceWarning:
+                lines.append(self.priceWarning)
         self.warningText.SetLabel('\n'.join(lines))
         self.warningText.Wrap(800)
         self.onlineButton.Show(bool(result is not None and result.clampedModules))
@@ -786,9 +1004,13 @@ class ModuleOptimizerDialog(wx.Frame):
         self.settings.set('exePath', '' if os.path.normcase(path) == os.path.normcase(mo.defaultExePath()) else path)
 
     def onClose(self, event):
+        if self.priceUpdate is not None:
+            self.priceUpdate.cancel()
+            self.priceUpdate = None
         if self.run is not None:
             self.run.cancel()
             self.run = None
+        self.mainFrame.Unbind(GE.FIT_CHANGED, handler=self.onFitChanged)
         self.saveOptions()
         if ModuleOptimizerDialog._instance is self:
             ModuleOptimizerDialog._instance = None

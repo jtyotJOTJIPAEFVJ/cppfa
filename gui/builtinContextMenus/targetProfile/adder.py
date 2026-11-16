@@ -20,7 +20,9 @@ class TargetProfileAdder(ContextMenuUnconditional):
         self.mainFrame = gui.mainFrame.MainFrame.getInstance()
 
     def display(self, callingWindow, srcContext):
-        if srcContext != 'graphTgtList':
+        if srcContext not in ('graphTgtList', 'targetView'):
+            return False
+        if srcContext == 'targetView' and self.mainFrame.getActiveFit() is None:
             return False
         # We always show "Ideal Profile" anyway
         return True

@@ -14,7 +14,7 @@ class AddBrowsedFits(ContextMenuUnconditional):
         self.mainFrame = gui.mainFrame.MainFrame.getInstance()
 
     def display(self, callingWindow, srcContext):
-        if srcContext not in ('projected', 'commandView', 'graphFitList', 'graphTgtList'):
+        if srcContext not in ('projected', 'commandView', 'targetView', 'graphFitList', 'graphTgtList'):
             return False
         return True
 
@@ -26,6 +26,7 @@ class AddBrowsedFits(ContextMenuUnconditional):
         titles = {
             'projected': 'Add Projected Fits',
             'commandView': 'Add Command Fits',
+            'targetView': 'Add Target Fits',
             'graphFitList': 'Add Fits to Graph',
             'graphTgtList': 'Add Targets to Graph'
         }
